@@ -75,7 +75,7 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
               </defs>
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value: number) => `₪${value.toLocaleString("he-IL")}`} />
+              <Tooltip formatter={(value) => `₪${Number(value).toLocaleString("he-IL")}`} />
               <Area type="monotone" dataKey="freedom" stroke="#0c99e9" fill="url(#freedomGrad)" name="החופש לשווק" />
               <Area type="monotone" dataKey="simplyGrow" stroke="#10b981" fill="url(#sgGrad)" name="פשוט לצמוח" />
             </AreaChart>

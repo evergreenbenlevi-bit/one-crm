@@ -7,12 +7,19 @@ const heebo = Heebo({ subsets: ["hebrew", "latin"] });
 export const metadata: Metadata = {
   title: "Noam CRM",
   description: "מערכת ניהול לקוחות ודשבורד עסקי",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Noam CRM",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#0079c7",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
