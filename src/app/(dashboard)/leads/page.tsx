@@ -72,17 +72,17 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">לידים</h1>
+        <h1 className="text-2xl font-bold dark:text-gray-100">לידים</h1>
         <div className="flex items-center gap-3">
           <Tabs tabs={productTabs} activeTab={product} onChange={(key) => setProduct(key as ProductType)} />
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
             {viewModes.map(mode => (
               <button
                 key={mode.key}
                 onClick={() => setView(mode.key)}
                 className={clsx(
                   "p-2 rounded-lg transition-colors",
-                  view === mode.key ? "bg-white shadow-sm text-gray-900" : "text-gray-400 hover:text-gray-600"
+                  view === mode.key ? "bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-gray-100" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                 )}
               >
                 <mode.icon size={18} />
@@ -102,7 +102,7 @@ export default function LeadsPage() {
       />
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">טוען...</div>
+        <div className="text-center py-12 text-gray-400 dark:text-gray-500">טוען...</div>
       ) : view === "kanban" ? (
         <LeadsKanban columns={columns} statuses={statuses} onStatusChange={handleStatusChange} />
       ) : (

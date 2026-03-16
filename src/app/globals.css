@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: "Heebo", sans-serif;
 
@@ -48,6 +50,43 @@
 ::selection {
   background: var(--color-brand-100);
   color: var(--color-brand-900);
+}
+
+.dark ::selection {
+  background: var(--color-brand-800);
+  color: var(--color-brand-100);
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-brand-700);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-500);
+}
+
+.dark * {
+  scrollbar-color: var(--color-brand-700) transparent;
+}
+
+/* Recharts dark mode */
+.dark .recharts-cartesian-grid line {
+  stroke: #374151;
+}
+
+.dark .recharts-text {
+  fill: #9ca3af;
+}
+
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #f3f4f6 !important;
+}
+
+.dark .recharts-legend-item-text {
+  color: #d1d5db !important;
 }
 
 /* Smooth transitions on interactive elements */

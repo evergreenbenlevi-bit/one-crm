@@ -29,8 +29,8 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-bold flex items-center gap-2">
-        <DollarSign size={20} className="text-brand-600" />
+      <h2 className="text-lg font-bold flex items-center gap-2 dark:text-gray-100">
+        <DollarSign size={20} className="text-brand-600 dark:text-brand-400" />
         הכנסות
       </h2>
 
@@ -40,18 +40,18 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
           value={`₪${revenue.total.toLocaleString("he-IL")}`}
           icon={DollarSign}
         />
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <span className="text-sm text-gray-500">החופש לשווק</span>
-          <div className="text-xl font-bold mt-1">₪{revenue.freedom.toLocaleString("he-IL")}</div>
-          <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+          <span className="text-sm text-gray-500 dark:text-gray-400">החופש לשווק</span>
+          <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.freedom.toLocaleString("he-IL")}</div>
+          <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
             <ShoppingBag size={12} />
             <span>{revenue.freedomCount} רוכשים</span>
           </div>
         </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <span className="text-sm text-gray-500">פשוט לצמוח</span>
-          <div className="text-xl font-bold mt-1">₪{revenue.simplyGrow.toLocaleString("he-IL")}</div>
-          <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+          <span className="text-sm text-gray-500 dark:text-gray-400">פשוט לצמוח</span>
+          <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.simplyGrow.toLocaleString("he-IL")}</div>
+          <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
             <ShoppingBag size={12} />
             <span>{revenue.simplyGrowCount} לקוחות</span>
           </div>
@@ -59,8 +59,8 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
       </div>
 
       {chartEntries.length > 0 && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-medium text-gray-500 mb-4">טרנד הכנסות — 6 חודשים</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">טרנד הכנסות — 6 חודשים</h3>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartEntries}>
               <defs>

@@ -21,7 +21,7 @@ export function PeriodSelector() {
   }
 
   return (
-    <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+    <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
       {periods.map(({ key, label }) => (
         <button
           key={key}
@@ -29,8 +29,8 @@ export function PeriodSelector() {
           className={clsx(
             "px-4 py-2 rounded-lg text-sm font-medium transition-all",
             current === key
-              ? "bg-white text-brand-600 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
+              ? "bg-white dark:bg-gray-600 text-brand-600 shadow-sm dark:shadow-gray-900/20"
+              : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
           )}
         >
           {label}

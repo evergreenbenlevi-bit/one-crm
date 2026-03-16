@@ -16,12 +16,12 @@ export default async function MeetingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
-          <Calendar size={20} className="text-brand-600" />
+        <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center">
+          <Calendar size={20} className="text-brand-600 dark:text-brand-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">פגישות</h1>
-          <p className="text-sm text-gray-400">תצוגת שבוע נוכחי</p>
+          <h1 className="text-2xl font-bold dark:text-gray-100">פגישות</h1>
+          <p className="text-sm text-gray-400 dark:text-gray-500">תצוגת שבוע נוכחי</p>
         </div>
       </div>
 

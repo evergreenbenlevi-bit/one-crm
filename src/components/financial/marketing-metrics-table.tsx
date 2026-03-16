@@ -30,24 +30,24 @@ export function MarketingMetricsTable({ freedom, simplyGrow }: MarketingMetricsT
   };
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-sm font-bold text-gray-700 mb-4">מדדי שיווק</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+      <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">מדדי שיווק</h3>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-right py-3 px-2 font-medium text-gray-500">מוצר</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-500">CPL</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-500">CAC</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-500">המרה %</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-500">ROAS %</th>
+            <tr className="border-b border-gray-100 dark:border-gray-700">
+              <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">מוצר</th>
+              <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">CPL</th>
+              <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">CAC</th>
+              <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">המרה %</th>
+              <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">ROAS %</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.label} className="border-b border-gray-50 hover:bg-gray-50/50">
-                <td className="py-3 px-2 font-medium">{row.label}</td>
+              <tr key={row.label} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/50">
+                <td className="py-3 px-2 font-medium dark:text-gray-200">{row.label}</td>
                 <td className="py-3 px-2">{formatCurrency(row.cpl)}</td>
                 <td className="py-3 px-2">{formatCurrency(row.cac)}</td>
                 <td className="py-3 px-2">{row.conversion}%</td>
@@ -66,7 +66,7 @@ export function MarketingMetricsTable({ freedom, simplyGrow }: MarketingMetricsT
                 </td>
               </tr>
             ))}
-            <tr className="bg-brand-50/50 font-bold">
+            <tr className="bg-brand-50/50 dark:bg-brand-900/20 font-bold">
               <td className="py-3 px-2">{totalRow.label}</td>
               <td className="py-3 px-2">{formatCurrency(totalRow.cpl)}</td>
               <td className="py-3 px-2">{formatCurrency(totalRow.cac)}</td>

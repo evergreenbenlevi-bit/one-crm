@@ -59,17 +59,17 @@ export function GoalEditor() {
   }
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="font-medium text-gray-700 mb-4">הגדר יעד חדש</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+      <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-4">הגדר יעד חדש</h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">רבעון</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">רבעון</label>
             <select
               value={quarter}
               onChange={(e) => setQuarter(Number(e.target.value))}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
             >
               {[1, 2, 3, 4].map(q => (
                 <option key={q} value={q}>Q{q}</option>
@@ -77,11 +77,11 @@ export function GoalEditor() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">שנה</label>
+            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">שנה</label>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+              className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
             >
               {[currentYear - 1, currentYear, currentYear + 1].map(y => (
                 <option key={y} value={y}>{y}</option>
@@ -91,8 +91,8 @@ export function GoalEditor() {
         </div>
 
         <div>
-          <label className="block text-xs text-gray-500 mb-1">סוג יעד</label>
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">סוג יעד</label>
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
             {goalTypes.map(({ key, label: typeLabel }) => (
               <button
                 key={key}
@@ -100,8 +100,8 @@ export function GoalEditor() {
                 onClick={() => setTargetType(key)}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   targetType === key
-                    ? "bg-white text-brand-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                    ? "bg-white dark:bg-gray-600 text-brand-600 shadow-sm dark:shadow-gray-900/20"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 }`}
               >
                 {typeLabel}
@@ -111,7 +111,7 @@ export function GoalEditor() {
         </div>
 
         <div>
-          <label className="block text-xs text-gray-500 mb-1">
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
             ערך יעד {targetType === "revenue" ? "(₪)" : targetType === "customers" ? "(מספר)" : ""}
           </label>
           <input
@@ -121,18 +121,18 @@ export function GoalEditor() {
             placeholder={targetType === "revenue" ? "50000" : "10"}
             required
             min="1"
-            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-gray-500 mb-1">תיאור (אופציונלי)</label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">תיאור (אופציונלי)</label>
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="למשל: הכנסה חודשית ממוצעת"
-            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+            className="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 dark:text-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
           />
         </div>
 
@@ -146,7 +146,7 @@ export function GoalEditor() {
 
         {message && (
           <div className={`text-sm text-center rounded-xl px-3 py-2 ${
-            message.type === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+            message.type === "success" ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400"
           }`}>
             {message.text}
           </div>

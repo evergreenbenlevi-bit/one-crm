@@ -37,31 +37,31 @@ export default async function GoalsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
-          <Target size={20} className="text-brand-600" />
+        <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center">
+          <Target size={20} className="text-brand-600 dark:text-brand-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">יעדים</h1>
-          <p className="text-sm text-gray-400">הגדרה ומעקב אחרי יעדים רבעוניים</p>
+          <h1 className="text-2xl font-bold dark:text-gray-100">יעדים</h1>
+          <p className="text-sm text-gray-400 dark:text-gray-500">הגדרה ומעקב אחרי יעדים רבעוניים</p>
         </div>
       </div>
 
       {/* Current Goal */}
       {currentGoal ? (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-bold text-gray-800">
+            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">
               יעד נוכחי: Q{currentGoal.quarter} {currentGoal.year}
             </h2>
-            <span className="text-xs text-gray-400">נותרו {daysLeft} ימים</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">נותרו {daysLeft} ימים</span>
           </div>
 
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             {currentGoal.label || typeLabels[currentGoal.target_type] || currentGoal.target_type}
           </p>
 
           {/* Large progress bar */}
-          <div className="w-full bg-gray-100 rounded-full h-6 mb-3 overflow-hidden">
+          <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-6 mb-3 overflow-hidden">
             <div
               className="bg-brand-500 h-6 rounded-full transition-all duration-700 flex items-center justify-center"
               style={{ width: `${Math.max(percentage, 8)}%` }}
@@ -74,20 +74,20 @@ export default async function GoalsPage() {
 
           <div className="flex items-center justify-between text-sm">
             {percentage < 15 && (
-              <span className="font-bold text-brand-700">{percentage}%</span>
+              <span className="font-bold text-brand-700 dark:text-brand-400">{percentage}%</span>
             )}
             {percentage >= 15 && <span />}
-            <span className="text-gray-500">
+            <span className="text-gray-500 dark:text-gray-400">
               {Number(currentGoal.current_value).toLocaleString("he-IL")} / {Number(currentGoal.target_value).toLocaleString("he-IL")}
               {currentGoal.target_type === "revenue" ? " ₪" : ""}
             </span>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
-          <Target size={40} className="text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-400 mb-1">לא הוגדר יעד לרבעון הנוכחי</p>
-          <p className="text-xs text-gray-300">הגדר יעד חדש למטה</p>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center">
+          <Target size={40} className="text-gray-200 dark:text-gray-600 mx-auto mb-3" />
+          <p className="text-gray-400 dark:text-gray-500 mb-1">לא הוגדר יעד לרבעון הנוכחי</p>
+          <p className="text-xs text-gray-300 dark:text-gray-600">הגדר יעד חדש למטה</p>
         </div>
       )}
 

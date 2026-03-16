@@ -26,17 +26,17 @@ interface MeetingCardProps {
 }
 
 const typeConfig: Record<MeetingType, { label: string; color: string; bg: string }> = {
-  sales_call: { label: "שיחת מכירה", color: "text-brand-600", bg: "bg-brand-50" },
-  onboarding: { label: "אונבורדינג", color: "text-emerald-700", bg: "bg-emerald-50" },
-  monthly_1on1: { label: "פגישה חודשית", color: "text-amber-700", bg: "bg-amber-50" },
-  group_zoom: { label: "זום קבוצתי", color: "text-violet-700", bg: "bg-violet-50" },
+  sales_call: { label: "שיחת מכירה", color: "text-brand-600 dark:text-brand-400", bg: "bg-brand-50 dark:bg-brand-900/30" },
+  onboarding: { label: "אונבורדינג", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/30" },
+  monthly_1on1: { label: "פגישה חודשית", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/30" },
+  group_zoom: { label: "זום קבוצתי", color: "text-violet-700 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-900/30" },
 };
 
 const statusConfig: Record<MeetingStatus, { label: string; color: string }> = {
-  scheduled: { label: "מתוכנן", color: "bg-blue-50 text-blue-700" },
-  completed: { label: "הושלם", color: "bg-green-50 text-green-700" },
-  cancelled: { label: "בוטל", color: "bg-gray-100 text-gray-500" },
-  no_show: { label: "לא הגיע", color: "bg-red-50 text-red-700" },
+  scheduled: { label: "מתוכנן", color: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
+  completed: { label: "הושלם", color: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
+  cancelled: { label: "בוטל", color: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400" },
+  no_show: { label: "לא הגיע", color: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
 };
 
 export function MeetingCard({ meeting }: MeetingCardProps) {
@@ -53,7 +53,7 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
   return (
     <div
       className={clsx(
-        "bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-shadow",
+        "bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 overflow-hidden transition-shadow",
         hasSummary && "cursor-pointer hover:shadow-md"
       )}
       onClick={() => hasSummary && setExpanded(!expanded)}
@@ -61,12 +61,12 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
       <div className="p-4 flex items-center gap-3">
         {/* Time */}
         <div className="flex flex-col items-center text-center min-w-[50px]">
-          <Clock size={14} className="text-gray-300 mb-1" />
-          <span className="text-sm font-bold text-gray-800">{timeStr}</span>
+          <Clock size={14} className="text-gray-300 dark:text-gray-600 mb-1" />
+          <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{timeStr}</span>
         </div>
 
         {/* Type indicator */}
-        <div className={clsx("w-1 h-10 rounded-full", typeInfo.bg.replace("bg-", "bg-").replace("50", "400"))} style={{
+        <div className={clsx("w-1 h-10 rounded-full")} style={{
           backgroundColor: meeting.type === "sales_call" ? "var(--color-brand-500)" :
             meeting.type === "onboarding" ? "var(--color-success)" :
             meeting.type === "monthly_1on1" ? "var(--color-warning)" :
@@ -83,14 +83,14 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
               {statusInfo.label}
             </span>
           </div>
-          <div className="mt-1 text-sm font-medium text-gray-800 truncate">
+          <div className="mt-1 text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
             {contactName}
           </div>
         </div>
 
         {/* Expand arrow */}
         {hasSummary && (
-          <div className="text-gray-300">
+          <div className="text-gray-300 dark:text-gray-600">
             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
         )}
@@ -98,16 +98,16 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
 
       {/* Expanded content */}
       {expanded && hasSummary && (
-        <div className="px-4 pb-4 border-t border-gray-50 pt-3 space-y-2">
+        <div className="px-4 pb-4 border-t border-gray-50 dark:border-gray-700 pt-3 space-y-2">
           {meeting.summary && (
-            <p className="text-sm text-gray-600 leading-relaxed">{meeting.summary}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{meeting.summary}</p>
           )}
           {meeting.transcript_url && (
             <a
               href={meeting.transcript_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline"
+              className="inline-flex items-center gap-1 text-xs text-brand-600 dark:text-brand-400 hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
               <ExternalLink size={12} />

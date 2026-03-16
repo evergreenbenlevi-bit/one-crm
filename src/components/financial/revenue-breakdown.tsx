@@ -25,17 +25,17 @@ export function RevenueBreakdown({ freedom, simplyGrow }: RevenueBreakdownProps)
   const total = freedom + simplyGrow;
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-sm font-bold text-gray-700 mb-4">הכנסות לפי מוצר</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+      <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">הכנסות לפי מוצר</h3>
 
       <div className="flex gap-4 mb-4 text-sm">
         {data.map((item, i) => (
           <div key={item.name} className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[i] }} />
-            <span className="text-gray-600">{item.name}</span>
-            <span className="font-bold">₪{item.value.toLocaleString("he-IL")}</span>
+            <span className="text-gray-600 dark:text-gray-400">{item.name}</span>
+            <span className="font-bold dark:text-gray-200">₪{item.value.toLocaleString("he-IL")}</span>
             {total > 0 && (
-              <span className="text-gray-400">({Math.round((item.value / total) * 100)}%)</span>
+              <span className="text-gray-400 dark:text-gray-500">({Math.round((item.value / total) * 100)}%)</span>
             )}
           </div>
         ))}

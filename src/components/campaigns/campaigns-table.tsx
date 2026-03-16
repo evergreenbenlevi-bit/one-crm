@@ -179,12 +179,12 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
 
   const SortHeader = ({ label, column }: { label: string; column: SortKey }) => (
     <th
-      className="text-right px-4 py-3 font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none"
+      className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 select-none"
       onClick={() => handleSort(column)}
     >
       <div className="flex items-center gap-1">
         {label}
-        <ArrowUpDown size={12} className={clsx(sortKey === column ? "text-brand-600" : "text-gray-300")} />
+        <ArrowUpDown size={12} className={clsx(sortKey === column ? "text-brand-600" : "text-gray-300 dark:text-gray-600")} />
       </div>
     </th>
   );
@@ -193,7 +193,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
           {productFilters.map(({ key, label }) => (
             <button
               key={key}
@@ -201,15 +201,15 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
               className={clsx(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-all",
                 productFilter === key
-                  ? "bg-white text-brand-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white dark:bg-gray-600 text-brand-600 shadow-sm dark:shadow-gray-900/20"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               )}
             >
               {label}
             </button>
           ))}
         </div>
-        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
           {periodFilters.map(({ key, label }) => (
             <button
               key={key}
@@ -217,8 +217,8 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
               className={clsx(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-all",
                 periodFilter === key
-                  ? "bg-white text-brand-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white dark:bg-gray-600 text-brand-600 shadow-sm dark:shadow-gray-900/20"
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               )}
             >
               {label}
@@ -230,42 +230,42 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
       {/* Summary cards */}
       {sorted.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
-            <div className="text-xs text-gray-400 mb-1">הוצאה כוללת</div>
-            <div className="text-lg font-bold text-gray-800">{formatCurrency(totals.spend)}</div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center">
+            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">הוצאה כוללת</div>
+            <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{formatCurrency(totals.spend)}</div>
           </div>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
-            <div className="text-xs text-gray-400 mb-1">לידים</div>
-            <div className="text-lg font-bold text-gray-800">{totals.leads.toLocaleString("he-IL")}</div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center">
+            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">לידים</div>
+            <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{totals.leads.toLocaleString("he-IL")}</div>
           </div>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
-            <div className="text-xs text-gray-400 mb-1">CPL ממוצע</div>
-            <div className="text-lg font-bold text-gray-800">{formatCurrency(totals.cpl)}</div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center">
+            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">CPL ממוצע</div>
+            <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{formatCurrency(totals.cpl)}</div>
           </div>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center">
-            <div className="text-xs text-gray-400 mb-1">רכישות</div>
-            <div className="text-lg font-bold text-gray-800">{totals.purchases.toLocaleString("he-IL")}</div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center">
+            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">רכישות</div>
+            <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{totals.purchases.toLocaleString("he-IL")}</div>
           </div>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-center col-span-2 sm:col-span-1">
-            <div className="text-xs text-gray-400 mb-1">המרה</div>
-            <div className="text-lg font-bold text-gray-800">{totals.conversion.toFixed(1)}%</div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center col-span-2 sm:col-span-1">
+            <div className="text-xs text-gray-400 dark:text-gray-500 mb-1">המרה</div>
+            <div className="text-lg font-bold text-gray-800 dark:text-gray-100">{totals.conversion.toFixed(1)}%</div>
           </div>
         </div>
       )}
 
       {/* Table */}
       {sorted.length === 0 ? (
-        <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center text-gray-400">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500">
           אין נתוני קמפיינים לתקופה הנבחרת
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr className="border-b border-gray-100 dark:border-gray-700">
                   <SortHeader label="שם הקמפיין" column="name" />
-                  <th className="text-right px-4 py-3 font-medium text-gray-500 hidden md:table-cell">מוצר</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-500 dark:text-gray-400 hidden md:table-cell">מוצר</th>
                   <SortHeader label="הוצאה (₪)" column="spend" />
                   <SortHeader label="לידים" column="leads" />
                   <SortHeader label="CPL (₪)" column="cpl" />
@@ -275,19 +275,19 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
               </thead>
               <tbody>
                 {sorted.map((campaign) => (
-                  <tr key={campaign.name} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-4 py-3 font-medium">{campaign.name}</td>
+                  <tr key={campaign.name} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td className="px-4 py-3 font-medium dark:text-gray-200">{campaign.name}</td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       {campaign.product ? (
-                        <span className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-full">
                           {productLabels[campaign.product] || campaign.product}
                         </span>
                       ) : (
-                        <span className="text-gray-300">&mdash;</span>
+                        <span className="text-gray-300 dark:text-gray-600">&mdash;</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{formatCurrency(campaign.totalSpend)}</td>
-                    <td className="px-4 py-3 text-gray-700">{campaign.totalLeads.toLocaleString("he-IL")}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{formatCurrency(campaign.totalSpend)}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{campaign.totalLeads.toLocaleString("he-IL")}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <span className={clsx(
@@ -303,7 +303,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{campaign.totalPurchases.toLocaleString("he-IL")}</td>
+                    <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{campaign.totalPurchases.toLocaleString("he-IL")}</td>
                     <td className="px-4 py-3">
                       <span className={clsx(
                         "font-medium",

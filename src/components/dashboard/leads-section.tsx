@@ -14,8 +14,8 @@ interface LeadsSectionProps {
 export function LeadsSection({ leadsCount, costPerLead, cac, conversionRate, roi, topAds }: LeadsSectionProps) {
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-bold flex items-center gap-2">
-        <BarChart3 size={20} className="text-brand-600" />
+      <h2 className="text-lg font-bold flex items-center gap-2 dark:text-gray-100">
+        <BarChart3 size={20} className="text-brand-600 dark:text-brand-400" />
         לידים וקמפיינים
       </h2>
 
@@ -28,19 +28,19 @@ export function LeadsSection({ leadsCount, costPerLead, cac, conversionRate, roi
       </div>
 
       {topAds.length > 0 && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="text-sm font-medium text-gray-500 mb-3">🏆 מודעות מנצחות</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">🏆 מודעות מנצחות</h3>
           <div className="space-y-3">
             {topAds.map((ad, i) => {
               const cpl = ad.leads_count > 0 ? (Number(ad.daily_spend) / ad.leads_count).toFixed(1) : "—";
               const conv = ad.leads_count > 0 && ad.clicks > 0 ? ((ad.leads_count / ad.clicks) * 100).toFixed(1) : "—";
               return (
-                <div key={ad.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div key={ad.id} className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-700 last:border-0">
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-brand-600">{i + 1}.</span>
-                    <span className="text-sm truncate max-w-[200px]">{ad.name}</span>
+                    <span className="text-sm font-bold text-brand-600 dark:text-brand-400">{i + 1}.</span>
+                    <span className="text-sm truncate max-w-[200px] dark:text-gray-300">{ad.name}</span>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                     <span>₪{cpl}/ליד</span>
                     <span>{conv}% המרה</span>
                   </div>

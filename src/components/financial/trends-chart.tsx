@@ -67,16 +67,16 @@ export function TrendsChart({ transactions, expenses, campaigns }: TrendsChartPr
 
   if (data.length === 0) {
     return (
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <h3 className="text-sm font-bold text-gray-700 mb-4">טרנדים — 6 חודשים</h3>
-        <div className="text-center text-gray-400 py-10">אין מספיק נתונים להצגת טרנדים</div>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">טרנדים — 6 חודשים</h3>
+        <div className="text-center text-gray-400 dark:text-gray-500 py-10">אין מספיק נתונים להצגת טרנדים</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-sm font-bold text-gray-700 mb-4">טרנדים — 6 חודשים</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+      <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">טרנדים — 6 חודשים</h3>
 
       <ResponsiveContainer width="100%" height={280}>
         <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>

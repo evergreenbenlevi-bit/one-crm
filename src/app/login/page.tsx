@@ -30,31 +30,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="w-full max-w-sm">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <h1 className="text-2xl font-bold text-center mb-2">Noam CRM</h1>
-          <p className="text-gray-500 text-center mb-8 text-sm">התחבר למערכת</p>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg dark:shadow-gray-900/30 p-8">
+          <h1 className="text-2xl font-bold text-center mb-2 dark:text-gray-100">Noam CRM</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-center mb-8 text-sm">התחבר למערכת</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">אימייל</label>
+              <label className="block text-sm font-medium mb-1 dark:text-gray-300">אימייל</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">סיסמה</label>
+              <label className="block text-sm font-medium mb-1 dark:text-gray-300">סיסמה</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 required
               />
             </div>

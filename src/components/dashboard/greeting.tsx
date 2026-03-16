@@ -22,9 +22,9 @@ export function Greeting({ achievement }: GreetingProps) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">{greeting}, נועם</h1>
+      <h1 className="text-2xl font-bold dark:text-gray-100">{greeting}, נועם</h1>
       {achievement && (
-        <p className="text-gray-500 mt-1">{achievement}</p>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">{achievement}</p>
       )}
     </div>
   );

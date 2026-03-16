@@ -64,7 +64,7 @@ export function MeetingsList({ meetings }: MeetingsListProps) {
 
   if (meetings.length === 0) {
     return (
-      <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center text-gray-400">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500">
         אין פגישות השבוע
       </div>
     );
@@ -81,11 +81,11 @@ export function MeetingsList({ meetings }: MeetingsListProps) {
         return (
           <div key={key}>
             <div className="flex items-center gap-2 mb-2">
-              <h3 className={`text-sm font-medium ${today ? "text-brand-600" : "text-gray-500"}`}>
+              <h3 className={`text-sm font-medium ${today ? "text-brand-600 dark:text-brand-400" : "text-gray-500 dark:text-gray-400"}`}>
                 {today ? `היום — ${dayLabel}` : dayLabel}
               </h3>
               {dayMeetings.length > 0 && (
-                <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full">
                   {dayMeetings.length}
                 </span>
               )}
@@ -98,7 +98,7 @@ export function MeetingsList({ meetings }: MeetingsListProps) {
                 ))}
               </div>
             ) : (
-              <div className="bg-gray-50 rounded-xl p-3 text-center text-xs text-gray-300">
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 text-center text-xs text-gray-300 dark:text-gray-600">
                 אין פגישות
               </div>
             )}

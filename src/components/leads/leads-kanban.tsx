@@ -56,27 +56,27 @@ function KanbanCard({ lead }: { lead: Lead }) {
       {...attributes}
       {...listeners}
       className={clsx(
-        "bg-white rounded-xl p-3 shadow-sm border cursor-grab active:cursor-grabbing transition-shadow",
+        "bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm dark:shadow-gray-900/20 border cursor-grab active:cursor-grabbing transition-shadow",
         isDragging ? "opacity-50 shadow-lg" : "hover:shadow-md",
-        isHot ? "border-warning" : "border-gray-100"
+        isHot ? "border-warning" : "border-gray-100 dark:border-gray-700"
       )}
     >
       <div className="flex items-center justify-between mb-1">
-        <Link href={`/leads/${lead.id}`} className="text-sm font-medium hover:text-brand-600 truncate" onClick={(e) => e.stopPropagation()}>
+        <Link href={`/leads/${lead.id}`} className="text-sm font-medium hover:text-brand-600 dark:text-gray-200 dark:hover:text-brand-400 truncate" onClick={(e) => e.stopPropagation()}>
           {isHot && "🔥 "}{lead.name}
         </Link>
       </div>
-      <div className="text-xs text-gray-400">
+      <div className="text-xs text-gray-400 dark:text-gray-500">
         {formatDistanceToNow(new Date(lead.updated_at), { locale: he, addSuffix: true })}
       </div>
       <div className="flex items-center gap-1 mt-2">
         {lead.phone && (
-          <a href={`tel:${lead.phone}`} onClick={(e) => e.stopPropagation()} className="p-1 rounded hover:bg-gray-100 text-gray-300 hover:text-brand-600">
+          <a href={`tel:${lead.phone}`} onClick={(e) => e.stopPropagation()} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-300 dark:text-gray-500 hover:text-brand-600 dark:hover:text-brand-400">
             <Phone size={12} />
           </a>
         )}
         {lead.phone && (
-          <a href={`https://wa.me/972${lead.phone.replace(/^0/, "")}`} target="_blank" onClick={(e) => e.stopPropagation()} className="p-1 rounded hover:bg-gray-100 text-gray-300 hover:text-success">
+          <a href={`https://wa.me/972${lead.phone.replace(/^0/, "")}`} target="_blank" onClick={(e) => e.stopPropagation()} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-300 dark:text-gray-500 hover:text-success">
             <MessageCircle size={12} />
           </a>
         )}
@@ -91,14 +91,14 @@ function KanbanColumn({ status, leads }: { status: string; leads: Lead[] }) {
   return (
     <div className="flex-shrink-0 w-64">
       <div className="flex items-center justify-between mb-3 px-1">
-        <h3 className="text-sm font-bold text-gray-700">{statusLabels[status] || status}</h3>
-        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{leads.length}</span>
+        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">{statusLabels[status] || status}</h3>
+        <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">{leads.length}</span>
       </div>
       <div
         ref={setNodeRef}
         className={clsx(
           "space-y-2 min-h-[200px] p-2 rounded-xl transition-colors",
-          isOver ? "bg-brand-50" : "bg-gray-50/50"
+          isOver ? "bg-brand-50 dark:bg-brand-900/20" : "bg-gray-50/50 dark:bg-gray-800/50"
         )}
       >
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
@@ -152,8 +152,8 @@ export function LeadsKanban({ columns, statuses, onStatusChange }: LeadsKanbanPr
       </div>
       <DragOverlay>
         {activeLead && (
-          <div className="bg-white rounded-xl p-3 shadow-lg border border-brand-200 w-64">
-            <span className="text-sm font-medium">{activeLead.name}</span>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-lg border border-brand-200 dark:border-brand-700 w-64">
+            <span className="text-sm font-medium dark:text-gray-200">{activeLead.name}</span>
           </div>
         )}
       </DragOverlay>
