@@ -42,7 +42,13 @@
       "position": [
         200,
         0
-      ]
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "24D8IKuzun2Bn97E",
+          "name": "Noam@tsi-pirsum.co.il"
+        }
+      }
     },
     {
       "parameters": {

@@ -29,9 +29,8 @@
           "value": "1c1XhjeRGiguMkshzr1ZE31EpygRhu3n6F-84M6llinI"
         },
         "sheetName": {
-          "mode": "list",
-          "value": "gid=0",
-          "cachedResultName": "ניהול לידים"
+          "mode": "name",
+          "value": "ניהול לידים"
         },
         "options": {}
       },
@@ -42,7 +41,13 @@
       "position": [
         200,
         0
-      ]
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "24D8IKuzun2Bn97E",
+          "name": "Noam@tsi-pirsum.co.il"
+        }
+      }
     },
     {
       "parameters": {
