@@ -46,10 +46,9 @@ export function CustomerCardHeader({ customer }: { customer: Customer }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setEditOpen(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
-              title="ערוך לקוח"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors"
             >
-              <Pencil size={16} className="text-gray-400 dark:text-gray-500" />
+              <Pencil size={16} /> עריכה
             </button>
             <span className={`text-xs px-3 py-1 rounded-full font-medium ${statusColors[customer.status] || ""}`}>
               {statusLabels[customer.status] || customer.status}

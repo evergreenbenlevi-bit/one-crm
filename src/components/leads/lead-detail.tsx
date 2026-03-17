@@ -21,7 +21,9 @@ import {
   PhoneCall,
   UserPlus,
   MessageSquare,
+  Pencil,
 } from "lucide-react";
+import { LeadEditModal } from "./lead-edit-modal";
 import type { Lead, FunnelEvent, Note, Customer, FunnelEventType, ProductType } from "@/lib/types/database";
 
 // ──────────────────────────────────────────
@@ -126,6 +128,7 @@ export function LeadDetail({ lead }: LeadDetailProps) {
   const [notes, setNotes] = useState<Note[]>(lead.notes);
   const [noteContent, setNoteContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const funnelSteps =
     lead.product === "simply_grow" ? simplyGrowFunnel : freedomFunnel;
@@ -218,6 +221,12 @@ export function LeadDetail({ lead }: LeadDetailProps) {
 
               {/* Action buttons */}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEditOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors"
+                >
+                  <Pencil size={16} /> עריכה
+                </button>
                 {lead.phone && (
                   <a
                     href={`tel:${lead.phone}`}
@@ -475,6 +484,8 @@ export function LeadDetail({ lead }: LeadDetailProps) {
           </div>
         </div>
       </div>
+
+      <LeadEditModal lead={lead} open={editOpen} onClose={() => setEditOpen(false)} />
     </div>
   );
 }

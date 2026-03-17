@@ -1,0 +1,322 @@
+{
+  "name": "סנכרון לידים - פשוט לצמוח",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-sg",
+      "name": "כל 15 דקות",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "mode": "id",
+          "value": "1c1XhjeRGiguMkshzr1ZE31EpygRhu3n6F-84M6llinI"
+        },
+        "sheetName": {
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultName": "ניהול לידים"
+        },
+        "options": {}
+      },
+      "id": "google-sheets-read-sg",
+      "name": "קריאת גיליון ניהול לידים",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://lmcktwpwnahtoxglrzch.supabase.co/rest/v1/leads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "product",
+              "value": "eq.simply_grow"
+            },
+            {
+              "name": "select",
+              "value": "email,phone"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2t0d3B3bmFodG94Z2xyemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTg5NDQsImV4cCI6MjA4OTE3NDk0NH0.S-AOhUHHl-P_l_1O194OGvGFoK09y7i1lKQu7CsB1rk"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2t0d3B3bmFodG94Z2xyemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTg5NDQsImV4cCI6MjA4OTE3NDk0NH0.S-AOhUHHl-P_l_1O194OGvGFoK09y7i1lKQu7CsB1rk"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-existing-leads-sg",
+      "name": "שליפת לידים קיימים מ-Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get sheet rows and existing leads\nconst sheetRows = $('קריאת גיליון ניהול לידים').all();\nconst existingLeads = $('שליפת לידים קיימים מ-Supabase').all();\n\n// Build sets of existing identifiers\nconst existingEmails = new Set(\n  existingLeads\n    .map(item => (item.json.email || '').toLowerCase().trim())\n    .filter(e => e)\n);\nconst existingPhones = new Set(\n  existingLeads\n    .map(item => (item.json.phone || '').replace(/\\D/g, ''))\n    .filter(p => p)\n);\n\n// Status mapping from Hebrew to enum\nconst statusMap = {\n  'לקוח משלם (סגירה)': 'closed',\n  'לקוח משלם': 'closed',\n  'סגירה': 'closed',\n  'לא רלוונטי': 'lost',\n  'לא מתאים': 'lost',\n  'מילא שאלון התאמה': 'filled_questionnaire',\n  'מילא שאלון': 'filled_questionnaire',\n  'שאלון התאמה': 'filled_questionnaire',\n  'צפה ב-VSL': 'watched_vsl',\n  'צפה בוידאו': 'watched_vsl',\n  'שיחת מכירה': 'sales_call',\n  'שיחה': 'sales_call',\n  'קיבל וואטסאפ': 'got_wa',\n  'קיבל הודעה': 'got_wa',\n  'חדש': 'new',\n  'ליד חדש': 'new'\n};\n\nfunction cleanPhone(raw) {\n  if (!raw) return null;\n  let phone = raw.toString().replace(/[\\s\\-\\(\\)]/g, '');\n  // Remove +972 or 972 prefix\n  if (phone.startsWith('+972')) phone = '0' + phone.slice(4);\n  else if (phone.startsWith('972')) phone = '0' + phone.slice(3);\n  // Ensure starts with 0\n  if (phone.length === 9 && !phone.startsWith('0')) phone = '0' + phone;\n  return phone.length >= 9 && phone.length <= 11 ? phone : null;\n}\n\nfunction parseDate(raw) {\n  if (!raw) return null;\n  const parts = raw.match(/(\\d{1,2})[\\/\\-\\.](\\d{1,2})[\\/\\-\\.](\\d{2,4})/);\n  if (parts) {\n    const day = parts[1].padStart(2, '0');\n    const month = parts[2].padStart(2, '0');\n    const year = parts[3].length === 2 ? '20' + parts[3] : parts[3];\n    return `${year}-${month}-${day}T00:00:00.000Z`;\n  }\n  const parsed = new Date(raw);\n  return !isNaN(parsed.getTime()) ? parsed.toISOString() : null;\n}\n\nfunction isFake(name, phone, email) {\n  // Single char names\n  if (name && name.trim().length <= 1) return true;\n  // Obviously fake phones (all same digit)\n  if (phone && /^(.)\\1+$/.test(phone.replace(/\\D/g, ''))) return true;\n  // Fake emails\n  if (email && (email.includes('test@') || email.includes('fake@') || email.includes('aaa@'))) return true;\n  return false;\n}\n\nconst newLeads = [];\nconst newNotes = [];\n\nfor (const row of sheetRows) {\n  const d = row.json;\n  const name = (d['שם מלא'] || '').trim();\n  const email = (d['מייל'] || '').toLowerCase().trim();\n  const rawPhone = d['טלפון'] || '';\n  const phone = cleanPhone(rawPhone);\n\n  // Skip if no identifiable info\n  if (!email && !phone) continue;\n\n  // Skip fakes\n  if (isFake(name, phone, email)) continue;\n\n  // Check if already exists (by email or phone)\n  const emailExists = email && existingEmails.has(email);\n  const phoneDigits = phone ? phone.replace(/\\D/g, '') : '';\n  const phoneExists = phoneDigits && existingPhones.has(phoneDigits);\n  if (emailExists || phoneExists) continue;\n\n  // Map status\n  const sheetStatus = (d['שלב במשפך'] || d['סטטוס ליד'] || '').trim();\n  let currentStatus = 'new';\n  for (const [key, value] of Object.entries(statusMap)) {\n    if (sheetStatus.includes(key) || sheetStatus === key) {\n      currentStatus = value;\n      break;\n    }\n  }\n\n  const createdAt = parseDate(d['תאריך יצירה']);\n\n  const lead = {\n    name: name || (email ? email.split('@')[0] : 'Unknown'),\n    email: email || null,\n    phone: phone,\n    product: 'simply_grow',\n    source: 'campaign',\n    current_status: currentStatus\n  };\n  if (createdAt) lead.created_at = createdAt;\n  if (d['מקור']) lead.ad_name = d['מקור'];\n\n  newLeads.push(lead);\n\n  // If there are notes, save them for later\n  const notes = (d['הערות'] || '').trim();\n  if (notes) {\n    newNotes.push({\n      lead_email: email,\n      lead_phone: phone,\n      content: notes,\n      lead_name: lead.name\n    });\n  }\n}\n\nreturn [{ json: { newLeads, newNotes, newLeadsCount: newLeads.length, newNotesCount: newNotes.length } }];"
+      },
+      "id": "compare-and-map-sg",
+      "name": "השוואה ומיפוי לידים חדשים",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-new-leads-sg",
+              "leftValue": "={{ $json.newLeadsCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-new-leads-sg",
+      "name": "יש לידים חדשים?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lmcktwpwnahtoxglrzch.supabase.co/rest/v1/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2t0d3B3bmFodG94Z2xyemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTg5NDQsImV4cCI6MjA4OTE3NDk0NH0.S-AOhUHHl-P_l_1O194OGvGFoK09y7i1lKQu7CsB1rk"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2t0d3B3bmFodG94Z2xyemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTg5NDQsImV4cCI6MjA4OTE3NDk0NH0.S-AOhUHHl-P_l_1O194OGvGFoK09y7i1lKQu7CsB1rk"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.newLeads) }}",
+        "options": {}
+      },
+      "id": "post-leads-sg",
+      "name": "שליחת לידים ל-Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-notes",
+              "leftValue": "={{ $('השוואה ומיפוי לידים חדשים').item.json.newNotesCount }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-notes-sg",
+      "name": "יש הערות לשמירה?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lmcktwpwnahtoxglrzch.supabase.co/rest/v1/notes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2t0d3B3bmFodG94Z2xyemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTg5NDQsImV4cCI6MjA4OTE3NDk0NH0.S-AOhUHHl-P_l_1O194OGvGFoK09y7i1lKQu7CsB1rk"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtY2t0d3B3bmFodG94Z2xyemNoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1OTg5NDQsImV4cCI6MjA4OTE3NDk0NH0.S-AOhUHHl-P_l_1O194OGvGFoK09y7i1lKQu7CsB1rk"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('השוואה ומיפוי לידים חדשים').item.json.newNotes) }}",
+        "options": {}
+      },
+      "id": "post-notes-sg",
+      "name": "שליחת הערות ל-Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "כל 15 דקות": {
+      "main": [
+        [
+          {
+            "node": "קריאת גיליון ניהול לידים",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "קריאת גיליון ניהול לידים": {
+      "main": [
+        [
+          {
+            "node": "שליפת לידים קיימים מ-Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "שליפת לידים קיימים מ-Supabase": {
+      "main": [
+        [
+          {
+            "node": "השוואה ומיפוי לידים חדשים",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "השוואה ומיפוי לידים חדשים": {
+      "main": [
+        [
+          {
+            "node": "יש לידים חדשים?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "יש לידים חדשים?": {
+      "main": [
+        [
+          {
+            "node": "שליחת לידים ל-Supabase",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "יש הערות לשמירה?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "יש הערות לשמירה?": {
+      "main": [
+        [
+          {
+            "node": "שליחת הערות ל-Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
