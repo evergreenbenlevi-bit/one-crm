@@ -92,7 +92,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get sheet rows and existing leads\nconst sheetRows = $('קריאת גיליון ניהול לידים').all();\nconst existingLeads = $('שליפת לידים קיימים מ-Supabase').all();\n\n// Build sets of existing identifiers\nconst existingEmails = new Set(\n  existingLeads\n    .map(item => (item.json.email || '').toLowerCase().trim())\n    .filter(e => e)\n);\nconst existingPhones = new Set(\n  existingLeads\n    .map(item => (item.json.phone || '').replace(/\\D/g, ''))\n    .filter(p => p)\n);\n\n// Status mapping from Hebrew to enum\nconst statusMap = {\n  'לקוח משלם (סגירה)': 'closed',\n  'לקוח משלם': 'closed',\n  'סגירה': 'closed',\n  'לא רלוונטי': 'lost',\n  'לא מתאים': 'lost',\n  'מילא שאלון התאמה': 'filled_questionnaire',\n  'מילא שאלון': 'filled_questionnaire',\n  'שאלון התאמה': 'filled_questionnaire',\n  'צפה ב-VSL': 'watched_vsl',\n  'צפה בוידאו': 'watched_vsl',\n  'שיחת מכירה': 'sales_call',\n  'שיחה': 'sales_call',\n  'קיבל וואטסאפ': 'got_wa',\n  'קיבל הודעה': 'got_wa',\n  'חדש': 'new',\n  'ליד חדש': 'new'\n};\n\nfunction cleanPhone(raw) {\n  if (!raw) return null;\n  let phone = raw.toString().replace(/[\\s\\-\\(\\)]/g, '');\n  // Remove +972 or 972 prefix\n  if (phone.startsWith('+972')) phone = '0' + phone.slice(4);\n  else if (phone.startsWith('972')) phone = '0' + phone.slice(3);\n  // Ensure starts with 0\n  if (phone.length === 9 && !phone.startsWith('0')) phone = '0' + phone;\n  return phone.length >= 9 && phone.length <= 11 ? phone : null;\n}\n\nfunction parseDate(raw) {\n  if (!raw) return null;\n  const parts = raw.match(/(\\d{1,2})[\\/\\-\\.](\\d{1,2})[\\/\\-\\.](\\d{2,4})/);\n  if (parts) {\n    const day = parts[1].padStart(2, '0');\n    const month = parts[2].padStart(2, '0');\n    const year = parts[3].length === 2 ? '20' + parts[3] : parts[3];\n    return `${year}-${month}-${day}T00:00:00.000Z`;\n  }\n  const parsed = new Date(raw);\n  return !isNaN(parsed.getTime()) ? parsed.toISOString() : null;\n}\n\nfunction isFake(name, phone, email) {\n  // Single char names\n  if (name && name.trim().length <= 1) return true;\n  // Obviously fake phones (all same digit)\n  if (phone && /^(.)\\1+$/.test(phone.replace(/\\D/g, ''))) return true;\n  // Fake emails\n  if (email && (email.includes('test@') || email.includes('fake@') || email.includes('aaa@'))) return true;\n  return false;\n}\n\nconst newLeads = [];\nconst newNotes = [];\n\nfor (const row of sheetRows) {\n  const d = row.json;\n  const name = (d['שם מלא'] || '').trim();\n  const email = (d['מייל'] || '').toLowerCase().trim();\n  const rawPhone = d['טלפון'] || '';\n  const phone = cleanPhone(rawPhone);\n\n  // Skip if no identifiable info\n  if (!email && !phone) continue;\n\n  // Skip fakes\n  if (isFake(name, phone, email)) continue;\n\n  // Check if already exists (by email or phone)\n  const emailExists = email && existingEmails.has(email);\n  const phoneDigits = phone ? phone.replace(/\\D/g, '') : '';\n  const phoneExists = phoneDigits && existingPhones.has(phoneDigits);\n  if (emailExists || phoneExists) continue;\n\n  // Map status\n  const sheetStatus = (d['שלב במשפך'] || d['סטטוס ליד'] || '').trim();\n  let currentStatus = 'new';\n  for (const [key, value] of Object.entries(statusMap)) {\n    if (sheetStatus.includes(key) || sheetStatus === key) {\n      currentStatus = value;\n      break;\n    }\n  }\n\n  const createdAt = parseDate(d['תאריך יצירה']);\n\n  const lead = {\n    name: name || (email ? email.split('@')[0] : 'Unknown'),\n    email: email || null,\n    phone: phone,\n    product: 'simply_grow',\n    source: 'campaign',\n    current_status: currentStatus\n  };\n  if (createdAt) lead.created_at = createdAt;\n  if (d['מקור']) lead.ad_name = d['מקור'];\n\n  newLeads.push(lead);\n\n  // If there are notes, save them for later\n  const notes = (d['הערות'] || '').trim();\n  if (notes) {\n    newNotes.push({\n      lead_email: email,\n      lead_phone: phone,\n      content: notes,\n      lead_name: lead.name\n    });\n  }\n}\n\nreturn [{ json: { newLeads, newNotes, newLeadsCount: newLeads.length, newNotesCount: newNotes.length } }];"
+        "jsCode": "// Get sheet rows and existing leads\nconst sheetRows = $('קריאת גיליון ניהול לידים').all();\nconst existingLeads = $('שליפת לידים קיימים מ-Supabase').all();\n\n// Build sets of existing identifiers\nconst existingEmails = new Set(\n  existingLeads\n    .map(item => (item.json.email || '').toLowerCase().trim())\n    .filter(e => e)\n);\nconst existingPhones = new Set(\n  existingLeads\n    .map(item => (item.json.phone || '').replace(/\\D/g, ''))\n    .filter(p => p)\n);\n\n// Status mapping from Hebrew to enum\nconst statusMap = {\n  'לקוח משלם (סגירה)': 'closed',\n  'לקוח משלם': 'closed',\n  'סגירה': 'closed',\n  'בוצעה שיחת אבחון': 'sales_call',\n  'לא רלוונטי': 'lost',\n  'לא מתאים': 'lost',\n  'מילא שאלון התאמה': 'filled_questionnaire',\n  'מילא שאלון': 'filled_questionnaire',\n  'שאלון התאמה': 'filled_questionnaire',\n  'צפה ב-VSL': 'watched_vsl',\n  'צפה בוידאו': 'watched_vsl',\n  'שיחת מכירה': 'sales_call',\n  'שיחה': 'sales_call',\n  'פולואפ': 'got_wa',\n  'קיבל וואטסאפ': 'got_wa',\n  'קיבל הודעה': 'got_wa',\n  'חדש': 'new',\n  'ליד חדש': 'new'\n};\n\nfunction cleanPhone(raw) {\n  if (!raw) return null;\n  let phone = raw.toString().replace(/[\\s\\-\\(\\)]/g, '');\n  if (phone.startsWith('+972')) phone = '0' + phone.slice(4);\n  else if (phone.startsWith('972')) phone = '0' + phone.slice(3);\n  if (phone.length === 9 && !phone.startsWith('0')) phone = '0' + phone;\n  return phone.length >= 9 && phone.length <= 11 ? phone : null;\n}\n\nfunction parseDate(raw) {\n  if (!raw) return null;\n  const s = raw.toString().trim();\n  const parts = s.match(/(\\d{1,2})[\\/\\-\\.](\\d{1,2})[\\/\\-\\.](\\d{2,4})/);\n  if (parts) {\n    const day = parts[1].padStart(2, '0');\n    const month = parts[2].padStart(2, '0');\n    const year = parts[3].length === 2 ? '20' + parts[3] : parts[3];\n    return year + '-' + month + '-' + day + 'T00:00:00.000Z';\n  }\n  const parsed = new Date(s);\n  return !isNaN(parsed.getTime()) ? parsed.toISOString() : null;\n}\n\n// Parse UTM from col_16 format: \"Source: X\\n\\nContent: Y\\n\\nCampaign: Z\\n\\nMedium: W\\n\\nTerm: T\"\nfunction parseUtm(raw) {\n  if (!raw) return {};\n  const result = {};\n  const text = raw.toString();\n  const sourceMatch = text.match(/Source:\\s*([^\\n]+)/i);\n  const contentMatch = text.match(/Content:\\s*([^\\n]+)/i);\n  const campaignMatch = text.match(/Campaign:\\s*([^\\n]+)/i);\n  const mediumMatch = text.match(/Medium:\\s*([^\\n]+)/i);\n  const termMatch = text.match(/Term:\\s*([^\\n]+)/i);\n  if (sourceMatch) result.source = sourceMatch[1].trim();\n  if (contentMatch) result.content = contentMatch[1].trim();\n  if (campaignMatch) result.campaign = campaignMatch[1].trim();\n  if (mediumMatch) result.medium = mediumMatch[1].trim();\n  if (termMatch) result.term = termMatch[1].trim();\n  return result;\n}\n\nfunction isFake(name, phone, email) {\n  if (name && name.trim().length <= 1) return true;\n  if (phone && /^(.)\\1+$/.test(phone.replace(/\\D/g, ''))) return true;\n  if (email && (email.includes('test@') || email.includes('fake@') || email.includes('aaa@'))) return true;\n  return false;\n}\n\nconst newLeads = [];\nconst newCustomers = [];\nconst newNotes = [];\n\nfor (const row of sheetRows) {\n  const d = row.json;\n  // Column names with emoji prefixes as they come from Google Sheets\n  const name = (d['\\u{1F464} שם מלא'] || d['שם מלא'] || '').trim();\n  const email = (d['מייל'] || '').toLowerCase().trim();\n  const rawPhone = d['\\u{1F4DE} טלפון'] || d['טלפון'] || '';\n  const phone = cleanPhone(rawPhone);\n\n  if (!email && !phone) continue;\n  if (isFake(name, phone, email)) continue;\n\n  const emailExists = email && existingEmails.has(email);\n  const phoneDigits = phone ? phone.replace(/\\D/g, '') : '';\n  const phoneExists = phoneDigits && existingPhones.has(phoneDigits);\n  if (emailExists || phoneExists) continue;\n\n  // Map status from emoji column\n  const sheetStatus = (d['\\u{1F4CA} שלב במשפך'] || d['שלב במשפך'] || d['סטטוס ליד'] || '').trim();\n  let currentStatus = 'new';\n  for (const [key, value] of Object.entries(statusMap)) {\n    if (sheetStatus.includes(key) || sheetStatus === key) {\n      currentStatus = value;\n      break;\n    }\n  }\n\n  // Parse deal amount - if > 0, this is a closed deal\n  const dealAmountRaw = d['\\u{1F4B0} סכום עסקה'] || d['סכום עסקה'] || '';\n  const dealAmount = parseInt(dealAmountRaw.toString().replace(/[^\\d]/g, ''), 10) || 0;\n  if (dealAmount > 0) currentStatus = 'closed';\n\n  const createdAt = parseDate(d['\\u{1F4C6} תאריך יצירה'] || d['תאריך יצירה']);\n\n  // Parse UTM data from col_16\n  const utm = parseUtm(d['col_16']);\n  const adName = utm.content || d['\\u{1F3AF} מקור'] || d['מקור'] || null;\n  const campaignName = utm.campaign || null;\n\n  // Determine source from UTM\n  const utmSource = (utm.source || '').toLowerCase();\n  const source = (utmSource === 'facebook' || utmSource === 'instagram') ? 'campaign' : (utmSource ? 'other' : 'campaign');\n\n  const lead = {\n    name: name || (email ? email.split('@')[0] : 'Unknown'),\n    email: email || null,\n    phone: phone,\n    product: 'simply_grow',\n    source: source,\n    current_status: currentStatus\n  };\n  if (createdAt) lead.created_at = createdAt;\n  if (adName) lead.ad_name = adName;\n  if (campaignName) lead.campaign_id = campaignName;\n\n  newLeads.push(lead);\n\n  // If deal closed, create customer + transaction\n  if (dealAmount > 0) {\n    newCustomers.push({\n      name: lead.name,\n      email: lead.email,\n      phone: lead.phone,\n      products_purchased: ['simply_grow'],\n      total_paid: dealAmount,\n      status: 'active',\n      current_month: 1,\n      payment_status: 'completed'\n    });\n  }\n\n  // Notes\n  const notes = (d['\\u{1F4DD} הערות'] || d['הערות'] || '').trim();\n  if (notes) {\n    newNotes.push({\n      lead_email: email,\n      lead_phone: phone,\n      content: notes,\n      lead_name: lead.name\n    });\n  }\n}\n\nreturn [{ json: { newLeads, newCustomers, newNotes, newLeadsCount: newLeads.length, newCustomersCount: newCustomers.length, newNotesCount: newNotes.length } }];"
       },
       "id": "compare-and-map-sg",
       "name": "השוואה ומיפוי לידים חדשים",
@@ -184,8 +184,8 @@
           },
           "conditions": [
             {
-              "id": "condition-notes",
-              "leftValue": "={{ $('השוואה ומיפוי לידים חדשים').item.json.newNotesCount }}",
+              "id": "condition-customers",
+              "leftValue": "={{ $('השוואה ומיפוי לידים חדשים').item.json.newCustomersCount }}",
               "rightValue": 0,
               "operator": {
                 "type": "number",
@@ -197,8 +197,8 @@
         },
         "options": {}
       },
-      "id": "if-notes-sg",
-      "name": "יש הערות לשמירה?",
+      "id": "if-customers-sg",
+      "name": "יש לקוחות חדשים?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
@@ -209,7 +209,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://lmcktwpwnahtoxglrzch.supabase.co/rest/v1/notes",
+        "url": "https://lmcktwpwnahtoxglrzch.supabase.co/rest/v1/customers",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -233,11 +233,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($('השוואה ומיפוי לידים חדשים').item.json.newNotes) }}",
+        "jsonBody": "={{ JSON.stringify($('השוואה ומיפוי לידים חדשים').item.json.newCustomers) }}",
         "options": {}
       },
-      "id": "post-notes-sg",
-      "name": "שליחת הערות ל-Supabase",
+      "id": "post-customers-sg",
+      "name": "שליחת לקוחות ל-Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -300,7 +300,7 @@
             "index": 0
           },
           {
-            "node": "יש הערות לשמירה?",
+            "node": "יש לקוחות חדשים?",
             "type": "main",
             "index": 0
           }
@@ -308,11 +308,11 @@
         []
       ]
     },
-    "יש הערות לשמירה?": {
+    "יש לקוחות חדשים?": {
       "main": [
         [
           {
-            "node": "שליחת הערות ל-Supabase",
+            "node": "שליחת לקוחות ל-Supabase",
             "type": "main",
             "index": 0
           }
