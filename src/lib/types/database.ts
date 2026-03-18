@@ -1,14 +1,14 @@
-export type LeadStatus = "new" | "watched_vsl" | "got_wa" | "filled_questionnaire" | "sales_call" | "closed" | "lost";
-export type ProductType = "freedom" | "simply_grow";
+export type LeadStatus = "new" | "consumed_content" | "engaged" | "applied" | "qualified" | "onboarding" | "active_client" | "completed" | "lost";
+export type ProgramType = "one_core" | "one_vip";
 export type LeadSource = "campaign" | "organic" | "youtube" | "referral" | "other";
 export type CustomerStatus = "active" | "completed" | "churned";
 export type PaymentMethod = "cardcom" | "upay" | "other";
 export type PaymentStatus = "completed" | "pending" | "failed" | "refunded";
-export type MeetingType = "sales_call" | "onboarding" | "monthly_1on1" | "group_zoom";
+export type MeetingType = "onboarding" | "monthly_1on1" | "group_zoom";
 export type MeetingStatus = "scheduled" | "completed" | "cancelled" | "no_show";
 export type FileType = "contract" | "meeting_summary" | "transcript" | "other";
 export type GoalType = "revenue" | "customers" | "custom";
-export type FunnelEventType = "registered" | "watched_vsl" | "got_wa" | "replied_watched" | "filled_questionnaire" | "sales_call" | "purchased";
+export type FunnelEventType = "registered" | "consumed_content" | "engaged" | "applied" | "qualified" | "purchased";
 export type ExpenseCategory = "meta_ads" | "ai_tools" | "editing_design" | "software" | "other";
 
 export interface Lead {
@@ -21,7 +21,7 @@ export interface Lead {
   campaign_id: string | null;
   ad_id: string | null;
   ad_name: string | null;
-  product: ProductType;
+  program: ProgramType;
   current_status: LeadStatus;
   created_at: string;
   updated_at: string;
@@ -34,7 +34,7 @@ export interface Customer {
   email: string | null;
   phone: string | null;
   occupation: string | null;
-  products_purchased: ProductType[];
+  products_purchased: ProgramType[];
   total_paid: number;
   payment_status: PaymentStatus;
   program_start_date: string | null;
@@ -49,7 +49,7 @@ export interface Transaction {
   id: string;
   customer_id: string | null;
   lead_id: string | null;
-  product: ProductType;
+  program: ProgramType;
   amount: number;
   date: string;
   payment_method: PaymentMethod;
@@ -72,7 +72,7 @@ export interface Campaign {
   id: string;
   external_id: string | null;
   name: string;
-  product: ProductType | null;
+  program: ProgramType | null;
   daily_spend: number;
   impressions: number;
   clicks: number;

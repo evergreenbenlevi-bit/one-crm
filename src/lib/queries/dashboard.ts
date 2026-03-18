@@ -28,10 +28,10 @@ export async function getDashboardData(period: "today" | "week" | "month" = "mon
     .eq("status", "completed");
 
   const totalRevenue = transactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-  const freedomRevenue = transactions?.filter(t => t.product === "freedom").reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-  const simplyGrowRevenue = transactions?.filter(t => t.product === "simply_grow").reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-  const freedomCount = transactions?.filter(t => t.product === "freedom").length || 0;
-  const simplyGrowCount = transactions?.filter(t => t.product === "simply_grow").length || 0;
+  const oneCoreRevenue = transactions?.filter(t => t.program === "one_core").reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+  const oneVipRevenue = transactions?.filter(t => t.program === "one_vip").reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+  const oneCoreCount = transactions?.filter(t => t.program === "one_core").length || 0;
+  const oneVipCount = transactions?.filter(t => t.program === "one_vip").length || 0;
 
   // Leads
   const { count: leadsCount } = await supabase
@@ -49,7 +49,7 @@ export async function getDashboardData(period: "today" | "week" | "month" = "mon
   const costPerLead = leadsCount && leadsCount > 0 ? totalSpend / leadsCount : 0;
 
   // Purchases count for CAC
-  const purchaseCount = (freedomCount || 0) + (simplyGrowCount || 0);
+  const purchaseCount = (oneCoreCount || 0) + (oneVipCount || 0);
   const cac = purchaseCount > 0 ? totalSpend / purchaseCount : 0;
   const conversionRate = leadsCount && leadsCount > 0 ? (purchaseCount / leadsCount) * 100 : 0;
   const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
@@ -57,10 +57,10 @@ export async function getDashboardData(period: "today" | "week" | "month" = "mon
   return {
     revenue: {
       total: totalRevenue,
-      freedom: freedomRevenue,
-      simplyGrow: simplyGrowRevenue,
-      freedomCount,
-      simplyGrowCount,
+      oneCore: oneCoreRevenue,
+      oneVip: oneVipRevenue,
+      oneCoreCount,
+      oneVipCount,
     },
     leads: {
       count: leadsCount || 0,
@@ -94,8 +94,8 @@ export async function getHotLeads() {
   const { data } = await supabase
     .from("leads")
     .select("*")
-    .in("current_status", ["filled_questionnaire", "sales_call", "got_wa", "watched_vsl"])
-    .neq("current_status", "closed")
+    .in("current_status", ["applied", "qualified", "engaged", "consumed_content"])
+    .neq("current_status", "active_client")
     .neq("current_status", "lost")
     .order("updated_at", { ascending: false })
     .limit(5);
@@ -142,7 +142,7 @@ export async function getRevenueChart() {
 
   const { data } = await supabase
     .from("transactions")
-    .select("amount, date, product")
+    .select("amount, date, program")
     .gte("date", sixMonthsAgo.toISOString())
     .eq("status", "completed")
     .order("date", { ascending: true });

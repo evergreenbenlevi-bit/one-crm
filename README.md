@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ONE™ CRM
 
-## Getting Started
+Lead & client management system for the ONE™ coaching program.
 
-First, run the development server:
+ONE™ helps experts build marketing + conversion systems that bring ready clients — no sales calls, no burnout.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Tech Stack
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Frontend:** Next.js (App Router) + Tailwind CSS
+- **Backend:** Supabase (Postgres + Auth + RLS)
+- **Automations:** N8N workflows
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Lead tracking** — from first content view through application to onboarding
+- **Application management** — questionnaire submissions, scoring, approval flow
+- **Client management** — program tracking, monthly progress, mentor assignment
+- **Content metrics** — track performance across Instagram, LinkedIn, YouTube, TikTok
+- **Financial dashboard** — transactions, expenses, revenue goals per quarter
+- **Campaign tracking** — ad spend, impressions, clicks, conversions
+- **Meeting management** — discovery calls, strategy sessions, group zooms, workshops
+- **Automation logs** — full visibility into what N8N workflows did
+- **Funnel analytics** — conversion rates across the entire journey
 
-## Learn More
+## Setup
 
-To learn more about Next.js, take a look at the following resources:
+1. **Create a Supabase project** at [supabase.com](https://supabase.com)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Set environment variables** — copy `.env.example` to `.env.local`:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your-project-url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. **Run migrations:**
+   ```bash
+   # Via Supabase CLI
+   supabase db push
 
-## Deploy on Vercel
+   # Or run manually in the SQL Editor:
+   # Copy contents of supabase/migrations/001_initial_schema.sql
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. **Install dependencies and run:**
+   ```bash
+   npm install
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+5. Open [http://localhost:3000](http://localhost:3000)

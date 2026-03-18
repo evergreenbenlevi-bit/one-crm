@@ -18,60 +18,61 @@ import {
   FileText,
   ShoppingCart,
   ClipboardList,
-  PhoneCall,
   UserPlus,
   MessageSquare,
   Pencil,
 } from "lucide-react";
 import { LeadEditModal } from "./lead-edit-modal";
-import type { Lead, FunnelEvent, Note, Customer, FunnelEventType, ProductType } from "@/lib/types/database";
+import type { Lead, FunnelEvent, Note, Customer, FunnelEventType, ProgramType } from "@/lib/types/database";
 
 // ──────────────────────────────────────────
 // Labels & config
 // ──────────────────────────────────────────
 
-const productLabels: Record<ProductType, string> = {
-  freedom: "החופש לשווק",
-  simply_grow: "פשוט לצמוח",
+const productLabels: Record<ProgramType, string> = {
+  one_core: "ONE™ Core",
+  one_vip: "ONE™ VIP",
 };
 
 const statusLabels: Record<string, string> = {
   new: "חדש",
-  watched_vsl: "צפה בסרטון",
-  got_wa: "קיבל וואטסאפ",
-  filled_questionnaire: "מילא שאלון",
-  sales_call: "שיחת מכירה",
-  closed: "סגור",
+  consumed_content: "צרך תוכן",
+  engaged: "ביצע אינטראקציה",
+  applied: "הגיש בקשה",
+  qualified: "מתאים",
+  onboarding: "בתהליך קליטה",
+  active_client: "לקוח פעיל",
+  completed: "סיים תוכנית",
   lost: "אבוד",
 };
 
 const statusColors: Record<string, string> = {
   new: "bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300",
-  watched_vsl: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  got_wa: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  filled_questionnaire: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  sales_call: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  closed: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  consumed_content: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  engaged: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  applied: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  qualified: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  onboarding: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  active_client: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  completed: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300",
   lost: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300",
 };
 
 const eventLabels: Record<FunnelEventType, string> = {
   registered: "נרשם",
-  watched_vsl: "צפה בסרטון",
-  got_wa: "קיבל הודעת וואטסאפ",
-  replied_watched: "השיב שצפה",
-  filled_questionnaire: "מילא שאלון",
-  sales_call: "שיחת מכירה",
+  consumed_content: "צרך תוכן",
+  engaged: "ביצע אינטראקציה",
+  applied: "הגיש בקשה",
+  qualified: "מתאים",
   purchased: "רכש",
 };
 
 const eventIcons: Record<FunnelEventType, typeof UserPlus> = {
   registered: UserPlus,
-  watched_vsl: Eye,
-  got_wa: Send,
-  replied_watched: MessageSquare,
-  filled_questionnaire: ClipboardList,
-  sales_call: PhoneCall,
+  consumed_content: Eye,
+  engaged: Send,
+  applied: ClipboardList,
+  qualified: MessageSquare,
   purchased: ShoppingCart,
 };
 
@@ -84,24 +85,23 @@ const sourceLabels: Record<string, string> = {
 };
 
 // Funnel definitions
-const simplyGrowFunnel: FunnelEventType[] = [
+const oneVipFunnel: FunnelEventType[] = [
   "registered",
-  "watched_vsl",
-  "got_wa",
-  "filled_questionnaire",
-  "sales_call",
+  "consumed_content",
+  "engaged",
+  "applied",
+  "qualified",
   "purchased",
 ];
 
-const freedomFunnel: FunnelEventType[] = ["registered", "purchased"];
+const oneCoreFunnel: FunnelEventType[] = ["registered", "purchased"];
 
 const funnelStepLabels: Record<FunnelEventType, string> = {
   registered: "נרשם",
-  watched_vsl: "סרטון",
-  got_wa: "וואטסאפ",
-  replied_watched: "השיב",
-  filled_questionnaire: "שאלון",
-  sales_call: "שיחה",
+  consumed_content: "תוכן",
+  engaged: "אינטראקציה",
+  applied: "בקשה",
+  qualified: "מתאים",
   purchased: "רכש",
 };
 
@@ -131,7 +131,7 @@ export function LeadDetail({ lead }: LeadDetailProps) {
   const [editOpen, setEditOpen] = useState(false);
 
   const funnelSteps =
-    lead.product === "simply_grow" ? simplyGrowFunnel : freedomFunnel;
+    lead.program === "one_vip" ? oneVipFunnel : oneCoreFunnel;
 
   const completedEventTypes = new Set(lead.events.map((e) => e.event_type));
 
@@ -148,7 +148,7 @@ export function LeadDetail({ lead }: LeadDetailProps) {
         body: JSON.stringify({
           lead_id: lead.id,
           content: noteContent.trim(),
-          author: "נועם",
+          author: "בן",
         }),
       });
       if (res.ok) {
@@ -205,7 +205,7 @@ export function LeadDetail({ lead }: LeadDetailProps) {
                   <h1 className="text-xl font-bold dark:text-gray-100">{lead.name}</h1>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="text-xs bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 px-3 py-1 rounded-full font-medium">
-                      {productLabels[lead.product]}
+                      {productLabels[lead.program]}
                     </span>
                     <span
                       className={clsx(

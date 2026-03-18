@@ -24,12 +24,15 @@ import { he } from "date-fns/locale";
 import { clsx } from "clsx";
 
 const statusLabels: Record<string, string> = {
-  new: "ליד חדש",
-  watched_vsl: "צפה בסרטון",
-  got_wa: "קיבל וואטסאפ",
-  filled_questionnaire: "מילא שאלון",
-  sales_call: "שיחת מכירה",
-  closed: "סגר ✓",
+  new: "חדש",
+  consumed_content: "צרך תוכן",
+  engaged: "ביצע אינטראקציה",
+  applied: "הגיש בקשה",
+  qualified: "מתאים",
+  onboarding: "בתהליך קליטה",
+  active_client: "לקוח פעיל",
+  completed: "סיים תוכנית",
+  lost: "אבוד",
 };
 
 interface LeadsKanbanProps {
@@ -47,7 +50,7 @@ function KanbanCard({ lead }: { lead: Lead }) {
   };
 
   const daysSinceUpdate = Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / (1000 * 60 * 60 * 24));
-  const isHot = daysSinceUpdate >= 3 && lead.current_status !== "new" && lead.current_status !== "closed";
+  const isHot = daysSinceUpdate >= 3 && lead.current_status !== "new" && lead.current_status !== "active_client";
 
   return (
     <div

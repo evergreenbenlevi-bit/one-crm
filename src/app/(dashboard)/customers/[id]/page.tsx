@@ -6,24 +6,24 @@ import { CustomerTabs } from "@/components/customers/customer-tabs";
 
 const eventLabels: Record<string, string> = {
   registered: "נרשם כליד",
-  watched_vsl: "צפה בסרטון מכירה",
-  got_wa: "קיבל הודעות וואטסאפ",
+  consumed_content: "צרך תוכן",
+  engaged: "ביצע אינטראקציה",
   replied_watched: "ענה ״צפיתי״",
-  filled_questionnaire: "מילא שאלון התאמה",
-  sales_call: "שיחת מכירה",
+  applied: "הגיש בקשה",
+  strategy_session: "סשן אסטרטגי",
   purchased: "רכש",
 };
 
 const meetingLabels: Record<string, string> = {
-  sales_call: "שיחת מכירה",
+  strategy_session: "סשן אסטרטגי",
   onboarding: "פגישת Onboarding",
   monthly_1on1: "פגישה 1:1 חודשית",
   group_zoom: "זום קבוצתי",
 };
 
 const productLabels: Record<string, string> = {
-  freedom: "החופש לשווק",
-  simply_grow: "פשוט לצמוח",
+  one_core: "ONE™ Core",
+  one_vip: "ONE™ VIP",
 };
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -46,10 +46,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
       label: meetingLabels[m.type] || m.type,
       details: m.summary ? { summary: m.summary } : undefined,
     })),
-    ...customer.transactions.map((t: { date: string; product: string; amount: number }) => ({
+    ...customer.transactions.map((t: { date: string; program: string; amount: number }) => ({
       date: t.date,
       type: "transaction" as const,
-      label: `רכש ${productLabels[t.product] || t.product} — ₪${Number(t.amount).toLocaleString("he-IL")}`,
+      label: `רכש ${productLabels[t.program] || t.program} — ₪${Number(t.amount).toLocaleString("he-IL")}`,
     })),
   ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 

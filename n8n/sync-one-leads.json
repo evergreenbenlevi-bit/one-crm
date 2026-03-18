@@ -1,0 +1,130 @@
+{
+  "name": "סנכרון לידים - ONE™",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "כל 15 דקות",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "mode": "name",
+          "value": "לידים"
+        },
+        "options": {}
+      },
+      "id": "google-sheets-read",
+      "name": "קריאת גיליון לידים",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [200, 0],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "YOUR_GOOGLE_ACCOUNT"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads?select=email,phone",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "response": { "response": { "fullResponse": true } }
+        },
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        }
+      },
+      "id": "fetch-existing-leads",
+      "name": "שליפת לידים קיימים",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [200, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ONE™ Lead Sync Logic\nconst sheetRows = $('קריאת גיליון לידים').all();\nconst existingLeads = $('שליפת לידים קיימים').first().json.body || [];\nconst existingEmails = new Set(existingLeads.map(l => (l.email || '').toLowerCase().trim()));\nconst existingPhones = new Set(existingLeads.map(l => cleanPhone(l.phone)));\n\nfunction cleanPhone(raw) {\n  if (!raw) return null;\n  let phone = raw.toString().replace(/[\\s\\-\\(\\)]/g, '');\n  if (phone.startsWith('+972')) phone = '0' + phone.slice(4);\n  if (phone.length === 9 && !phone.startsWith('0')) phone = '0' + phone;\n  return phone.length >= 9 && phone.length <= 11 ? phone : null;\n}\n\nconst statusMap = {\n  'חדש': 'new',\n  'צרך תוכן': 'consumed_content',\n  'ביצע אינטראקציה': 'engaged',\n  'הגיש בקשה': 'applied',\n  'מתאים': 'qualified',\n  'בקליטה': 'onboarding',\n  'לקוח פעיל': 'active_client',\n  'סיים': 'completed',\n  'אבוד': 'lost'\n};\n\nconst sourceMap = {\n  'אינסטגרם': 'instagram',\n  'לינקדאין': 'linkedin',\n  'יוטיוב': 'youtube',\n  'קמפיין': 'campaign',\n  'אורגני': 'organic',\n  'הפניה': 'referral',\n  'תוכן': 'content',\n  'וובינר': 'webinar',\n  'סקול': 'skool'\n};\n\nconst testEmails = ['test@test.com', 'ben@test.com'];\n\nconst newLeads = [];\nconst newCustomers = [];\nconst newTransactions = [];\n\nfor (const row of sheetRows) {\n  const d = row.json;\n  const name = (d['שם מלא'] || d['שם'] || '').trim();\n  const email = (d['מייל'] || d['אימייל'] || '').toLowerCase().trim();\n  const phone = cleanPhone(d['טלפון'] || '');\n  const statusHeb = (d['סטטוס'] || d['שלב'] || 'חדש').trim();\n  const sourceHeb = (d['מקור'] || 'אורגני').trim();\n  const amount = parseFloat(d['סכום'] || d['סכום עסקה'] || '0') || 0;\n  const igHandle = (d['אינסטגרם'] || d['instagram'] || '').trim();\n  const painPoints = (d['כאב'] || d['בעיה'] || '').trim();\n  const howFound = (d['איך הגיע'] || '').trim();\n  const notes = (d['הערות'] || '').trim();\n  const dateStr = d['תאריך'] || d['תאריך יצירה'] || '';\n\n  // Skip empty/test/duplicate\n  if (!name || name.length < 2) continue;\n  if (testEmails.includes(email)) continue;\n  if (email && existingEmails.has(email)) continue;\n  if (phone && existingPhones.has(phone)) continue;\n\n  const status = statusMap[statusHeb] || 'new';\n  const source = sourceMap[sourceHeb] || 'other';\n\n  let createdAt = null;\n  if (dateStr) {\n    const parts = dateStr.split('/');\n    if (parts.length === 3) {\n      createdAt = new Date(parts[2], parts[1] - 1, parts[0]).toISOString();\n    }\n  }\n\n  const lead = {\n    name, email: email || null, phone: phone || null,\n    current_status: status, source,\n    instagram_handle: igHandle || null,\n    pain_points: painPoints || null,\n    how_found_us: howFound || null,\n    interest_program: 'one_core'\n  };\n  if (createdAt) lead.created_at = createdAt;\n  newLeads.push(lead);\n\n  // If paid → create customer + transaction\n  if (amount > 0 || status === 'active_client') {\n    newCustomers.push({\n      name, email: email || null, phone: phone || null,\n      program: 'one_core', total_paid: amount, status: 'active',\n      mentor: 'בן'\n    });\n    if (amount > 0) {\n      newTransactions.push({\n        program: 'one_core', amount, status: 'completed',\n        payment_method: 'other'\n      });\n    }\n  }\n}\n\nreturn [{\n  json: {\n    newLeads, newCustomers, newTransactions,\n    counts: {\n      leads: newLeads.length,\n      customers: newCustomers.length,\n      transactions: newTransactions.length\n    }\n  }\n}];"
+      },
+      "id": "process-leads",
+      "name": "עיבוד לידים חדשים",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.counts.leads }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ]
+        }
+      },
+      "id": "check-new-leads",
+      "name": "יש לידים חדשים?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/leads",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.newLeads) }}",
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        }
+      },
+      "id": "insert-leads",
+      "name": "הכנסת לידים לSupabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 0]
+    }
+  ],
+  "connections": {
+    "כל 15 דקות": { "main": [[{ "node": "קריאת גיליון לידים", "type": "main", "index": 0 }, { "node": "שליפת לידים קיימים", "type": "main", "index": 0 }]] },
+    "קריאת גיליון לידים": { "main": [[{ "node": "עיבוד לידים חדשים", "type": "main", "index": 0 }]] },
+    "שליפת לידים קיימים": { "main": [[{ "node": "עיבוד לידים חדשים", "type": "main", "index": 0 }]] },
+    "עיבוד לידים חדשים": { "main": [[{ "node": "יש לידים חדשים?", "type": "main", "index": 0 }]] },
+    "יש לידים חדשים?": { "main": [[{ "node": "הכנסת לידים לSupabase", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "ONE™" }]
+}

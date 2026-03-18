@@ -7,11 +7,11 @@ import { LeadsTable } from "@/components/leads/leads-table";
 import { LeadsKanban } from "@/components/leads/leads-kanban";
 import { LayoutGrid, List } from "lucide-react";
 import { clsx } from "clsx";
-import type { Lead, LeadStatus, ProductType } from "@/lib/types/database";
+import type { Lead, LeadStatus, ProgramType } from "@/lib/types/database";
 
-const productTabs = [
-  { key: "simply_grow", label: "פשוט לצמוח" },
-  { key: "freedom", label: "החופש לשווק" },
+const programTabs = [
+  { key: "one_vip", label: "ONE™ VIP" },
+  { key: "one_core", label: "ONE™ Core" },
 ];
 
 const viewModes = [
@@ -19,11 +19,11 @@ const viewModes = [
   { key: "table", icon: List },
 ];
 
-const simplyGrowStatuses: LeadStatus[] = ["new", "watched_vsl", "got_wa", "filled_questionnaire", "sales_call", "closed"];
-const freedomStatuses: LeadStatus[] = ["new", "closed"];
+const oneVipStatuses: LeadStatus[] = ["new", "consumed_content", "engaged", "applied", "active_client"];
+const oneCoreStatuses: LeadStatus[] = ["new", "active_client"];
 
 export default function LeadsPage() {
-  const [product, setProduct] = useState<ProductType>("simply_grow");
+  const [program, setProgram] = useState<ProgramType>("one_vip");
   const [view, setView] = useState("kanban");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
@@ -33,7 +33,7 @@ export default function LeadsPage() {
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ product });
+    const params = new URLSearchParams({ program: program });
     if (search) params.set("search", search);
     if (source) params.set("source", source);
     if (status) params.set("status", status);
@@ -42,13 +42,13 @@ export default function LeadsPage() {
     const data = await res.json();
     setLeads(data);
     setLoading(false);
-  }, [product, search, source, status]);
+  }, [program, search, source, status]);
 
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
 
-  const statuses = product === "simply_grow" ? simplyGrowStatuses : freedomStatuses;
+  const statuses = program === "one_vip" ? oneVipStatuses : oneCoreStatuses;
 
   const columns: Record<string, Lead[]> = {};
   statuses.forEach(s => { columns[s] = []; });
@@ -74,7 +74,7 @@ export default function LeadsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold dark:text-gray-100">לידים</h1>
         <div className="flex items-center gap-3">
-          <Tabs tabs={productTabs} activeTab={product} onChange={(key) => setProduct(key as ProductType)} />
+          <Tabs tabs={programTabs} activeTab={program} onChange={(key) => setProgram(key as ProgramType)} />
           <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
             {viewModes.map(mode => (
               <button

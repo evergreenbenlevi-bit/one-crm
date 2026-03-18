@@ -26,7 +26,6 @@ interface MeetingCardProps {
 }
 
 const typeConfig: Record<MeetingType, { label: string; color: string; bg: string }> = {
-  sales_call: { label: "שיחת מכירה", color: "text-brand-600 dark:text-brand-400", bg: "bg-brand-50 dark:bg-brand-900/30" },
   onboarding: { label: "אונבורדינג", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/30" },
   monthly_1on1: { label: "פגישה חודשית", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/30" },
   group_zoom: { label: "זום קבוצתי", color: "text-violet-700 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-900/30" },
@@ -67,8 +66,7 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
 
         {/* Type indicator */}
         <div className={clsx("w-1 h-10 rounded-full")} style={{
-          backgroundColor: meeting.type === "sales_call" ? "var(--color-brand-500)" :
-            meeting.type === "onboarding" ? "var(--color-success)" :
+          backgroundColor: meeting.type === "onboarding" ? "var(--color-success)" :
             meeting.type === "monthly_1on1" ? "var(--color-warning)" :
             "#8b5cf6"
         }} />

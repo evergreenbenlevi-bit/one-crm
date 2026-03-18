@@ -1,6 +1,7 @@
 {
-  "name": "crm",
+  "name": "one-crm",
   "version": "0.1.0",
+  "description": "ONE™ CRM — Lead & Client Management",
   "private": true,
   "scripts": {
     "dev": "next dev",

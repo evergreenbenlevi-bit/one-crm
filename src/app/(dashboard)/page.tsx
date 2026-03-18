@@ -26,10 +26,10 @@ export default async function DashboardPage() {
 
   // Generate achievement sentence
   let achievement = "";
-  if (data.revenue.simplyGrowCount > 0) {
-    achievement = `החודש סגרת ${data.revenue.simplyGrowCount} לקוחות חדשים לפשוט לצמוח`;
-  } else if (data.revenue.freedomCount > 0) {
-    achievement = `החודש ${data.revenue.freedomCount} אנשים רכשו את החופש לשווק`;
+  if (data.revenue.oneVipCount > 0) {
+    achievement = `החודש סגרת ${data.revenue.oneVipCount} לקוחות חדשים ל-ONE™ VIP`;
+  } else if (data.revenue.oneCoreCount > 0) {
+    achievement = `החודש ${data.revenue.oneCoreCount} אנשים רכשו ONE™ Core`;
   }
 
   return (

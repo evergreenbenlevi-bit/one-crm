@@ -7,21 +7,21 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 interface RevenueSectionProps {
   revenue: {
     total: number;
-    freedom: number;
-    simplyGrow: number;
-    freedomCount: number;
-    simplyGrowCount: number;
+    oneCore: number;
+    oneVip: number;
+    oneCoreCount: number;
+    oneVipCount: number;
   };
-  chartData: Array<{ amount: number; date: string; product: string }>;
+  chartData: Array<{ amount: number; date: string; program: string }>;
 }
 
 export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
   // Group chart data by month
-  const monthlyData = chartData.reduce<Record<string, { month: string; freedom: number; simplyGrow: number }>>((acc, item) => {
+  const monthlyData = chartData.reduce<Record<string, { month: string; oneCore: number; oneVip: number }>>((acc, item) => {
     const month = new Date(item.date).toLocaleDateString("he-IL", { month: "short", year: "2-digit" });
-    if (!acc[month]) acc[month] = { month, freedom: 0, simplyGrow: 0 };
-    if (item.product === "freedom") acc[month].freedom += Number(item.amount);
-    else acc[month].simplyGrow += Number(item.amount);
+    if (!acc[month]) acc[month] = { month, oneCore: 0, oneVip: 0 };
+    if (item.program === "one_core") acc[month].oneCore += Number(item.amount);
+    else acc[month].oneVip += Number(item.amount);
     return acc;
   }, {});
 
@@ -41,19 +41,19 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
           icon={DollarSign}
         />
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
-          <span className="text-sm text-gray-500 dark:text-gray-400">החופש לשווק</span>
-          <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.freedom.toLocaleString("he-IL")}</div>
+          <span className="text-sm text-gray-500 dark:text-gray-400">ONE™ Core</span>
+          <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.oneCore.toLocaleString("he-IL")}</div>
           <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
             <ShoppingBag size={12} />
-            <span>{revenue.freedomCount} רוכשים</span>
+            <span>{revenue.oneCoreCount} רוכשים</span>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
-          <span className="text-sm text-gray-500 dark:text-gray-400">פשוט לצמוח</span>
-          <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.simplyGrow.toLocaleString("he-IL")}</div>
+          <span className="text-sm text-gray-500 dark:text-gray-400">ONE™ VIP</span>
+          <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.oneVip.toLocaleString("he-IL")}</div>
           <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
             <ShoppingBag size={12} />
-            <span>{revenue.simplyGrowCount} לקוחות</span>
+            <span>{revenue.oneVipCount} לקוחות</span>
           </div>
         </div>
       </div>
@@ -64,11 +64,11 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartEntries}>
               <defs>
-                <linearGradient id="freedomGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="oneCoreGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#0c99e9" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#0c99e9" stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id="sgGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="oneVipGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
@@ -76,8 +76,8 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip formatter={(value) => `₪${Number(value).toLocaleString("he-IL")}`} />
-              <Area type="monotone" dataKey="freedom" stroke="#0c99e9" fill="url(#freedomGrad)" name="החופש לשווק" />
-              <Area type="monotone" dataKey="simplyGrow" stroke="#10b981" fill="url(#sgGrad)" name="פשוט לצמוח" />
+              <Area type="monotone" dataKey="oneCore" stroke="#0c99e9" fill="url(#oneCoreGrad)" name="ONE™ Core" />
+              <Area type="monotone" dataKey="oneVip" stroke="#10b981" fill="url(#oneVipGrad)" name="ONE™ VIP" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

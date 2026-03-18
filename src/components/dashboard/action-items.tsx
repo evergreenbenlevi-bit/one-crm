@@ -12,10 +12,9 @@ interface ActionItemsProps {
 
 const statusLabels: Record<string, string> = {
   new: "ליד חדש",
-  watched_vsl: "צפה בסרטון",
-  got_wa: "קיבל וואטסאפ",
-  filled_questionnaire: "מילא שאלון",
-  sales_call: "שיחת מכירה",
+  consumed_content: "צרך תוכן",
+  engaged: "ביצע אינטראקציה",
+  applied: "הגיש בקשה",
 };
 
 export function ActionItems({ hotLeads, upcomingMeetings, endingPrograms }: ActionItemsProps) {

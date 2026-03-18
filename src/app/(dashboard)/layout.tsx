@@ -1,9 +1,13 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import { requireAuth } from "@/lib/auth";
+
+const isLocalMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === "https://placeholder.supabase.co";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  await requireAuth();
+  if (!isLocalMode) {
+    const { requireAuth } = await import("@/lib/auth");
+    await requireAuth();
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">

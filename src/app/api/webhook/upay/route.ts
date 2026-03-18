@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   if (existingCustomer) {
     customerId = existingCustomer.id;
     const products = existingCustomer.products_purchased || [];
-    if (!products.includes("simply_grow")) products.push("simply_grow");
+    if (!products.includes("one_vip")) products.push("one_vip");
     await supabase.from("customers").update({
       products_purchased: products,
       total_paid: Number(existingCustomer.total_paid) + (body.amount || 8000),
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       name: body.name || "",
       email: body.email || null,
       phone: body.phone || null,
-      products_purchased: ["simply_grow"],
+      products_purchased: ["one_vip"],
       total_paid: body.amount || 8000,
       payment_status: body.installments ? "pending" : "completed",
       program_start_date: startDate.toISOString().split("T")[0],
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   await supabase.from("transactions").insert({
     customer_id: customerId,
     lead_id: lead?.id || null,
-    product: "simply_grow",
+    product: "one_vip",
     amount: body.amount || 8000,
     payment_method: "upay",
     installments_total: body.installments || 4,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (lead) {
-    await supabase.from("leads").update({ current_status: "closed" }).eq("id", lead.id);
+    await supabase.from("leads").update({ current_status: "active_client" }).eq("id", lead.id);
     await supabase.from("funnel_events").insert({
       lead_id: lead.id,
       event_type: "purchased",

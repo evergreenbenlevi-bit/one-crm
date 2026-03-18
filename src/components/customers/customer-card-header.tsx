@@ -18,8 +18,8 @@ const statusColors: Record<string, string> = {
 };
 
 const productLabels: Record<string, string> = {
-  freedom: "החופש לשווק",
-  simply_grow: "פשוט לצמוח",
+  one_core: "ONE™ Core",
+  one_vip: "ONE™ VIP",
 };
 
 export function CustomerCardHeader({ customer }: { customer: Customer }) {

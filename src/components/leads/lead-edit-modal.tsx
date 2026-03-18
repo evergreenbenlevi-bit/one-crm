@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { Lead, LeadStatus, LeadSource, ProductType } from "@/lib/types/database";
+import type { Lead, LeadStatus, LeadSource, ProgramType } from "@/lib/types/database";
 
 const statusOptions: { value: LeadStatus; label: string }[] = [
   { value: "new", label: "חדש" },
-  { value: "watched_vsl", label: "צפה בסרטון" },
-  { value: "got_wa", label: "קיבל וואטסאפ" },
-  { value: "filled_questionnaire", label: "מילא שאלון" },
-  { value: "sales_call", label: "שיחת מכירה" },
-  { value: "closed", label: "סגור" },
+  { value: "consumed_content", label: "צרך תוכן" },
+  { value: "engaged", label: "ביצע אינטראקציה" },
+  { value: "applied", label: "הגיש בקשה" },
+  { value: "qualified", label: "מתאים" },
+  { value: "onboarding", label: "בתהליך קליטה" },
+  { value: "active_client", label: "לקוח פעיל" },
+  { value: "completed", label: "סיים תוכנית" },
   { value: "lost", label: "אבוד" },
 ];
 
@@ -23,9 +25,9 @@ const sourceOptions: { value: LeadSource; label: string }[] = [
   { value: "other", label: "אחר" },
 ];
 
-const productOptions: { value: ProductType; label: string }[] = [
-  { value: "freedom", label: "החופש לשווק" },
-  { value: "simply_grow", label: "פשוט לצמוח" },
+const programOptions: { value: ProgramType; label: string }[] = [
+  { value: "one_core", label: "ONE™ Core" },
+  { value: "one_vip", label: "ONE™ VIP" },
 ];
 
 interface Props {
@@ -46,7 +48,7 @@ export function LeadEditModal({ lead, open, onClose }: Props) {
     occupation: lead.occupation || "",
     current_status: lead.current_status,
     source: lead.source,
-    product: lead.product,
+    program: lead.program,
     ad_name: lead.ad_name || "",
     campaign_id: lead.campaign_id || "",
   });
@@ -70,7 +72,7 @@ export function LeadEditModal({ lead, open, onClose }: Props) {
         occupation: form.occupation.trim() || null,
         current_status: form.current_status,
         source: form.source,
-        product: form.product,
+        product: form.program,
         ad_name: form.ad_name.trim() || null,
         campaign_id: form.campaign_id.trim() || null,
       };
@@ -161,16 +163,16 @@ export function LeadEditModal({ lead, open, onClose }: Props) {
             />
           </div>
 
-          {/* מוצר + מקור */}
+          {/* תוכנית + מקור */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">מוצר</label>
+              <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">תוכנית</label>
               <select
-                value={form.product}
-                onChange={e => setForm(prev => ({ ...prev, product: e.target.value as ProductType }))}
+                value={form.program}
+                onChange={e => setForm(prev => ({ ...prev, program: e.target.value as ProgramType }))}
                 className={inputClass}
               >
-                {productOptions.map(opt => (
+                {programOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>

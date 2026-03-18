@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { Customer, CustomerStatus, ProductType } from "@/lib/types/database";
+import type { Customer, CustomerStatus, ProgramType } from "@/lib/types/database";
 
 const statusOptions: { value: CustomerStatus; label: string }[] = [
   { value: "active", label: "פעיל בתוכנית" },
@@ -11,9 +11,9 @@ const statusOptions: { value: CustomerStatus; label: string }[] = [
   { value: "churned", label: "נטש" },
 ];
 
-const productOptions: { value: ProductType; label: string }[] = [
-  { value: "freedom", label: "החופש לשווק" },
-  { value: "simply_grow", label: "פשוט לצמוח" },
+const productOptions: { value: ProgramType; label: string }[] = [
+  { value: "one_core", label: "ONE™ Core" },
+  { value: "one_vip", label: "ONE™ VIP" },
 ];
 
 interface Props {
@@ -42,7 +42,7 @@ export function CustomerEditModal({ customer, open, onClose }: Props) {
 
   if (!open) return null;
 
-  function toggleProduct(product: ProductType) {
+  function toggleProduct(product: ProgramType) {
     setForm(prev => ({
       ...prev,
       products_purchased: prev.products_purchased.includes(product)
@@ -174,7 +174,7 @@ export function CustomerEditModal({ customer, open, onClose }: Props) {
 
           {/* מוצרים */}
           <div>
-            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">מוצרים שרכש</label>
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">תוכניות שרכש</label>
             <div className="flex gap-2">
               {productOptions.map(opt => (
                 <button

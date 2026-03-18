@@ -11,22 +11,22 @@ import {
 } from "recharts";
 
 interface RevenueBreakdownProps {
-  freedom: number;
-  simplyGrow: number;
+  oneCore: number;
+  oneVip: number;
 }
 
-export function RevenueBreakdown({ freedom, simplyGrow }: RevenueBreakdownProps) {
+export function RevenueBreakdown({ oneCore, oneVip }: RevenueBreakdownProps) {
   const data = [
-    { name: "החופש לשווק", value: freedom },
-    { name: "פשוט לצמוח", value: simplyGrow },
+    { name: "ONE™ Core", value: oneCore },
+    { name: "ONE™ VIP", value: oneVip },
   ];
 
   const colors = ["#0c99e9", "#7ccbfc"];
-  const total = freedom + simplyGrow;
+  const total = oneCore + oneVip;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
-      <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">הכנסות לפי מוצר</h3>
+      <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 mb-4">הכנסות לפי תוכנית</h3>
 
       <div className="flex gap-4 mb-4 text-sm">
         {data.map((item, i) => (

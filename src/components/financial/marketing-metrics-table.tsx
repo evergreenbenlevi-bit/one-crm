@@ -1,4 +1,4 @@
-interface ProductMetrics {
+interface ProgramMetrics {
   cpl: number;
   cac: number;
   roas: number;
@@ -6,27 +6,27 @@ interface ProductMetrics {
 }
 
 interface MarketingMetricsTableProps {
-  freedom: ProductMetrics;
-  simplyGrow: ProductMetrics;
+  oneCore: ProgramMetrics;
+  oneVip: ProgramMetrics;
 }
 
 function formatCurrency(value: number): string {
   return `₪${value.toLocaleString("he-IL")}`;
 }
 
-export function MarketingMetricsTable({ freedom, simplyGrow }: MarketingMetricsTableProps) {
+export function MarketingMetricsTable({ oneCore, oneVip }: MarketingMetricsTableProps) {
   const rows = [
-    { label: "החופש לשווק", ...freedom },
-    { label: "פשוט לצמוח", ...simplyGrow },
+    { label: "ONE™ Core", ...oneCore },
+    { label: "ONE™ VIP", ...oneVip },
   ];
 
   // Weighted average for total row (simple average since both share the same lead pool)
   const totalRow = {
     label: "סה״כ",
-    cpl: freedom.cpl, // Same CPL for both (shared lead pool)
-    cac: Math.round(((freedom.cac || 0) + (simplyGrow.cac || 0)) / 2),
-    roas: (freedom.roas || 0) + (simplyGrow.roas || 0),
-    conversion: Math.round(((freedom.conversion || 0) + (simplyGrow.conversion || 0)) * 10) / 10,
+    cpl: oneCore.cpl, // Same CPL for both (shared lead pool)
+    cac: Math.round(((oneCore.cac || 0) + (oneVip.cac || 0)) / 2),
+    roas: (oneCore.roas || 0) + (oneVip.roas || 0),
+    conversion: Math.round(((oneCore.conversion || 0) + (oneVip.conversion || 0)) * 10) / 10,
   };
 
   return (
@@ -37,7 +37,7 @@ export function MarketingMetricsTable({ freedom, simplyGrow }: MarketingMetricsT
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 dark:border-gray-700">
-              <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">מוצר</th>
+              <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">תוכנית</th>
               <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">CPL</th>
               <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">CAC</th>
               <th className="text-right py-3 px-2 font-medium text-gray-500 dark:text-gray-400">המרה %</th>

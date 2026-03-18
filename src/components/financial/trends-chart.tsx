@@ -12,7 +12,7 @@ import {
 } from "recharts";
 
 interface TrendsChartProps {
-  transactions: Array<{ amount: number; date: string; product: string }>;
+  transactions: Array<{ amount: number; date: string; program: string }>;
   expenses: Array<{ amount: number; date: string }>;
   campaigns: Array<{ daily_spend: number; date: string }>;
 }

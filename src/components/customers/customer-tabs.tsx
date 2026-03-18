@@ -38,14 +38,14 @@ export function CustomerTabs({ customer }: { customer: CustomerWithRelations }) 
 }
 
 function OverviewTab({ customer }: { customer: CustomerWithRelations }) {
-  const productLabels: Record<string, string> = { freedom: "החופש לשווק", simply_grow: "פשוט לצמוח" };
+  const productLabels: Record<string, string> = { one_core: "ONE™ Core", one_vip: "ONE™ VIP" };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 space-y-4">
       <h3 className="font-medium dark:text-gray-200">פרטים כלליים</h3>
       <div className="grid grid-cols-2 gap-4 text-sm">
         <div>
-          <span className="text-gray-400 dark:text-gray-500">מוצרים שרכש</span>
+          <span className="text-gray-400 dark:text-gray-500">תוכניות שרכש</span>
           <div className="mt-1">{customer.products_purchased?.map(p => productLabels[p] || p).join(", ") || "—"}</div>
         </div>
         <div>
@@ -82,7 +82,7 @@ function OverviewTab({ customer }: { customer: CustomerWithRelations }) {
           <div className="space-y-2">
             {customer.meetings.slice(0, 5).map(m => {
               const meetingLabels: Record<string, string> = {
-                sales_call: "שיחת מכירה", onboarding: "Onboarding", monthly_1on1: "1:1 חודשי", group_zoom: "זום קבוצתי"
+                strategy_session: "סשן אסטרטגי", onboarding: "Onboarding", monthly_1on1: "1:1 חודשי", group_zoom: "זום קבוצתי"
               };
               return (
                 <div key={m.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 dark:border-gray-700/50">
@@ -100,7 +100,7 @@ function OverviewTab({ customer }: { customer: CustomerWithRelations }) {
 
 function FinancialTab({ customer }: { customer: CustomerWithRelations }) {
   const methodLabels: Record<string, string> = { cardcom: "Cardcom", upay: "Upay", other: "אחר" };
-  const productLabels: Record<string, string> = { freedom: "החופש לשווק", simply_grow: "פשוט לצמוח" };
+  const productLabels: Record<string, string> = { one_core: "ONE™ Core", one_vip: "ONE™ VIP" };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 space-y-4">
@@ -114,7 +114,7 @@ function FinancialTab({ customer }: { customer: CustomerWithRelations }) {
           {customer.transactions.map(t => (
             <div key={t.id} className="flex items-center justify-between text-sm py-2 border-b border-gray-50 dark:border-gray-700/50">
               <div>
-                <span className="font-medium">{productLabels[t.product] || t.product}</span>
+                <span className="font-medium">{productLabels[t.program] || t.program}</span>
                 <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                   {methodLabels[t.payment_method] || t.payment_method}
                   {t.installments_total > 1 && ` · ${t.installments_paid}/${t.installments_total} תשלומים`}
@@ -160,7 +160,7 @@ function FilesTab({ files }: { files: FileRecord[] }) {
 }
 
 function QuestionnaireTab({ events }: { events: FunnelEvent[] }) {
-  const questionnaireEvent = events.find(e => e.event_type === "filled_questionnaire");
+  const questionnaireEvent = events.find(e => e.event_type === "applied");
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">

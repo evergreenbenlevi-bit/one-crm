@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   if (existingCustomer) {
     customerId = existingCustomer.id;
     await supabase.from("customers").update({
-      products_purchased: body.products_purchased || ["freedom"],
+      products_purchased: body.products_purchased || ["one_core"],
       total_paid: body.amount,
     }).eq("id", customerId);
   } else {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       name: body.name || "",
       email: body.email || null,
       phone: body.phone || null,
-      products_purchased: ["freedom"],
+      products_purchased: ["one_core"],
       total_paid: body.amount || 165,
       payment_status: "completed",
       status: "active",
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   await supabase.from("transactions").insert({
     customer_id: customerId,
     lead_id: lead?.id || null,
-    product: "freedom",
+    product: "one_core",
     amount: body.amount || 165,
     payment_method: "cardcom",
     status: "completed",
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   // Update lead status
   if (lead) {
-    await supabase.from("leads").update({ current_status: "closed" }).eq("id", lead.id);
+    await supabase.from("leads").update({ current_status: "active_client" }).eq("id", lead.id);
     await supabase.from("funnel_events").insert({
       lead_id: lead.id,
       event_type: "purchased",

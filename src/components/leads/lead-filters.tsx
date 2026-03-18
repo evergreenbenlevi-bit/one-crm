@@ -21,12 +21,14 @@ const sourceOptions = [
 
 const statusOptions = [
   { value: "", label: "כל הסטטוסים" },
-  { value: "new", label: "ליד חדש" },
-  { value: "watched_vsl", label: "צפה בסרטון" },
-  { value: "got_wa", label: "קיבל וואטסאפ" },
-  { value: "filled_questionnaire", label: "מילא שאלון" },
-  { value: "sales_call", label: "שיחת מכירה" },
-  { value: "closed", label: "סגר" },
+  { value: "new", label: "חדש" },
+  { value: "consumed_content", label: "צרך תוכן" },
+  { value: "engaged", label: "ביצע אינטראקציה" },
+  { value: "applied", label: "הגיש בקשה" },
+  { value: "qualified", label: "מתאים" },
+  { value: "onboarding", label: "בתהליך קליטה" },
+  { value: "active_client", label: "לקוח פעיל" },
+  { value: "completed", label: "סיים תוכנית" },
   { value: "lost", label: "אבוד" },
 ];
 

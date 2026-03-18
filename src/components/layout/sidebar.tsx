@@ -5,18 +5,20 @@ import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
   LayoutDashboard, Users, Briefcase, DollarSign,
-  BarChart3, Calendar, Target, Settings, LogOut
+  BarChart3, Calendar, Target, Settings, LogOut,
+  FileText, TrendingUp, CheckSquare
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const navItems = [
   { href: "/", label: "דשבורד", icon: LayoutDashboard },
+  { href: "/tasks", label: "משימות", icon: CheckSquare },
   { href: "/leads", label: "לידים", icon: Users },
   { href: "/customers", label: "לקוחות", icon: Briefcase },
   { href: "/financial", label: "פיננסי", icon: DollarSign },
+  { href: "/applications", label: "בקשות", icon: FileText },
   { href: "/campaigns", label: "קמפיינים", icon: BarChart3 },
+  { href: "/content", label: "תוכן", icon: TrendingUp },
   { href: "/meetings", label: "פגישות", icon: Calendar },
   { href: "/goals", label: "יעדים", icon: Target },
   { href: "/settings", label: "הגדרות", icon: Settings },
@@ -24,19 +26,20 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
 
   async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch { /* local mode — no supabase */ }
+    window.location.href = "/login";
   }
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 h-screen sticky top-0">
       <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-        <h1 className="text-xl font-bold text-brand-700 dark:text-brand-400">Noam CRM</h1>
+        <h1 className="text-xl font-bold text-brand-700 dark:text-brand-400">ONE™ CRM</h1>
       </div>
 
       <nav className="flex-1 p-4 space-y-1">

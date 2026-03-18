@@ -6,13 +6,13 @@ import "./globals.css";
 const heebo = Heebo({ subsets: ["hebrew", "latin"] });
 
 export const metadata: Metadata = {
-  title: "Noam CRM",
+  title: "ONE™ CRM",
   description: "מערכת ניהול לקוחות ודשבורד עסקי",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Noam CRM",
+    title: "ONE™ CRM",
   },
 };
 

@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // Also create a funnel event
   await supabase.from("funnel_events").insert({
     lead_id: id,
-    event_type: status === "closed" ? "purchased" : status,
+    event_type: status === "active_client" ? "purchased" : status,
     metadata: {},
   });
 

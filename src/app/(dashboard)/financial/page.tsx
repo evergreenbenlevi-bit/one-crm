@@ -69,16 +69,16 @@ export default async function FinancialPage({ searchParams }: PageProps) {
       {/* Breakdowns - side by side on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <RevenueBreakdown
-          freedom={financialData.revenue.freedom}
-          simplyGrow={financialData.revenue.simplyGrow}
+          oneCore={financialData.revenue.oneCore}
+          oneVip={financialData.revenue.oneVip}
         />
         <ExpenseBreakdown byCategory={financialData.costs.byCategory} />
       </div>
 
       {/* Marketing Metrics Table */}
       <MarketingMetricsTable
-        freedom={financialData.marketing.freedom}
-        simplyGrow={financialData.marketing.simplyGrow}
+        oneCore={financialData.marketing.oneCore}
+        oneVip={financialData.marketing.oneVip}
       />
 
       {/* Trends Chart */}

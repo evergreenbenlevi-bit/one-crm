@@ -4,21 +4,21 @@ import { useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { clsx } from "clsx";
 import { ArrowUpDown, TrendingDown, TrendingUp } from "lucide-react";
-import type { Campaign, ProductType } from "@/lib/types/database";
+import type { Campaign, ProgramType } from "@/lib/types/database";
 
 interface CampaignsTableProps {
   campaigns: Campaign[];
 }
 
 const productLabels: Record<string, string> = {
-  freedom: "החופש לשווק",
-  simply_grow: "פשוט לצמוח",
+  one_core: "ONE™ Core",
+  one_vip: "ONE™ VIP",
 };
 
-const productFilters = [
+const programFilters = [
   { key: "all", label: "הכל" },
-  { key: "freedom", label: "החופש לשווק" },
-  { key: "simply_grow", label: "פשוט לצמוח" },
+  { key: "one_core", label: "ONE™ Core" },
+  { key: "one_vip", label: "ONE™ VIP" },
 ] as const;
 
 const periodFilters = [
@@ -64,7 +64,7 @@ function getDateRange(period: string): { start: Date | null; end: Date | null } 
 
 interface AggregatedCampaign {
   name: string;
-  product: ProductType | null;
+  program: ProgramType | null;
   totalSpend: number;
   totalLeads: number;
   totalPurchases: number;
@@ -76,7 +76,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const productFilter = searchParams.get("product") || "all";
+  const programFilter = searchParams.get("program") || "all";
   const periodFilter = searchParams.get("period") || "month";
   const [sortKey, setSortKey] = useState<SortKey>("spend");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -96,9 +96,9 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
 
   // Filter by product
   const filteredCampaigns = useMemo(() => {
-    if (productFilter === "all") return filteredByDate;
-    return filteredByDate.filter(c => c.product === productFilter);
-  }, [filteredByDate, productFilter]);
+    if (programFilter === "all") return filteredByDate;
+    return filteredByDate.filter(c => c.program === programFilter);
+  }, [filteredByDate, programFilter]);
 
   // Aggregate by campaign name
   const aggregated = useMemo(() => {
@@ -113,7 +113,7 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
       } else {
         map.set(c.name, {
           name: c.name,
-          product: c.product,
+          program: c.program,
           totalSpend: Number(c.daily_spend),
           totalLeads: Number(c.leads_count),
           totalPurchases: Number(c.purchases),
@@ -194,13 +194,13 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
-          {productFilters.map(({ key, label }) => (
+          {programFilters.map(({ key, label }) => (
             <button
               key={key}
-              onClick={() => setFilter("product", key)}
+              onClick={() => setFilter("program", key)}
               className={clsx(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                productFilter === key
+                programFilter === key
                   ? "bg-white dark:bg-gray-600 text-brand-600 shadow-sm dark:shadow-gray-900/20"
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
               )}
@@ -278,9 +278,9 @@ export function CampaignsTable({ campaigns }: CampaignsTableProps) {
                   <tr key={campaign.name} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-4 py-3 font-medium dark:text-gray-200">{campaign.name}</td>
                     <td className="px-4 py-3 hidden md:table-cell">
-                      {campaign.product ? (
+                      {campaign.program ? (
                         <span className="text-xs bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-full">
-                          {productLabels[campaign.product] || campaign.product}
+                          {productLabels[campaign.program] || campaign.program}
                         </span>
                       ) : (
                         <span className="text-gray-300 dark:text-gray-600">&mdash;</span>

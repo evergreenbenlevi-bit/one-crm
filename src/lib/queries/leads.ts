@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import type { LeadStatus, ProductType, LeadSource } from "@/lib/types/database";
+import type { LeadStatus, ProgramType, LeadSource } from "@/lib/types/database";
 
 interface LeadFilters {
-  product?: ProductType;
+  program?: ProgramType;
   status?: LeadStatus;
   source?: LeadSource;
   search?: string;
@@ -14,7 +14,7 @@ export async function getLeads(filters: LeadFilters = {}) {
   const supabase = await createClient();
   let query = supabase.from("leads").select("*").order("created_at", { ascending: false });
 
-  if (filters.product) query = query.eq("product", filters.product);
+  if (filters.program) query = query.eq("program", filters.program);
   if (filters.status) query = query.eq("current_status", filters.status);
   if (filters.source) query = query.eq("source", filters.source);
   if (filters.search) query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
@@ -57,19 +57,19 @@ export async function getLeadById(id: string) {
   return { ...lead, events: events || [], notes: notes || [], customer };
 }
 
-export async function getLeadsByStatus(product: ProductType) {
+export async function getLeadsByStatus(program: ProgramType) {
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("leads")
     .select("*")
-    .eq("product", product)
+    .eq("program", program)
     .order("updated_at", { ascending: false });
 
   const grouped: Record<string, typeof data> = {};
-  const statuses: LeadStatus[] = product === "simply_grow"
-    ? ["new", "watched_vsl", "got_wa", "filled_questionnaire", "sales_call", "closed"]
-    : ["new", "closed"];
+  const statuses: LeadStatus[] = program === "one_vip"
+    ? ["new", "consumed_content", "engaged", "applied", "qualified", "active_client"]
+    : ["new", "active_client"];
 
   statuses.forEach(s => { grouped[s] = []; });
   data?.forEach(lead => {

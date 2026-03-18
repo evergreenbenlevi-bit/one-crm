@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     campaign_id: body.campaign_id || null,
     ad_id: body.ad_id || null,
     ad_name: body.ad_name || null,
-    product: body.product || "freedom",
+    product: body.product || "one_core",
     current_status: "new",
   }).select().single();
 

@@ -20,12 +20,12 @@ export async function getFinancialData(startDate: string, endDate: string) {
   const metaSpend = campaigns.reduce((sum, c) => sum + Number(c.daily_spend), 0);
   const totalCost = totalExpenses + metaSpend;
 
-  const freedomRevenue = transactions.filter(t => t.product === "freedom").reduce((sum, t) => sum + Number(t.amount), 0);
-  const simplyGrowRevenue = transactions.filter(t => t.product === "simply_grow").reduce((sum, t) => sum + Number(t.amount), 0);
+  const oneCoreRevenue = transactions.filter(t => t.program === "one_core").reduce((sum, t) => sum + Number(t.amount), 0);
+  const oneVipRevenue = transactions.filter(t => t.program === "one_vip").reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const freedomLeads = transactions.filter(t => t.product === "freedom").length;
-  const simplyGrowLeads = transactions.filter(t => t.product === "simply_grow").length;
-  const totalPurchases = freedomLeads + simplyGrowLeads;
+  const oneCoreLeads = transactions.filter(t => t.program === "one_core").length;
+  const oneVipLeads = transactions.filter(t => t.program === "one_vip").length;
+  const totalPurchases = oneCoreLeads + oneVipLeads;
 
   const expensesByCategory: Record<string, number> = { meta_ads: metaSpend };
   expenses.forEach(e => {
@@ -33,22 +33,22 @@ export async function getFinancialData(startDate: string, endDate: string) {
   });
 
   return {
-    revenue: { total: totalRevenue, freedom: freedomRevenue, simplyGrow: simplyGrowRevenue },
+    revenue: { total: totalRevenue, oneCore: oneCoreRevenue, oneVip: oneVipRevenue },
     costs: { total: totalCost, byCategory: expensesByCategory },
     profit: totalRevenue - totalCost,
     roi: totalCost > 0 ? Math.round(((totalRevenue - totalCost) / totalCost) * 100) : 0,
     marketing: {
-      freedom: {
+      oneCore: {
         cpl: leadsCount > 0 ? Math.round((metaSpend / leadsCount) * 10) / 10 : 0,
-        cac: freedomLeads > 0 ? Math.round(metaSpend / freedomLeads) : 0,
-        roas: metaSpend > 0 ? Math.round((freedomRevenue / metaSpend) * 100) : 0,
-        conversion: leadsCount > 0 ? Math.round((freedomLeads / leadsCount) * 1000) / 10 : 0,
+        cac: oneCoreLeads > 0 ? Math.round(metaSpend / oneCoreLeads) : 0,
+        roas: metaSpend > 0 ? Math.round((oneCoreRevenue / metaSpend) * 100) : 0,
+        conversion: leadsCount > 0 ? Math.round((oneCoreLeads / leadsCount) * 1000) / 10 : 0,
       },
-      simplyGrow: {
+      oneVip: {
         cpl: leadsCount > 0 ? Math.round((metaSpend / leadsCount) * 10) / 10 : 0,
-        cac: simplyGrowLeads > 0 ? Math.round(metaSpend / simplyGrowLeads) : 0,
-        roas: metaSpend > 0 ? Math.round((simplyGrowRevenue / metaSpend) * 100) : 0,
-        conversion: leadsCount > 0 ? Math.round((simplyGrowLeads / leadsCount) * 1000) / 10 : 0,
+        cac: oneVipLeads > 0 ? Math.round(metaSpend / oneVipLeads) : 0,
+        roas: metaSpend > 0 ? Math.round((oneVipRevenue / metaSpend) * 100) : 0,
+        conversion: leadsCount > 0 ? Math.round((oneVipLeads / leadsCount) * 1000) / 10 : 0,
       },
     },
   };
@@ -61,7 +61,7 @@ export async function getRevenueTrends(months = 6) {
 
   const { data: transactions } = await supabase
     .from("transactions")
-    .select("amount, date, product")
+    .select("amount, date, program")
     .gte("date", startDate.toISOString())
     .eq("status", "completed")
     .order("date");

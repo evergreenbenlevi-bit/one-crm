@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import type { CustomerStatus, ProductType } from "@/lib/types/database";
+import type { CustomerStatus, ProgramType } from "@/lib/types/database";
 
 interface CustomerFilters {
   status?: CustomerStatus;
-  product?: ProductType;
+  product?: ProgramType;
   search?: string;
 }
 

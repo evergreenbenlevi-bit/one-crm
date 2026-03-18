@@ -4,14 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, Users, Briefcase, DollarSign, MoreHorizontal
+  LayoutDashboard, Users, Briefcase, CheckSquare, MoreHorizontal
 } from "lucide-react";
 
 const mobileNavItems = [
   { href: "/", label: "דשבורד", icon: LayoutDashboard },
+  { href: "/tasks", label: "משימות", icon: CheckSquare },
   { href: "/leads", label: "לידים", icon: Users },
   { href: "/customers", label: "לקוחות", icon: Briefcase },
-  { href: "/financial", label: "פיננסי", icon: DollarSign },
   { href: "/more", label: "עוד", icon: MoreHorizontal },
 ];
 
