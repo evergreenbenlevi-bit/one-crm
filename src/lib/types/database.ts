@@ -1,6 +1,6 @@
 export type LeadStatus = "new" | "consumed_content" | "engaged" | "applied" | "qualified" | "onboarding" | "active_client" | "completed" | "lost";
 export type ProgramType = "one_core" | "one_vip";
-export type LeadSource = "campaign" | "organic" | "youtube" | "referral" | "other";
+export type LeadSource = "campaign" | "organic" | "youtube" | "referral" | "instagram" | "linkedin" | "content" | "webinar" | "skool" | "other";
 export type CustomerStatus = "active" | "completed" | "churned";
 export type PaymentMethod = "cardcom" | "upay" | "other";
 export type PaymentStatus = "completed" | "pending" | "failed" | "refunded";
@@ -8,7 +8,7 @@ export type MeetingType = "onboarding" | "monthly_1on1" | "group_zoom";
 export type MeetingStatus = "scheduled" | "completed" | "cancelled" | "no_show";
 export type FileType = "contract" | "meeting_summary" | "transcript" | "other";
 export type GoalType = "revenue" | "customers" | "custom";
-export type FunnelEventType = "registered" | "consumed_content" | "engaged" | "applied" | "qualified" | "purchased";
+export type FunnelEventType = "registered" | "consumed_content" | "engaged" | "applied" | "qualified" | "purchased" | "viewed_content" | "engaged_dm" | "visited_offer_doc" | "started_onboarding" | "completed_program" | "onboarding" | "active_client" | "completed" | "lost";
 export type ExpenseCategory = "meta_ads" | "ai_tools" | "editing_design" | "software" | "other";
 
 export interface Lead {
@@ -22,7 +22,13 @@ export interface Lead {
   ad_id: string | null;
   ad_name: string | null;
   program: ProgramType;
+  interest_program: ProgramType | null;  // DB original field — mirrors program
+  instagram_handle: string | null;
+  how_found_us: string | null;
+  pain_points: string | null;
   current_status: LeadStatus;
+  lead_score: number | null;
+  score_level: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -34,7 +40,10 @@ export interface Customer {
   email: string | null;
   phone: string | null;
   occupation: string | null;
-  products_purchased: ProgramType[];
+  program: ProgramType | null;           // DB: single program field
+  products_purchased: ProgramType[];     // Used in app code (derived/webhook)
+  mentor: string | null;
+  skool_username: string | null;
   total_paid: number;
   payment_status: PaymentStatus;
   program_start_date: string | null;

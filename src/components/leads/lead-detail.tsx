@@ -59,22 +59,36 @@ const statusColors: Record<string, string> = {
   lost: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300",
 };
 
-const eventLabels: Record<FunnelEventType, string> = {
+const eventLabels: Record<string, string> = {
   registered: "נרשם",
   consumed_content: "צרך תוכן",
   engaged: "ביצע אינטראקציה",
   applied: "הגיש בקשה",
   qualified: "מתאים",
   purchased: "רכש",
+  viewed_content: "צפה בתוכן",
+  engaged_dm: "פנה בDM",
+  visited_offer_doc: "ביקר Offer Doc",
+  started_onboarding: "התחיל קליטה",
+  completed_program: "סיים תוכנית",
+  onboarding: "בקליטה",
+  active_client: "לקוח פעיל",
+  completed: "הסתיים",
+  lost: "אבוד",
 };
 
-const eventIcons: Record<FunnelEventType, typeof UserPlus> = {
+const eventIcons: Record<string, typeof UserPlus> = {
   registered: UserPlus,
   consumed_content: Eye,
   engaged: Send,
   applied: ClipboardList,
   qualified: MessageSquare,
   purchased: ShoppingCart,
+  viewed_content: Eye,
+  engaged_dm: MessageSquare,
+  visited_offer_doc: FileText,
+  started_onboarding: UserCheck,
+  completed_program: ShoppingCart,
 };
 
 const sourceLabels: Record<string, string> = {
@@ -97,7 +111,7 @@ const oneVipFunnel: FunnelEventType[] = [
 
 const oneCoreFunnel: FunnelEventType[] = ["registered", "purchased"];
 
-const funnelStepLabels: Record<FunnelEventType, string> = {
+const funnelStepLabels: Record<string, string> = {
   registered: "נרשם",
   consumed_content: "תוכן",
   engaged: "אינטראקציה",

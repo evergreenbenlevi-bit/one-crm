@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search");
   const source = searchParams.get("source");
 
-  if (program) query = query.eq("program", program);
+  // Filter by program OR interest_program (DB has both after migration)
+  if (program) query = query.or(`program.eq.${program},interest_program.eq.${program}`);
   if (status) query = query.eq("current_status", status);
   if (source) query = query.eq("source", source);
   if (search) query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
       occupation: body.occupation?.trim() || null,
       source: body.source || "other",
       program: body.program || "one_vip",
+      interest_program: body.program || "one_vip",  // keep both in sync
       current_status: "new",
       ad_name: body.ad_name?.trim() || null,
       campaign_id: body.campaign_id?.trim() || null,
