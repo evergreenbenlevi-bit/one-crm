@@ -3,6 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const isLocalMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === "https://placeholder.supabase.co";
 
+// Routes restricted to admin users only
+const ADMIN_ONLY_ROUTES = ["/settings", "/goals", "/content"];
+
 export async function middleware(request: NextRequest) {
   // Skip auth entirely in local mode
   if (isLocalMode) {
@@ -44,6 +47,27 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // RBAC: Block admin-only routes for non-admin users
+  if (user) {
+    const isAdminRoute = ADMIN_ONLY_ROUTES.some(
+      (route) => request.nextUrl.pathname === route || request.nextUrl.pathname.startsWith(route + "/")
+    );
+
+    if (isAdminRoute) {
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!roleData || roleData.role !== "admin") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;

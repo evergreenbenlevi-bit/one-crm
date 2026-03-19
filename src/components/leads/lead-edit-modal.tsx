@@ -72,7 +72,7 @@ export function LeadEditModal({ lead, open, onClose }: Props) {
         occupation: form.occupation.trim() || null,
         current_status: form.current_status,
         source: form.source,
-        product: form.program,
+        program: form.program,
         ad_name: form.ad_name.trim() || null,
         campaign_id: form.campaign_id.trim() || null,
       };

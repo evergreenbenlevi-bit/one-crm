@@ -21,6 +21,7 @@ import {
   UserPlus,
   MessageSquare,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import { LeadEditModal } from "./lead-edit-modal";
 import type { Lead, FunnelEvent, Note, Customer, FunnelEventType, ProgramType } from "@/lib/types/database";
@@ -129,11 +130,26 @@ export function LeadDetail({ lead }: LeadDetailProps) {
   const [noteContent, setNoteContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const funnelSteps =
     lead.program === "one_vip" ? oneVipFunnel : oneCoreFunnel;
 
   const completedEventTypes = new Set(lead.events.map((e) => e.event_type));
+
+  // ── Delete lead ──
+  async function handleDelete() {
+    if (!confirm(`למחוק את הליד "${lead.name}"? פעולה זו בלתי הפיכה.`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/leads");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   // ── Add note ──
   async function handleAddNote(e: React.FormEvent) {
@@ -226,6 +242,13 @@ export function LeadDetail({ lead }: LeadDetailProps) {
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors"
                 >
                   <Pencil size={16} /> עריכה
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 transition-colors"
+                >
+                  <Trash2 size={16} /> {deleting ? "מוחק..." : "מחיקה"}
                 </button>
                 {lead.phone && (
                   <a

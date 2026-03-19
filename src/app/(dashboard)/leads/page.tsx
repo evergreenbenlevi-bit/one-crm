@@ -5,7 +5,8 @@ import { Tabs } from "@/components/ui/tabs";
 import { LeadFilters } from "@/components/leads/lead-filters";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { LeadsKanban } from "@/components/leads/leads-kanban";
-import { LayoutGrid, List } from "lucide-react";
+import { LeadAddModal } from "@/components/leads/lead-add-modal";
+import { LayoutGrid, List, Plus } from "lucide-react";
 import { clsx } from "clsx";
 import type { Lead, LeadStatus, ProgramType } from "@/lib/types/database";
 
@@ -30,6 +31,7 @@ export default function LeadsPage() {
   const [source, setSource] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -74,6 +76,13 @@ export default function LeadsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold dark:text-gray-100">לידים</h1>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
+          >
+            <Plus size={16} />
+            הוסף ליד
+          </button>
           <Tabs tabs={programTabs} activeTab={program} onChange={(key) => setProgram(key as ProgramType)} />
           <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
             {viewModes.map(mode => (
@@ -108,6 +117,13 @@ export default function LeadsPage() {
       ) : (
         <LeadsTable leads={leads} />
       )}
+
+      <LeadAddModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onCreated={fetchLeads}
+        defaultProgram={program}
+      />
     </div>
   );
 }

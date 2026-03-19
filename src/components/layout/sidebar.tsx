@@ -6,26 +6,32 @@ import { clsx } from "clsx";
 import {
   LayoutDashboard, Users, Briefcase, DollarSign,
   BarChart3, Calendar, Target, Settings, LogOut,
-  FileText, TrendingUp, CheckSquare
+  FileText, TrendingUp, CheckSquare, FolderKanban
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import type { UserRole } from "@/lib/rbac";
 
 const navItems = [
-  { href: "/", label: "דשבורד", icon: LayoutDashboard },
-  { href: "/tasks", label: "משימות", icon: CheckSquare },
-  { href: "/leads", label: "לידים", icon: Users },
-  { href: "/customers", label: "לקוחות", icon: Briefcase },
-  { href: "/financial", label: "פיננסי", icon: DollarSign },
-  { href: "/applications", label: "בקשות", icon: FileText },
-  { href: "/campaigns", label: "קמפיינים", icon: BarChart3 },
-  { href: "/content", label: "תוכן", icon: TrendingUp },
-  { href: "/meetings", label: "פגישות", icon: Calendar },
-  { href: "/goals", label: "יעדים", icon: Target },
-  { href: "/settings", label: "הגדרות", icon: Settings },
+  { href: "/", label: "דשבורד", icon: LayoutDashboard, adminOnly: false },
+  { href: "/projects", label: "פרויקטים", icon: FolderKanban, adminOnly: false },
+  { href: "/tasks", label: "משימות", icon: CheckSquare, adminOnly: false },
+  { href: "/leads", label: "לידים", icon: Users, adminOnly: false },
+  { href: "/customers", label: "לקוחות", icon: Briefcase, adminOnly: false },
+  { href: "/financial", label: "פיננסי", icon: DollarSign, adminOnly: false },
+  { href: "/applications", label: "בקשות", icon: FileText, adminOnly: false },
+  { href: "/campaigns", label: "קמפיינים", icon: BarChart3, adminOnly: false },
+  { href: "/content", label: "תוכן", icon: TrendingUp, adminOnly: true },
+  { href: "/meetings", label: "פגישות", icon: Calendar, adminOnly: false },
+  { href: "/goals", label: "יעדים", icon: Target, adminOnly: true },
+  { href: "/settings", label: "הגדרות", icon: Settings, adminOnly: true },
 ];
 
-export function Sidebar() {
+export function Sidebar({ role = "admin" }: { role?: UserRole }) {
   const pathname = usePathname();
+
+  const visibleItems = navItems.filter(
+    (item) => !item.adminOnly || role === "admin"
+  );
 
   async function handleLogout() {
     try {
@@ -43,7 +49,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));
 

@@ -6,22 +6,27 @@ import { clsx } from "clsx";
 import {
   LayoutDashboard, Users, Briefcase, CheckSquare, MoreHorizontal
 } from "lucide-react";
+import type { UserRole } from "@/lib/rbac";
 
 const mobileNavItems = [
-  { href: "/", label: "דשבורד", icon: LayoutDashboard },
-  { href: "/tasks", label: "משימות", icon: CheckSquare },
-  { href: "/leads", label: "לידים", icon: Users },
-  { href: "/customers", label: "לקוחות", icon: Briefcase },
-  { href: "/more", label: "עוד", icon: MoreHorizontal },
+  { href: "/", label: "דשבורד", icon: LayoutDashboard, adminOnly: false },
+  { href: "/tasks", label: "משימות", icon: CheckSquare, adminOnly: true },
+  { href: "/leads", label: "לידים", icon: Users, adminOnly: false },
+  { href: "/customers", label: "לקוחות", icon: Briefcase, adminOnly: false },
+  { href: "/more", label: "עוד", icon: MoreHorizontal, adminOnly: false },
 ];
 
-export function MobileNav() {
+export function MobileNav({ role = "admin" }: { role?: UserRole }) {
   const pathname = usePathname();
+
+  const visibleItems = mobileNavItems.filter(
+    (item) => !item.adminOnly || role === "admin"
+  );
 
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">
       <div className="flex justify-around items-center h-16 pb-safe">
-        {mobileNavItems.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = pathname === item.href ||
             (item.href !== "/" && pathname.startsWith(item.href));
 

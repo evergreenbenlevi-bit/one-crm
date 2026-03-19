@@ -134,9 +134,23 @@ export function LeadsKanban({ columns, statuses, onStatusChange }: LeadsKanbanPr
     if (!over) return;
 
     const leadId = String(active.id);
-    const newStatus = String(over.id) as LeadStatus;
 
-    // Find current status
+    // over.id could be a column status OR a card's lead ID — resolve to status
+    const validStatuses = Object.keys(columns) as LeadStatus[];
+    let newStatus: LeadStatus | undefined;
+
+    if (validStatuses.includes(over.id as LeadStatus)) {
+      // Dropped on column
+      newStatus = over.id as LeadStatus;
+    } else {
+      // Dropped on a card — find which column that card belongs to
+      newStatus = Object.entries(columns).find(([, leads]) =>
+        leads.some(l => l.id === String(over.id))
+      )?.[0] as LeadStatus | undefined;
+    }
+
+    if (!newStatus) return;
+
     const currentStatus = Object.entries(columns).find(([, leads]) =>
       leads.some(l => l.id === leadId)
     )?.[0];
