@@ -32,6 +32,11 @@ interface GrowPayload {
   // Invoice-only fields
   invoiceNumber?: string;
   invoiceUrl?: string;
+  // Static payment page fields
+  purchasePageKey?: string;
+  purchasePageTitle?: string;
+  amount?: number | string;          // quantity of items
+  purchaseCustomField?: Record<string, string>;  // custom fields (city, street, etc.)
   // Failed recurring fields
   regular_payment_id?: string;
   payer_name?: string;
@@ -200,6 +205,11 @@ export async function POST(request: NextRequest) {
       firstPaymentSum: payload.firstPaymentSum,
       periodicalPaymentSum: payload.periodicalPaymentSum,
       directDebitId: payload.directDebitId,
+      purchasePageKey: payload.purchasePageKey,
+      purchasePageTitle: payload.purchasePageTitle,
+      itemQuantity: payload.amount,
+      customFields: payload.purchaseCustomField,
+      paymentDesc: payload.paymentDesc,
       isRecurring,
     },
   });
