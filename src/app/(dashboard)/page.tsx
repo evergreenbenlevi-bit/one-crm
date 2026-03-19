@@ -3,6 +3,7 @@ import { GoalProgress } from "@/components/dashboard/goal-progress";
 import { RevenueSection } from "@/components/dashboard/revenue-section";
 import { LeadsSection } from "@/components/dashboard/leads-section";
 import { ActionItems } from "@/components/dashboard/action-items";
+import { TeamDashboard } from "@/components/dashboard/team-dashboard";
 import {
   getDashboardData,
   getTopAds,
@@ -12,8 +13,24 @@ import {
   getRevenueChart,
   getCurrentGoal,
 } from "@/lib/queries/dashboard";
+import type { UserRole } from "@/lib/rbac";
+
+const isLocalMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === "https://placeholder.supabase.co";
 
 export default async function DashboardPage() {
+  let role: UserRole = "admin";
+
+  if (!isLocalMode) {
+    const { getUserRole } = await import("@/lib/rbac");
+    role = await getUserRole();
+  }
+
+  // Non-admin users get a clean team dashboard
+  if (role !== "admin") {
+    return <TeamDashboard />;
+  }
+
+  // Admin dashboard — full business view
   const [data, topAds, hotLeads, meetings, ending, chartData, goal] = await Promise.all([
     getDashboardData("month"),
     getTopAds(3),

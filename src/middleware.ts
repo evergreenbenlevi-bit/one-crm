@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const isLocalMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === "https://placeholder.supabase.co";
 
 // Routes restricted to admin users only
-const ADMIN_ONLY_ROUTES = ["/settings", "/goals", "/content"];
+const ADMIN_ONLY_ROUTES = ["/settings", "/goals", "/content", "/leads", "/customers", "/financial", "/applications", "/campaigns", "/meetings"];
 
 export async function middleware(request: NextRequest) {
   // Skip auth entirely in local mode

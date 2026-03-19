@@ -4,24 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal
+  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal, CheckSquare, FolderKanban
 } from "lucide-react";
 import type { UserRole } from "@/lib/rbac";
 
-const mobileNavItems = [
-  { href: "/", label: "דשבורד", icon: LayoutDashboard, adminOnly: false },
-  { href: "/leads", label: "לידים", icon: Users, adminOnly: false },
-  { href: "/meetings", label: "פגישות", icon: CalendarDays, adminOnly: false },
-  { href: "/customers", label: "לקוחות", icon: Briefcase, adminOnly: false },
-  { href: "/more", label: "עוד", icon: MoreHorizontal, adminOnly: false },
+const adminNavItems = [
+  { href: "/", label: "דשבורד", icon: LayoutDashboard },
+  { href: "/leads", label: "לידים", icon: Users },
+  { href: "/meetings", label: "פגישות", icon: CalendarDays },
+  { href: "/customers", label: "לקוחות", icon: Briefcase },
+  { href: "/more", label: "עוד", icon: MoreHorizontal },
+];
+
+const teamNavItems = [
+  { href: "/", label: "דשבורד", icon: LayoutDashboard },
+  { href: "/projects", label: "פרויקטים", icon: FolderKanban },
+  { href: "/tasks", label: "משימות", icon: CheckSquare },
 ];
 
 export function MobileNav({ role = "admin" }: { role?: UserRole }) {
   const pathname = usePathname();
 
-  const visibleItems = mobileNavItems.filter(
-    (item) => !item.adminOnly || role === "admin"
-  );
+  const visibleItems = role === "admin" ? adminNavItems : teamNavItems;
 
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">
