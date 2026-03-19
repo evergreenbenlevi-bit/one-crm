@@ -29,6 +29,9 @@ const typeConfig: Record<MeetingType, { label: string; color: string; bg: string
   onboarding: { label: "אונבורדינג", color: "text-emerald-700 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/30" },
   monthly_1on1: { label: "פגישה חודשית", color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-900/30" },
   group_zoom: { label: "זום קבוצתי", color: "text-violet-700 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-900/30" },
+  discovery_call: { label: "שיחת גילוי", color: "text-blue-700 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-900/30" },
+  strategy_session: { label: "פגישת אסטרטגיה", color: "text-indigo-700 dark:text-indigo-400", bg: "bg-indigo-50 dark:bg-indigo-900/30" },
+  workshop: { label: "סדנה", color: "text-pink-700 dark:text-pink-400", bg: "bg-pink-50 dark:bg-pink-900/30" },
 };
 
 const statusConfig: Record<MeetingStatus, { label: string; color: string }> = {
@@ -55,7 +58,7 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
     setUpdatingStatus(false);
   }
 
-  const typeInfo = typeConfig[meeting.type];
+  const typeInfo = typeConfig[meeting.type] ?? { label: meeting.type, color: "text-gray-700 dark:text-gray-400", bg: "bg-gray-50 dark:bg-gray-900/30" };
   const statusInfo = statusConfig[status];
   const meetingDate = new Date(meeting.date);
   const timeStr = format(meetingDate, "HH:mm");

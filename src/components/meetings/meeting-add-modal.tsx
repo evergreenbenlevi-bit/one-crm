@@ -5,9 +5,12 @@ import { X } from "lucide-react";
 import type { MeetingType } from "@/lib/types/database";
 
 const typeOptions: { value: MeetingType; label: string }[] = [
+  { value: "discovery_call", label: "שיחת גילוי" },
   { value: "onboarding", label: "פגישת Onboarding" },
   { value: "monthly_1on1", label: "פגישה 1:1 חודשית" },
+  { value: "strategy_session", label: "פגישת אסטרטגיה" },
   { value: "group_zoom", label: "זום קבוצתי" },
+  { value: "workshop", label: "סדנה" },
 ];
 
 interface Customer { id: string; name: string; }
