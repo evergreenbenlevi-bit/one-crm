@@ -9,6 +9,7 @@ import {
   FileText, TrendingUp, CheckSquare, FolderKanban
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { GlobalSearch } from "@/components/layout/global-search";
 import type { UserRole } from "@/lib/rbac";
 
 const navItems = [
@@ -45,7 +46,8 @@ export function Sidebar({ role = "admin" }: { role?: UserRole }) {
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 h-screen sticky top-0">
       <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-        <h1 className="text-xl font-bold text-brand-700 dark:text-brand-400">ONE™ CRM</h1>
+        <h1 className="text-xl font-bold text-brand-700 dark:text-brand-400 mb-4">ONE™ CRM</h1>
+        <GlobalSearch />
       </div>
 
       <nav className="flex-1 p-4 space-y-1">

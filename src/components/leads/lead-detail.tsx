@@ -185,6 +185,12 @@ export function LeadDetail({ lead }: LeadDetailProps) {
     }
   }
 
+  // ── Delete note ──
+  async function handleDeleteNote(noteId: string) {
+    setNotes((prev) => prev.filter((n) => n.id !== noteId));
+    await fetch(`/api/notes/${noteId}`, { method: "DELETE" });
+  }
+
   // ── Add note ──
   async function handleAddNote(e: React.FormEvent) {
     e.preventDefault();
@@ -494,10 +500,18 @@ export function LeadDetail({ lead }: LeadDetailProps) {
                     className="rounded-xl bg-gray-50 dark:bg-gray-700 px-4 py-3"
                   >
                     <p className="text-sm whitespace-pre-wrap dark:text-gray-200">{note.content}</p>
-                    <div className="flex items-center gap-2 mt-2 text-xs text-gray-400 dark:text-gray-500">
-                      <span>{note.author}</span>
-                      <span>·</span>
-                      <span>{formatDateTime(note.created_at)}</span>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                        <span>{note.author}</span>
+                        <span>·</span>
+                        <span>{formatDateTime(note.created_at)}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
                 ))}

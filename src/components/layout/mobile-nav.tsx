@@ -4,14 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, Users, Briefcase, CheckSquare, MoreHorizontal
+  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal
 } from "lucide-react";
 import type { UserRole } from "@/lib/rbac";
 
 const mobileNavItems = [
   { href: "/", label: "דשבורד", icon: LayoutDashboard, adminOnly: false },
-  { href: "/tasks", label: "משימות", icon: CheckSquare, adminOnly: true },
   { href: "/leads", label: "לידים", icon: Users, adminOnly: false },
+  { href: "/meetings", label: "פגישות", icon: CalendarDays, adminOnly: false },
   { href: "/customers", label: "לקוחות", icon: Briefcase, adminOnly: false },
   { href: "/more", label: "עוד", icon: MoreHorizontal, adminOnly: false },
 ];
