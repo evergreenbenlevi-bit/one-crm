@@ -13,6 +13,7 @@ const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "infrastructure", "personal"
 async function getAuthUser(request: NextRequest) {
   if (isLocalMode) return { id: "local-admin", role: "admin" as const };
 
+  // Cookie client for auth session
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -22,7 +23,10 @@ async function getAuthUser(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
+  // Admin client for user_roles — bypasses RLS infinite recursion bug
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  const { data } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
   return { id: user.id, role: (data?.role as "admin" | "user") || "user" };
 }
 
@@ -130,6 +134,7 @@ export async function POST(request: NextRequest) {
     source_date: body.source_date || null,
     depends_on: body.depends_on || null,
     parent_id: body.parent_id || null,
+    tags: Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string").slice(0, 20) : [],
   };
 
   if (isLocalMode) {
@@ -176,6 +181,9 @@ export async function PATCH(request: NextRequest) {
   if (rawUpdates.category !== undefined) updates.category = rawUpdates.category;
   if (rawUpdates.due_date !== undefined) updates.due_date = rawUpdates.due_date || null;
   if (rawUpdates.position !== undefined) updates.position = rawUpdates.position;
+  if (rawUpdates.tags !== undefined) updates.tags = Array.isArray(rawUpdates.tags)
+    ? rawUpdates.tags.filter((t: unknown) => typeof t === "string").slice(0, 20)
+    : [];
 
   if (isLocalMode) {
     const task = updateTask(id, updates);

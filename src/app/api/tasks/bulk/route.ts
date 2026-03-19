@@ -20,7 +20,9 @@ async function requireAdmin(request: NextRequest): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  const { data } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
   return data?.role === "admin";
 }
 

@@ -11,6 +11,7 @@ interface TaskFiltersProps {
   onPriorityChange: (v: TaskPriority | "all") => void;
   onOwnerChange: (v: TaskOwner | "all") => void;
   onCategoryChange: (v: TaskCategory | "all") => void;
+  hideOwner?: boolean;
 }
 
 function FilterSelect<T extends string>({
@@ -43,13 +44,13 @@ function FilterSelect<T extends string>({
   );
 }
 
-export function TaskFilters({ priority, owner, category, onPriorityChange, onOwnerChange, onCategoryChange }: TaskFiltersProps) {
+export function TaskFilters({ priority, owner, category, onPriorityChange, onOwnerChange, onCategoryChange, hideOwner }: TaskFiltersProps) {
   const hasFilters = priority !== "all" || owner !== "all" || category !== "all";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
       <FilterSelect label="עדיפות" value={priority} options={priorityLabels} onChange={onPriorityChange} />
-      <FilterSelect label="אחראי" value={owner} options={ownerLabels} onChange={onOwnerChange} />
+      {!hideOwner && <FilterSelect label="אחראי" value={owner} options={ownerLabels} onChange={onOwnerChange} />}
       <FilterSelect label="קטגוריה" value={category} options={categoryLabels} onChange={onCategoryChange} />
       {hasFilters && (
         <button

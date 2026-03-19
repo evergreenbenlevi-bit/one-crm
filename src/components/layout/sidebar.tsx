@@ -27,7 +27,7 @@ const navItems = [
   { href: "/settings", label: "הגדרות", icon: Settings, adminOnly: true },
 ];
 
-export function Sidebar({ role = "admin" }: { role?: UserRole }) {
+export function Sidebar({ role = "admin", userEmail }: { role?: UserRole; userEmail?: string | null }) {
   const pathname = usePathname();
 
   const visibleItems = navItems.filter(
@@ -73,7 +73,23 @@ export function Sidebar({ role = "admin" }: { role?: UserRole }) {
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-1">
+      <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-2">
+        {userEmail && (
+          <div className="flex items-center gap-2 px-2 py-1.5">
+            <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center text-xs font-bold text-brand-700 dark:text-brand-300 flex-shrink-0">
+              {userEmail[0].toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{userEmail.split("@")[0]}</p>
+              <span className={clsx(
+                "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                role === "admin" ? "text-brand-600 dark:text-brand-400" : "text-gray-400 dark:text-gray-500"
+              )}>
+                {role === "admin" ? "מנהל" : "צוות"}
+              </span>
+            </div>
+          </div>
+        )}
         <ThemeToggle />
         <button
           onClick={handleLogout}

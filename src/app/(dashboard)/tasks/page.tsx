@@ -179,13 +179,13 @@ export default function TasksPage() {
 
   async function handleAddTask(taskData: {
     title: string; description: string; priority: TaskPriority;
-    status: TaskStatus; owner: TaskOwner; category: TaskCategory; due_date: string | null;
+    status: TaskStatus; owner: TaskOwner; category: TaskCategory; due_date: string | null; tags: string[];
   }) {
     try {
       const res = await fetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...taskData, position: 0 }),
+        body: JSON.stringify({ ...taskData, position: 0, tags: taskData.tags || [] }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -212,7 +212,7 @@ export default function TasksPage() {
         body: JSON.stringify({
           id: task.id, title: task.title, description: task.description,
           priority: task.priority, status: task.status, owner: task.owner,
-          category: task.category, due_date: task.due_date,
+          category: task.category, due_date: task.due_date, tags: task.tags || [],
         }),
       });
       if (!res.ok) throw new Error();

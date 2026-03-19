@@ -56,13 +56,17 @@ export async function middleware(request: NextRequest) {
     );
 
     if (isAdminRoute) {
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
+      // Use service role key via direct fetch to bypass RLS infinite recursion bug
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const roleRes = await fetch(
+        `${supabaseUrl}/rest/v1/user_roles?select=role&user_id=eq.${user.id}&limit=1`,
+        { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+      );
+      const roleRows: { role: string }[] = roleRes.ok ? await roleRes.json() : [];
+      const isAdmin = roleRows[0]?.role === "admin";
 
-      if (!roleData || roleData.role !== "admin") {
+      if (!isAdmin) {
         const url = request.nextUrl.clone();
         url.pathname = "/";
         return NextResponse.redirect(url);

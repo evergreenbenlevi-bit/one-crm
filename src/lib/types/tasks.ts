@@ -12,6 +12,7 @@ export interface Task {
   owner: TaskOwner;
   category: TaskCategory;
   due_date: string | null;
+  tags: string[];
   depends_on: string | null;
   parent_id: string | null;
   source: string | null;
@@ -31,11 +32,19 @@ export const statusLabels: Record<TaskStatus, string> = {
 };
 
 export const statusColors: Record<TaskStatus, string> = {
-  backlog: "bg-gray-100 dark:bg-gray-800",
-  todo: "bg-blue-50 dark:bg-blue-900/20",
-  in_progress: "bg-amber-50 dark:bg-amber-900/20",
-  waiting_ben: "bg-purple-50 dark:bg-purple-900/20",
-  done: "bg-green-50 dark:bg-green-900/20",
+  backlog: "bg-gray-50 dark:bg-gray-800/80",
+  todo: "bg-blue-50/60 dark:bg-blue-900/10",
+  in_progress: "bg-amber-50/60 dark:bg-amber-900/10",
+  waiting_ben: "bg-purple-50/60 dark:bg-purple-900/10",
+  done: "bg-green-50/60 dark:bg-green-900/10",
+};
+
+export const statusAccent: Record<TaskStatus, string> = {
+  backlog: "bg-gray-300 dark:bg-gray-600",
+  todo: "bg-blue-400",
+  in_progress: "bg-amber-400",
+  waiting_ben: "bg-purple-400",
+  done: "bg-green-400",
 };
 
 export const priorityLabels: Record<TaskPriority, string> = {
@@ -81,3 +90,5 @@ export const categoryColors: Record<TaskCategory, string> = {
 };
 
 export const TASK_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
+
+export const SUGGESTED_TAGS = ["#blocked", "#quick-win", "#sprint", "#waiting-api", "#review", "#urgent", "#research", "#design"];
