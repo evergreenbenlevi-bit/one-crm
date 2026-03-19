@@ -119,7 +119,7 @@ export default function LeadsPage() {
       {loading ? (
         <div className="text-center py-12 text-gray-400 dark:text-gray-500">טוען...</div>
       ) : view === "kanban" ? (
-        <LeadsKanban columns={columns} statuses={statuses} onStatusChange={handleStatusChange} />
+        <LeadsKanban columns={columns} statuses={statuses} onStatusChange={handleStatusChange} onDelete={(id) => handleBulkDelete([id])} />
       ) : (
         <LeadsTable leads={leads} onStatusChange={handleStatusChange} onBulkDelete={handleBulkDelete} />
       )}

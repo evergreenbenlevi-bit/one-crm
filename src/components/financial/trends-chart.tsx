@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -25,6 +26,9 @@ interface MonthlyPoint {
 }
 
 export function TrendsChart({ transactions, expenses, campaigns }: TrendsChartProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Aggregate all data by month
   const monthlyMap = new Map<string, { revenue: number; expenses: number }>();
 
@@ -64,6 +68,8 @@ export function TrendsChart({ transactions, expenses, campaigns }: TrendsChartPr
         profit: Math.round(val.revenue - val.expenses),
       };
     });
+
+  if (!mounted) return <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 h-[340px]" />;
 
   if (data.length === 0) {
     return (

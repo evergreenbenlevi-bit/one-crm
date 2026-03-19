@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { StatCard } from "@/components/ui/stat-card";
 import { DollarSign, ShoppingBag } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -16,6 +18,9 @@ interface RevenueSectionProps {
 }
 
 export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Group chart data by month
   const monthlyData = chartData.reduce<Record<string, { month: string; oneCore: number; oneVip: number }>>((acc, item) => {
     const month = new Date(item.date).toLocaleDateString("he-IL", { month: "short", year: "2-digit" });
@@ -35,30 +40,36 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
       </h2>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          label="סה״כ החודש"
-          value={`₪${revenue.total.toLocaleString("he-IL")}`}
-          icon={DollarSign}
-        />
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
-          <span className="text-sm text-gray-500 dark:text-gray-400">ONE™ Core</span>
-          <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.oneCore.toLocaleString("he-IL")}</div>
-          <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
-            <ShoppingBag size={12} />
-            <span>{revenue.oneCoreCount} רוכשים</span>
+        <Link href="/financial" className="block hover:scale-[1.02] transition-transform">
+          <StatCard
+            label="סה״כ החודש ↗"
+            value={`₪${revenue.total.toLocaleString("he-IL")}`}
+            icon={DollarSign}
+          />
+        </Link>
+        <Link href="/financial" className="block hover:scale-[1.02] transition-transform">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 h-full">
+            <span className="text-sm text-gray-500 dark:text-gray-400">ONE™ Core</span>
+            <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.oneCore.toLocaleString("he-IL")}</div>
+            <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
+              <ShoppingBag size={12} />
+              <span>{revenue.oneCoreCount} רוכשים</span>
+            </div>
           </div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
-          <span className="text-sm text-gray-500 dark:text-gray-400">ONE™ VIP</span>
-          <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.oneVip.toLocaleString("he-IL")}</div>
-          <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
-            <ShoppingBag size={12} />
-            <span>{revenue.oneVipCount} לקוחות</span>
+        </Link>
+        <Link href="/financial" className="block hover:scale-[1.02] transition-transform">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 h-full">
+            <span className="text-sm text-gray-500 dark:text-gray-400">ONE™ VIP</span>
+            <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.oneVip.toLocaleString("he-IL")}</div>
+            <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
+              <ShoppingBag size={12} />
+              <span>{revenue.oneVipCount} לקוחות</span>
+            </div>
           </div>
-        </div>
+        </Link>
       </div>
 
-      {chartEntries.length > 0 && (
+      {mounted && chartEntries.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">טרנד הכנסות — 6 חודשים</h3>
           <ResponsiveContainer width="100%" height={200}>

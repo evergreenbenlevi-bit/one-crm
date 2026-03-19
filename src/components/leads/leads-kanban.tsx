@@ -17,7 +17,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Lead, LeadStatus } from "@/lib/types/database";
-import { Phone, MessageCircle, StickyNote } from "lucide-react";
+import { Phone, MessageCircle, StickyNote, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { he } from "date-fns/locale";
@@ -39,9 +39,10 @@ interface LeadsKanbanProps {
   columns: Record<string, Lead[]>;
   statuses: LeadStatus[];
   onStatusChange: (leadId: string, newStatus: LeadStatus) => void;
+  onDelete?: (leadId: string) => void;
 }
 
-function KanbanCard({ lead }: { lead: Lead }) {
+function KanbanCard({ lead, onDelete }: { lead: Lead; onDelete?: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -116,6 +117,17 @@ function KanbanCard({ lead }: { lead: Lead }) {
         >
           <StickyNote size={12} />
         </button>
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`למחוק את "${lead.name}"?`)) onDelete(lead.id);
+            }}
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-300 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
       </div>
       {showNote && (
         <form onSubmit={handleQuickNote} onClick={e => e.stopPropagation()} className="mt-2">
@@ -141,7 +153,7 @@ function KanbanCard({ lead }: { lead: Lead }) {
   );
 }
 
-function KanbanColumn({ status, leads }: { status: string; leads: Lead[] }) {
+function KanbanColumn({ status, leads, onDelete }: { status: string; leads: Lead[]; onDelete?: (id: string) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
@@ -158,14 +170,14 @@ function KanbanColumn({ status, leads }: { status: string; leads: Lead[] }) {
         )}
       >
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
-          {leads.map(lead => <KanbanCard key={lead.id} lead={lead} />)}
+          {leads.map(lead => <KanbanCard key={lead.id} lead={lead} onDelete={onDelete} />)}
         </SortableContext>
       </div>
     </div>
   );
 }
 
-export function LeadsKanban({ columns, statuses, onStatusChange }: LeadsKanbanProps) {
+export function LeadsKanban({ columns, statuses, onStatusChange, onDelete }: LeadsKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -217,7 +229,7 @@ export function LeadsKanban({ columns, statuses, onStatusChange }: LeadsKanbanPr
     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {statuses.map(status => (
-          <KanbanColumn key={status} status={status} leads={columns[status] || []} />
+          <KanbanColumn key={status} status={status} leads={columns[status] || []} onDelete={onDelete} />
         ))}
       </div>
       <DragOverlay>
