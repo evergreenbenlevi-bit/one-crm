@@ -1,71 +1,131 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 
-// GROW webhook types:
-// 1. Regular payment (one-time / installments)
-// 2. Recurring payment (2nd charge onward)
-// 3. Failed recurring payment
-// 4. Invoice creation
+// GROW webhook formats:
+// A. Legacy/API format — flat JSON with paymentSum, transactionCode, allPaymentNum
+// B. PaymentLinks (new) — wrapped in { err, status, data: { sum, transactionId, allPaymentsNum, productData[], ... } }
+// C. Failed recurring — snake_case fields (regular_payment_id, error_message)
+// D. Invoice — { transactionCode, invoiceNumber, invoiceUrl }
 // Docs: https://grow-il.readme.io/docs/overview-7
 
-interface GrowPayload {
-  webhookKey?: string;
-  transactionCode?: string;
-  transactionType?: string;  // "אשראי"
-  paymentSum?: number;
-  paymentsNum?: number;       // current installment number
-  allPaymentNum?: number;     // total installments
-  firstPaymentSum?: number;
-  periodicalPaymentSum?: number;
-  paymentType?: string;       // "רגיל" | "תשלומים" | "הוראת קבע"
-  paymentDate?: string;
-  asmachta?: string;
-  paymentDesc?: string;
-  fullName?: string;
-  payerPhone?: string;
-  payerEmail?: string;
-  cardSuffix?: string;
-  cardBrand?: string;         // "Visa" | "Mastercard"
-  cardType?: string;          // "Local"
-  paymentSource?: string;     // "מערכת חיצונית" | "אתר עסקי" | "ריצת הוראת קבע"
-  directDebitId?: string;
-  // Invoice-only fields
-  invoiceNumber?: string;
-  invoiceUrl?: string;
-  // Static payment page fields
-  purchasePageKey?: string;
-  purchasePageTitle?: string;
-  amount?: number | string;          // quantity of items
-  purchaseCustomField?: Record<string, string>;  // custom fields (city, street, etc.)
-  // Failed recurring fields
-  regular_payment_id?: string;
-  payer_name?: string;
-  phone?: string;
-  email?: string;
-  error_message?: string;
-  charges_attempts?: string;
-  webhook_key?: string;
-  sum?: string;
+// ── Normalized payment data after parsing any format ──
+interface NormalizedPayment {
+  webhookKey: string;
+  transactionCode: string;
+  transactionType: string;
+  amount: number;
+  paymentsNum: number;
+  allPaymentNum: number;
+  firstPaymentSum: number;
+  periodicalPaymentSum: number;
+  paymentType: string;
+  paymentDate: string;
+  asmachta: string;
+  description: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  cardSuffix: string;
+  cardBrand: string;
+  cardType: string;
+  paymentSource: string;
+  // Extended fields
+  directDebitId: string;
+  purchasePageKey: string;
+  purchasePageTitle: string;
+  transactionToken: string;
+  processId: string;
+  processToken: string;
+  cardExp: string;
+  invoiceName: string;
+  address: string;
+  // Complex fields
+  productData: Array<{ name: string; quantity: string; price: string; catalog_number: string; vat: string }>;
+  shipping: { type: string; amount: string } | null;
+  dynamicFields: Array<{ label: string; field_value: string }>;
+  customFields: Record<string, string>;
+  isPaymentLink: boolean;
+  isRecurring: boolean;
+  rawPayload: Record<string, unknown>;
+}
+
+function str(val: unknown): string {
+  if (val === null || val === undefined) return "";
+  return String(val);
+}
+
+function num(val: unknown): number {
+  const n = parseFloat(String(val));
+  return Number.isFinite(n) ? n : 0;
+}
+
+// ── Normalize any GROW webhook format into a single shape ──
+function normalizePayload(raw: Record<string, unknown>): NormalizedPayment {
+  // Detect PaymentLinks format: has { data: { ... } } wrapper
+  const isPaymentLink = typeof raw.data === "object" && raw.data !== null && !Array.isArray(raw.data);
+  const d = isPaymentLink ? (raw.data as Record<string, unknown>) : raw;
+
+  const paymentType = str(d.paymentType);
+  const directDebitId = str(d.directDebitId);
+  const isRecurring = paymentType === "הוראת קבע" || paymentType.includes("קבע") || !!directDebitId;
+
+  return {
+    webhookKey: str(d.webhookKey || raw.webhookKey || raw.webhook_key),
+    transactionCode: str(d.transactionCode || d.transactionId),
+    transactionType: str(d.transactionType || d.transactionTypeId),
+    amount: num(d.paymentSum || d.sum),
+    paymentsNum: num(d.paymentsNum),
+    allPaymentNum: num(d.allPaymentNum || d.allPaymentsNum),
+    firstPaymentSum: num(d.firstPaymentSum),
+    periodicalPaymentSum: num(d.periodicalPaymentSum),
+    paymentType: str(d.paymentType),
+    paymentDate: str(d.paymentDate),
+    asmachta: str(d.asmachta),
+    description: str(d.paymentDesc || d.description),
+    fullName: str(d.fullName),
+    phone: str(d.payerPhone),
+    email: str(d.payerEmail),
+    cardSuffix: str(d.cardSuffix),
+    cardBrand: str(d.cardBrand),
+    cardType: str(d.cardType),
+    paymentSource: str(d.paymentSource),
+    directDebitId,
+    purchasePageKey: str(d.purchasePageKey),
+    purchasePageTitle: str(d.purchasePageTitle),
+    transactionToken: str(d.transactionToken),
+    processId: str(d.processId || d.paymentLinkProcessId),
+    processToken: str(d.processToken || d.paymentLinkProcessToken),
+    cardExp: str(d.cardExp),
+    invoiceName: str(d.invoice_name),
+    address: str(d.address),
+    productData: Array.isArray(d.productData) ? d.productData as NormalizedPayment["productData"] : [],
+    shipping: (typeof d.shipping === "object" && d.shipping !== null) ? d.shipping as NormalizedPayment["shipping"] : null,
+    dynamicFields: Array.isArray(d.dynamicFields) ? d.dynamicFields as NormalizedPayment["dynamicFields"] : [],
+    customFields: (typeof d.purchaseCustomField === "object" && d.purchaseCustomField !== null)
+      ? d.purchaseCustomField as Record<string, string> : {},
+    isPaymentLink,
+    isRecurring,
+    rawPayload: raw,
+  };
 }
 
 export async function POST(request: NextRequest) {
-  let payload: GrowPayload;
+  let raw: Record<string, unknown>;
 
   // GROW sends JSON
   try {
-    payload = await request.json();
+    raw = await request.json();
   } catch {
-    // Fallback: try FormData (legacy support)
     try {
       const formData = await request.formData();
-      payload = Object.fromEntries(formData.entries()) as unknown as GrowPayload;
+      raw = Object.fromEntries(formData.entries()) as Record<string, unknown>;
     } catch {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
   }
 
-  // Verify webhook key
-  const webhookKey = payload.webhookKey || payload.webhook_key;
+  // Quick webhook key check (before normalization — key can be at top level)
+  const webhookKey = str(raw.webhookKey || raw.webhook_key || (typeof raw.data === "object" && raw.data ? (raw.data as Record<string, unknown>).webhookKey : ""));
   const expectedKey = process.env.GROW_WEBHOOK_KEY;
   if (expectedKey && webhookKey !== expectedKey) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -73,77 +133,61 @@ export async function POST(request: NextRequest) {
 
   const supabase = createAdminClient();
 
-  // ── Handle Invoice webhook (no payment data) ──
-  if (payload.invoiceNumber && payload.invoiceUrl && !payload.paymentSum) {
-    // Log invoice creation — link to existing transaction
-    if (payload.transactionCode) {
+  // ── Invoice webhook ──
+  if (raw.invoiceNumber && raw.invoiceUrl && !raw.paymentSum && !raw.data) {
+    if (raw.transactionCode) {
       await supabase.from("transactions")
-        .update({
-          invoice_number: payload.invoiceNumber,
-          invoice_url: payload.invoiceUrl,
-        })
-        .eq("external_id", payload.transactionCode);
+        .update({ invoice_number: str(raw.invoiceNumber), invoice_url: str(raw.invoiceUrl) })
+        .eq("external_id", str(raw.transactionCode));
     }
     return NextResponse.json({ ok: true, type: "invoice" }, { status: 200 });
   }
 
-  // ── Handle Failed Recurring Payment ──
-  if (payload.error_message || payload.regular_payment_id) {
-    const name = payload.payer_name || payload.fullName || "";
-    const email = payload.email || payload.payerEmail || "";
-    const phone = payload.phone || payload.payerPhone || "";
-
-    // Log failed payment event
+  // ── Failed Recurring Payment ──
+  if (raw.error_message || raw.regular_payment_id) {
     await supabase.from("funnel_events").insert({
       event_type: "payment_failed",
       metadata: {
-        regular_payment_id: payload.regular_payment_id,
-        error_message: payload.error_message,
-        charges_attempts: payload.charges_attempts,
-        name,
-        email,
-        phone,
-        sum: payload.sum,
+        regular_payment_id: str(raw.regular_payment_id),
+        error_message: str(raw.error_message),
+        charges_attempts: str(raw.charges_attempts),
+        name: str(raw.payer_name || raw.fullName),
+        email: str(raw.email || raw.payerEmail),
+        phone: str(raw.phone || raw.payerPhone),
+        sum: str(raw.sum),
       },
     });
-
     return NextResponse.json({ ok: true, type: "failed_recurring" }, { status: 200 });
   }
 
-  // ── Handle Regular / Recurring Payment ──
-  const email = payload.payerEmail || "";
-  const name = payload.fullName || "";
-  const phone = payload.payerPhone || "";
-  const amount = typeof payload.paymentSum === "number" ? payload.paymentSum : parseFloat(String(payload.paymentSum)) || 0;
-  const transactionCode = payload.transactionCode || "";
-  const paymentsNum = Number(payload.paymentsNum) || 1;
-  const allPaymentNum = Number(payload.allPaymentNum) || 1;
+  // ── Regular / Recurring / PaymentLink Payment ──
+  const p = normalizePayload(raw);
 
-  if (!email && !phone) {
+  if (!p.email && !p.phone) {
     return NextResponse.json({ error: "Missing payer info" }, { status: 400 });
   }
 
-  // Find lead by email or phone
+  // Find lead
   let lead = null;
-  if (email) {
-    const { data } = await supabase.from("leads").select("id").eq("email", email).maybeSingle();
+  if (p.email) {
+    const { data } = await supabase.from("leads").select("id").eq("email", p.email).maybeSingle();
     lead = data;
   }
-  if (!lead && phone) {
-    const { data } = await supabase.from("leads").select("id").eq("phone", phone).maybeSingle();
+  if (!lead && p.phone) {
+    const { data } = await supabase.from("leads").select("id").eq("phone", p.phone).maybeSingle();
     lead = data;
   }
 
-  // Determine product from amount
-  const product = amount > 1000 ? "one_vip" : "one_core";
+  // Determine product
+  const product = p.amount > 1000 ? "one_vip" : "one_core";
 
   // Find or create customer
   let customerId: string;
-  const query = email
-    ? supabase.from("customers").select("id, total_paid, products_purchased").eq("email", email).maybeSingle()
-    : supabase.from("customers").select("id, total_paid, products_purchased").eq("phone", phone).maybeSingle();
+  const customerQuery = p.email
+    ? supabase.from("customers").select("id, total_paid, products_purchased").eq("email", p.email).maybeSingle()
+    : supabase.from("customers").select("id, total_paid, products_purchased").eq("phone", p.phone).maybeSingle();
 
-  const { data: existingCustomer } = await query;
+  const { data: existingCustomer } = await customerQuery;
 
   if (existingCustomer) {
     customerId = existingCustomer.id;
@@ -151,7 +195,8 @@ export async function POST(request: NextRequest) {
     if (!products.includes(product)) products.push(product);
     await supabase.from("customers").update({
       products_purchased: products,
-      total_paid: Number(existingCustomer.total_paid) + amount,
+      total_paid: Number(existingCustomer.total_paid) + p.amount,
+      ...(p.address ? { address: p.address } : {}),
       ...(product === "one_vip" ? {
         current_month: 1,
         program_start_date: new Date().toISOString().split("T")[0],
@@ -163,13 +208,14 @@ export async function POST(request: NextRequest) {
 
     const { data: newCustomer } = await supabase.from("customers").insert({
       lead_id: lead?.id || null,
-      name,
-      email: email || null,
-      phone: phone || null,
+      name: p.fullName || p.invoiceName,
+      email: p.email || null,
+      phone: p.phone || null,
       products_purchased: [product],
-      total_paid: amount,
-      payment_status: paymentsNum < allPaymentNum ? "pending" : "completed",
+      total_paid: p.amount,
+      payment_status: p.paymentsNum < p.allPaymentNum ? "pending" : "completed",
       status: "active",
+      ...(p.address ? { address: p.address } : {}),
       ...(product === "one_vip" ? {
         current_month: 1,
         program_start_date: new Date().toISOString().split("T")[0],
@@ -179,38 +225,49 @@ export async function POST(request: NextRequest) {
     customerId = newCustomer!.id;
   }
 
-  // Determine if recurring
-  const isRecurring = payload.paymentType === "הוראת קבע" || !!payload.directDebitId;
-
-  // Log transaction with all GROW fields
+  // Log transaction with full metadata
   await supabase.from("transactions").insert({
     customer_id: customerId,
     lead_id: lead?.id || null,
     product,
-    amount,
+    amount: p.amount,
     payment_method: "grow",
-    installments_total: allPaymentNum,
-    installments_paid: paymentsNum,
+    installments_total: p.allPaymentNum,
+    installments_paid: p.paymentsNum,
     status: "completed",
-    external_id: transactionCode || null,
+    external_id: p.transactionCode || null,
     metadata: {
-      transactionType: payload.transactionType,
-      paymentType: payload.paymentType,
-      paymentDate: payload.paymentDate,
-      asmachta: payload.asmachta,
-      cardSuffix: payload.cardSuffix,
-      cardBrand: payload.cardBrand,
-      cardType: payload.cardType,
-      paymentSource: payload.paymentSource,
-      firstPaymentSum: payload.firstPaymentSum,
-      periodicalPaymentSum: payload.periodicalPaymentSum,
-      directDebitId: payload.directDebitId,
-      purchasePageKey: payload.purchasePageKey,
-      purchasePageTitle: payload.purchasePageTitle,
-      itemQuantity: payload.amount,
-      customFields: payload.purchaseCustomField,
-      paymentDesc: payload.paymentDesc,
-      isRecurring,
+      // Card
+      cardSuffix: p.cardSuffix,
+      cardBrand: p.cardBrand,
+      cardType: p.cardType,
+      cardExp: p.cardExp,
+      asmachta: p.asmachta,
+      // Payment info
+      paymentType: p.paymentType,
+      paymentDate: p.paymentDate,
+      paymentSource: p.paymentSource,
+      description: p.description,
+      firstPaymentSum: p.firstPaymentSum,
+      periodicalPaymentSum: p.periodicalPaymentSum,
+      // Identifiers
+      directDebitId: p.directDebitId,
+      transactionToken: p.transactionToken,
+      processId: p.processId,
+      processToken: p.processToken,
+      // Page info
+      purchasePageKey: p.purchasePageKey,
+      purchasePageTitle: p.purchasePageTitle,
+      invoiceName: p.invoiceName,
+      address: p.address,
+      // Products & extras (PaymentLinks only)
+      ...(p.productData.length > 0 ? { products: p.productData } : {}),
+      ...(p.shipping ? { shipping: p.shipping } : {}),
+      ...(p.dynamicFields.length > 0 ? { dynamicFields: p.dynamicFields } : {}),
+      ...(Object.keys(p.customFields).length > 0 ? { customFields: p.customFields } : {}),
+      // Flags
+      isPaymentLink: p.isPaymentLink,
+      isRecurring: p.isRecurring,
     },
   });
 
@@ -221,19 +278,20 @@ export async function POST(request: NextRequest) {
       lead_id: lead.id,
       event_type: "purchased",
       metadata: {
-        amount,
+        amount: p.amount,
         method: "grow",
-        transaction: transactionCode,
-        installment: `${paymentsNum}/${allPaymentNum}`,
-        paymentType: payload.paymentType,
-        isRecurring,
+        transaction: p.transactionCode,
+        installment: `${p.paymentsNum}/${p.allPaymentNum}`,
+        paymentType: p.paymentType,
+        isRecurring: p.isRecurring,
+        isPaymentLink: p.isPaymentLink,
       },
     });
   }
 
   return NextResponse.json({
     ok: true,
-    type: isRecurring ? "recurring" : "payment",
+    type: p.isPaymentLink ? "payment_link" : p.isRecurring ? "recurring" : "payment",
     customer_id: customerId,
   }, { status: 200 });
 }
