@@ -52,14 +52,21 @@ function KanbanCard({ lead, onDelete }: { lead: Lead; onDelete?: (id: string) =>
     e.preventDefault();
     if (!noteText.trim() || savingNote) return;
     setSavingNote(true);
-    await fetch("/api/notes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lead_id: lead.id, content: noteText.trim(), author: "בן" }),
-    });
-    setNoteText("");
-    setShowNote(false);
-    setSavingNote(false);
+    try {
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lead_id: lead.id, content: noteText.trim(), author: "admin" }),
+      });
+      if (!res.ok) throw new Error();
+      setNoteText("");
+      setShowNote(false);
+    } catch {
+      // Keep the note text so user doesn't lose it
+      alert("שגיאה בשמירת ההערה. נסה שוב.");
+    } finally {
+      setSavingNote(false);
+    }
   }
 
   const style = {

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { format } from "date-fns";
 
 export async function getDashboardData(period: "today" | "week" | "month" = "month") {
   const supabase = await createClient();
@@ -19,37 +20,55 @@ export async function getDashboardData(period: "today" | "week" | "month" = "mon
   }
 
   const startISO = startDate.toISOString();
+  const startDateStr = format(startDate, "yyyy-MM-dd");
 
-  // Revenue
-  const { data: transactions } = await supabase
-    .from("transactions")
-    .select("*")
-    .gte("date", startISO)
-    .eq("status", "completed");
+  // Run all queries in parallel instead of sequential N+1
+  const [transactionsResult, leadsResult, campaignResult] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("*")
+      .gte("date", startISO)
+      .eq("status", "completed"),
+    supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", startISO),
+    supabase
+      .from("campaigns")
+      .select("daily_spend")
+      .gte("date", startDateStr),
+  ]);
 
-  const totalRevenue = transactions?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-  const oneCoreRevenue = transactions?.filter(t => t.program === "one_core").reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-  const oneVipRevenue = transactions?.filter(t => t.program === "one_vip").reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-  const oneCoreCount = transactions?.filter(t => t.program === "one_core").length || 0;
-  const oneVipCount = transactions?.filter(t => t.program === "one_vip").length || 0;
+  const transactions = transactionsResult.data;
+  const leadsCount = leadsResult.count;
+  const campaignData = campaignResult.data;
 
-  // Leads
-  const { count: leadsCount } = await supabase
-    .from("leads")
-    .select("*", { count: "exact", head: true })
-    .gte("created_at", startISO);
+  const totalRevenue = transactions?.reduce((sum, t) => {
+    const amount = Number(t.amount);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0) || 0;
 
-  // Ad spend
-  const { data: campaignData } = await supabase
-    .from("campaigns")
-    .select("daily_spend")
-    .gte("date", startISO.split("T")[0]);
+  const oneCoreTransactions = transactions?.filter(t => t.program === "one_core") || [];
+  const oneVipTransactions = transactions?.filter(t => t.program === "one_vip") || [];
 
-  const totalSpend = campaignData?.reduce((sum, c) => sum + Number(c.daily_spend), 0) || 0;
+  const oneCoreRevenue = oneCoreTransactions.reduce((sum, t) => {
+    const amount = Number(t.amount);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
+  const oneVipRevenue = oneVipTransactions.reduce((sum, t) => {
+    const amount = Number(t.amount);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
+  const oneCoreCount = oneCoreTransactions.length;
+  const oneVipCount = oneVipTransactions.length;
+
+  const totalSpend = campaignData?.reduce((sum, c) => {
+    const spend = Number(c.daily_spend);
+    return sum + (Number.isFinite(spend) ? spend : 0);
+  }, 0) || 0;
+
   const costPerLead = leadsCount && leadsCount > 0 ? totalSpend / leadsCount : 0;
-
-  // Purchases count for CAC
-  const purchaseCount = (oneCoreCount || 0) + (oneVipCount || 0);
+  const purchaseCount = oneCoreCount + oneVipCount;
   const cac = purchaseCount > 0 ? totalSpend / purchaseCount : 0;
   const conversionRate = leadsCount && leadsCount > 0 ? (purchaseCount / leadsCount) * 100 : 0;
   const roi = totalSpend > 0 ? ((totalRevenue - totalSpend) / totalSpend) * 100 : 0;
@@ -81,7 +100,7 @@ export async function getTopAds(limit = 3) {
   const { data } = await supabase
     .from("campaigns")
     .select("*")
-    .gte("date", thirtyDaysAgo.toISOString().split("T")[0])
+    .gte("date", format(thirtyDaysAgo, "yyyy-MM-dd"))
     .order("leads_count", { ascending: false })
     .limit(limit);
 
@@ -129,7 +148,7 @@ export async function getEndingPrograms() {
     .from("customers")
     .select("*")
     .eq("status", "active")
-    .lte("program_end_date", thirtyDaysFromNow.toISOString().split("T")[0])
+    .lte("program_end_date", format(thirtyDaysFromNow, "yyyy-MM-dd"))
     .order("program_end_date", { ascending: true });
 
   return data || [];

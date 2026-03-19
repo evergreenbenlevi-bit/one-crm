@@ -3,23 +3,65 @@ import { isLocalMode, getAllTasks, createTask, updateTask, deleteTask } from "@/
 import type { TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { createServerClient } from "@supabase/ssr";
 
-async function getUserRoleFromRequest(request: NextRequest): Promise<"admin" | "user"> {
-  if (isLocalMode) return "admin";
+// ── Valid enums for input validation ──
+const VALID_PRIORITIES: TaskPriority[] = ["p1", "p2", "p3"];
+const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
+const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
+const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "infrastructure", "personal", "research", "content"];
+
+// ── Auth helper ──
+async function getAuthUser(request: NextRequest) {
+  if (isLocalMode) return { id: "local-admin", role: "admin" as const };
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
   );
+
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return "user";
+  if (!user) return null;
+
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
-  return (data?.role as "admin" | "user") || "user";
+  return { id: user.id, role: (data?.role as "admin" | "user") || "user" };
 }
 
-// GET /api/tasks
+// ── Validation helpers ──
+function validateTaskFields(body: Record<string, unknown>, requireTitle = false): string | null {
+  if (requireTitle && (!body.title || typeof body.title !== "string" || !body.title.trim())) {
+    return "title is required";
+  }
+  if (body.title !== undefined && (typeof body.title !== "string" || body.title.trim().length > 500)) {
+    return "title must be a string under 500 characters";
+  }
+  if (body.priority !== undefined && !VALID_PRIORITIES.includes(body.priority as TaskPriority)) {
+    return `priority must be one of: ${VALID_PRIORITIES.join(", ")}`;
+  }
+  if (body.status !== undefined && !VALID_STATUSES.includes(body.status as TaskStatus)) {
+    return `status must be one of: ${VALID_STATUSES.join(", ")}`;
+  }
+  if (body.owner !== undefined && !VALID_OWNERS.includes(body.owner as TaskOwner)) {
+    return `owner must be one of: ${VALID_OWNERS.join(", ")}`;
+  }
+  if (body.category !== undefined && !VALID_CATEGORIES.includes(body.category as TaskCategory)) {
+    return `category must be one of: ${VALID_CATEGORIES.join(", ")}`;
+  }
+  if (body.due_date !== undefined && body.due_date !== null) {
+    if (typeof body.due_date !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(body.due_date)) {
+      return "due_date must be a valid date string (YYYY-MM-DD)";
+    }
+  }
+  return null;
+}
+
+// ── GET /api/tasks ──
 export async function GET(request: NextRequest) {
+  const authUser = await getAuthUser(request);
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
-  const role = await getUserRoleFromRequest(request);
 
   if (isLocalMode) {
     const tasks = getAllTasks({
@@ -41,13 +83,13 @@ export async function GET(request: NextRequest) {
   const owner = searchParams.get("owner");
   const category = searchParams.get("category");
 
-  if (status) query = query.eq("status", status);
-  if (priority) query = query.eq("priority", priority);
-  if (owner) query = query.eq("owner", owner);
-  if (category) query = query.eq("category", category);
+  if (status && VALID_STATUSES.includes(status as TaskStatus)) query = query.eq("status", status);
+  if (priority && VALID_PRIORITIES.includes(priority as TaskPriority)) query = query.eq("priority", priority);
+  if (owner && VALID_OWNERS.includes(owner as TaskOwner)) query = query.eq("owner", owner);
+  if (category && VALID_CATEGORIES.includes(category as TaskCategory)) query = query.eq("category", category);
 
-  // Non-admin users only see their own tasks (owner = 'avitar' or 'both')
-  if (role !== "admin") {
+  // Non-admin users only see their own tasks
+  if (authUser.role !== "admin") {
     query = query.in("owner", ["avitar", "both"]);
   }
 
@@ -56,27 +98,84 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data);
 }
 
-// POST /api/tasks
+// ── POST /api/tasks ──
 export async function POST(request: NextRequest) {
+  const authUser = await getAuthUser(request);
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (authUser.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await request.json();
 
+  // Validate input
+  const validationError = validateTaskFields(body, true);
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
+  }
+
+  // Sanitize: only allow known fields
+  const sanitized = {
+    title: (body.title as string).trim(),
+    description: body.description?.trim() || null,
+    priority: body.priority || "p2",
+    status: body.status || "todo",
+    owner: body.owner || "claude",
+    category: body.category || "one_tm",
+    due_date: body.due_date || null,
+    position: typeof body.position === "number" ? body.position : 0,
+    source: body.source || null,
+    source_date: body.source_date || null,
+    depends_on: body.depends_on || null,
+    parent_id: body.parent_id || null,
+  };
+
   if (isLocalMode) {
-    const task = createTask(body);
+    const task = createTask(sanitized);
     return NextResponse.json(task, { status: 201 });
   }
 
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
-  const { data, error } = await supabase.from("tasks").insert([body]).select().single();
+  const { data, error } = await supabase.from("tasks").insert([sanitized]).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data, { status: 201 });
 }
 
-// PATCH /api/tasks
+// ── PATCH /api/tasks ──
 export async function PATCH(request: NextRequest) {
+  const authUser = await getAuthUser(request);
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (authUser.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await request.json();
-  const { id, ...updates } = body;
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  const { id, ...rawUpdates } = body;
+  if (!id || typeof id !== "string") {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+
+  // Validate fields
+  const validationError = validateTaskFields(rawUpdates);
+  if (validationError) {
+    return NextResponse.json({ error: validationError }, { status: 400 });
+  }
+
+  // Only allow known update fields
+  const updates: Record<string, unknown> = {};
+  if (rawUpdates.title !== undefined) updates.title = (rawUpdates.title as string).trim();
+  if (rawUpdates.description !== undefined) updates.description = rawUpdates.description?.trim() || null;
+  if (rawUpdates.priority !== undefined) updates.priority = rawUpdates.priority;
+  if (rawUpdates.status !== undefined) updates.status = rawUpdates.status;
+  if (rawUpdates.owner !== undefined) updates.owner = rawUpdates.owner;
+  if (rawUpdates.category !== undefined) updates.category = rawUpdates.category;
+  if (rawUpdates.due_date !== undefined) updates.due_date = rawUpdates.due_date || null;
+  if (rawUpdates.position !== undefined) updates.position = rawUpdates.position;
 
   if (isLocalMode) {
     const task = updateTask(id, updates);
@@ -91,11 +190,21 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json(data);
 }
 
-// DELETE /api/tasks
+// ── DELETE /api/tasks ──
 export async function DELETE(request: NextRequest) {
+  const authUser = await getAuthUser(request);
+  if (!authUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (authUser.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "id query param is required" }, { status: 400 });
+  if (!id || typeof id !== "string") {
+    return NextResponse.json({ error: "id query param is required" }, { status: 400 });
+  }
 
   if (isLocalMode) {
     const ok = deleteTask(id);

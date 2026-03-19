@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import { LeadFilters } from "@/components/leads/lead-filters";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { LeadsKanban } from "@/components/leads/leads-kanban";
 import { LeadAddModal } from "@/components/leads/lead-add-modal";
-import { LayoutGrid, List, Plus } from "lucide-react";
+import { LayoutGrid, List, Plus, AlertCircle } from "lucide-react";
 import { clsx } from "clsx";
 import type { Lead, LeadStatus, ProgramType } from "@/lib/types/database";
 
 const programTabs = [
-  { key: "one_vip", label: "ONE™ VIP" },
-  { key: "one_core", label: "ONE™ Core" },
+  { key: "one_vip", label: "ONE\u2122 VIP" },
+  { key: "one_core", label: "ONE\u2122 Core" },
 ];
 
 const viewModes = [
@@ -31,24 +31,44 @@ export default function LeadsPage() {
   const [source, setSource] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Prevent race conditions
+  const pendingOps = useRef(new Set<string>());
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ program: program });
     if (search) params.set("search", search);
     if (source) params.set("source", source);
     if (status) params.set("status", status);
 
-    const res = await fetch(`/api/leads?${params}`);
-    const data = await res.json();
-    setLeads(data);
+    try {
+      const res = await fetch(`/api/leads?${params}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setLeads(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error fetching leads:", err);
+      setError("שגיאה בטעינת לידים. נסה לרענן.");
+      setLeads([]);
+    }
     setLoading(false);
   }, [program, search, source, status]);
 
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
+
+  // Auto-dismiss error
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   const statuses = program === "one_vip" ? oneVipStatuses : oneCoreStatuses;
 
@@ -61,24 +81,57 @@ export default function LeadsPage() {
   });
 
   async function handleStatusChange(leadId: string, newStatus: LeadStatus) {
-    // Optimistic update
+    if (pendingOps.current.has(leadId)) return;
+    pendingOps.current.add(leadId);
+
+    const previousLeads = leads;
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, current_status: newStatus } : l));
 
-    await fetch(`/api/leads/${leadId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
+    try {
+      const res = await fetch(`/api/leads/${leadId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setLeads(previousLeads);
+      setError("שגיאה בעדכון סטטוס ליד");
+    } finally {
+      pendingOps.current.delete(leadId);
+    }
   }
 
   async function handleBulkDelete(ids: string[]) {
-    // Optimistic update
+    const previousLeads = leads;
     setLeads(prev => prev.filter(l => !ids.includes(l.id)));
-    await Promise.all(ids.map(id => fetch(`/api/leads/${id}`, { method: "DELETE" })));
+
+    try {
+      const results = await Promise.allSettled(
+        ids.map(id => fetch(`/api/leads/${id}`, { method: "DELETE" }))
+      );
+      const failedCount = results.filter(r => r.status === "rejected").length;
+      if (failedCount > 0) {
+        setLeads(previousLeads);
+        setError(`שגיאה במחיקת ${failedCount} לידים`);
+      }
+    } catch {
+      setLeads(previousLeads);
+      setError("שגיאה במחיקת לידים");
+    }
   }
 
   return (
     <div className="space-y-6">
+      {/* Error Toast */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300">
+          <AlertCircle size={16} className="flex-shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="mr-auto text-red-400 hover:text-red-600 dark:hover:text-red-200">✕</button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold dark:text-gray-100">לידים</h1>
         <div className="flex items-center gap-3">
@@ -117,7 +170,10 @@ export default function LeadsPage() {
       />
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400 dark:text-gray-500">טוען...</div>
+        <div className="flex items-center justify-center py-12 gap-2 text-gray-400 dark:text-gray-500">
+          <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-brand-600 rounded-full animate-spin" />
+          טוען...
+        </div>
       ) : view === "kanban" ? (
         <LeadsKanban columns={columns} statuses={statuses} onStatusChange={handleStatusChange} onDelete={(id) => handleBulkDelete([id])} />
       ) : (

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, List, LayoutGrid, Upload } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Plus, List, LayoutGrid, Upload, AlertCircle } from "lucide-react";
 import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { TASK_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels } from "@/lib/types/tasks";
 import { TaskKanban } from "@/components/tasks/task-kanban";
@@ -16,11 +16,15 @@ type ViewMode = "kanban" | "list";
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [hideDone, setHideDone] = useState(true);
   const [showImportModal, setShowImportModal] = useState(false);
+
+  // Prevent double submissions & race conditions
+  const pendingOps = useRef(new Set<string>());
 
   // Filters
   const [filterPriority, setFilterPriority] = useState<TaskPriority | "all">("all");
@@ -29,11 +33,14 @@ export default function TasksPage() {
 
   const fetchTasks = useCallback(async () => {
     try {
+      setError(null);
       const res = await fetch("/api/tasks");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setTasks(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching tasks:", err);
+      setError("שגיאה בטעינת משימות. נסה לרענן.");
     }
     setLoading(false);
   }, []);
@@ -41,6 +48,14 @@ export default function TasksPage() {
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
+
+  // Auto-dismiss error after 5s
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   // Apply filters
   const filteredTasks = useMemo(() => {
@@ -68,47 +83,91 @@ export default function TasksPage() {
   }, [filteredTasks]);
 
   async function handleStatusChange(taskId: string, newStatus: TaskStatus) {
+    // Prevent race condition — skip if already pending
+    if (pendingOps.current.has(taskId)) return;
+    pendingOps.current.add(taskId);
+
+    const previousTasks = tasks;
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-    const res = await fetch("/api/tasks", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: taskId, status: newStatus }),
-    });
-    if (!res.ok) fetchTasks();
+
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, status: newStatus }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setTasks(previousTasks);
+      setError("שגיאה בעדכון סטטוס");
+    } finally {
+      pendingOps.current.delete(taskId);
+    }
   }
 
   async function handleAddTask(taskData: {
     title: string; description: string; priority: TaskPriority;
     status: TaskStatus; owner: TaskOwner; category: TaskCategory; due_date: string | null;
   }) {
-    const res = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...taskData, position: 0 }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...taskData, position: 0 }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "שגיאה ביצירת משימה");
+      }
       const task = await res.json();
       setTasks(prev => [task, ...prev]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "שגיאה ביצירת משימה");
     }
   }
 
   async function handleEditTask(task: Task) {
+    if (pendingOps.current.has(task.id)) return;
+    pendingOps.current.add(task.id);
+
+    const previousTasks = tasks;
     setTasks(prev => prev.map(t => t.id === task.id ? task : t));
-    const res = await fetch("/api/tasks", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: task.id, title: task.title, description: task.description,
-        priority: task.priority, status: task.status, owner: task.owner,
-        category: task.category, due_date: task.due_date,
-      }),
-    });
-    if (!res.ok) fetchTasks();
+
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: task.id, title: task.title, description: task.description,
+          priority: task.priority, status: task.status, owner: task.owner,
+          category: task.category, due_date: task.due_date,
+        }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setTasks(previousTasks);
+      setError("שגיאה בעדכון משימה");
+    } finally {
+      pendingOps.current.delete(task.id);
+    }
   }
 
   async function handleDeleteTask(taskId: string) {
+    if (pendingOps.current.has(taskId)) return;
+    pendingOps.current.add(taskId);
+
+    const previousTasks = tasks;
     setTasks(prev => prev.filter(t => t.id !== taskId));
-    await fetch(`/api/tasks?id=${taskId}`, { method: "DELETE" });
+
+    try {
+      const res = await fetch(`/api/tasks?id=${taskId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+    } catch {
+      setTasks(previousTasks);
+      setError("שגיאה במחיקת משימה");
+    } finally {
+      pendingOps.current.delete(taskId);
+    }
   }
 
   // Stats
@@ -128,13 +187,25 @@ export default function TasksPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-gray-400 dark:text-gray-500">טוען משימות...</div>
+        <div className="flex items-center gap-2 text-gray-400 dark:text-gray-500">
+          <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-brand-600 rounded-full animate-spin" />
+          טוען משימות...
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Error Toast */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300 animate-in fade-in">
+          <AlertCircle size={16} className="flex-shrink-0" />
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="mr-auto text-red-400 hover:text-red-600 dark:hover:text-red-200">✕</button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
