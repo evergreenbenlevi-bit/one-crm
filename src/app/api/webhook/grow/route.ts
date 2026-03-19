@@ -112,16 +112,11 @@ function normalizePayload(raw: Record<string, unknown>): NormalizedPayment {
 export async function POST(request: NextRequest) {
   let raw: Record<string, unknown>;
 
-  // GROW sends JSON
+  // GROW sends JSON only — no FormData fallback
   try {
     raw = await request.json();
   } catch {
-    try {
-      const formData = await request.formData();
-      raw = Object.fromEntries(formData.entries()) as Record<string, unknown>;
-    } catch {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-    }
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
   }
 
   // Quick webhook key check (before normalization — key can be at top level)
