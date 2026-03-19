@@ -68,6 +68,16 @@ function KanbanCard({ lead }: { lead: Lead }) {
         <Link href={`/leads/${lead.id}`} className="text-sm font-medium hover:text-brand-600 dark:text-gray-200 dark:hover:text-brand-400 truncate" onClick={(e) => e.stopPropagation()}>
           {isHot && "🔥 "}{lead.name}
         </Link>
+        {lead.lead_score != null && (
+          <span className={clsx(
+            "text-xs font-bold px-1.5 py-0.5 rounded-md shrink-0 ml-1",
+            lead.lead_score >= 80 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+            lead.lead_score >= 50 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+            "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+          )}>
+            {lead.lead_score}
+          </span>
+        )}
       </div>
       <div className="text-xs text-gray-400 dark:text-gray-500">
         {formatDistanceToNow(new Date(lead.updated_at), { locale: he, addSuffix: true })}

@@ -145,11 +145,31 @@ export function LeadDetail({ lead }: LeadDetailProps) {
   const [submitting, setSubmitting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   const funnelSteps =
     lead.program === "one_vip" ? oneVipFunnel : oneCoreFunnel;
 
   const completedEventTypes = new Set(lead.events.map((e) => e.event_type));
+
+  // ── Convert to customer ──
+  async function handleConvert() {
+    if (!confirm(`להמיר את "${lead.name}" ללקוח?`)) return;
+    setConverting(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ program: lead.program }),
+      });
+      if (res.ok) {
+        const customer = await res.json();
+        router.push(`/customers/${customer.id}`);
+      }
+    } finally {
+      setConverting(false);
+    }
+  }
 
   // ── Delete lead ──
   async function handleDelete() {
@@ -250,7 +270,16 @@ export function LeadDetail({ lead }: LeadDetailProps) {
               </div>
 
               {/* Action buttons */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {!lead.customer && lead.current_status !== "lost" && (
+                  <button
+                    onClick={handleConvert}
+                    disabled={converting}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/50 disabled:opacity-50 transition-colors"
+                  >
+                    <UserCheck size={16} /> {converting ? "ממיר..." : "הפוך ללקוח"}
+                  </button>
+                )}
                 <button
                   onClick={() => setEditOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors"

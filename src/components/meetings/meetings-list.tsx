@@ -22,19 +22,19 @@ interface MeetingWithCustomer {
 
 interface MeetingsListProps {
   meetings: MeetingWithCustomer[];
+  weekStart?: Date;
 }
 
-export function MeetingsList({ meetings }: MeetingsListProps) {
-  // Generate days for current week (Sunday to Saturday for Hebrew locale)
+export function MeetingsList({ meetings, weekStart: propWeekStart }: MeetingsListProps) {
+  // Generate days for the given week (Sunday to Saturday for Hebrew locale)
   const weekDays = useMemo(() => {
-    const now = new Date();
-    const weekStart = startOfWeek(now, { weekStartsOn: 0 });
+    const base = propWeekStart ?? startOfWeek(new Date(), { weekStartsOn: 0 });
     const days: Date[] = [];
     for (let i = 0; i < 7; i++) {
-      days.push(addDays(weekStart, i));
+      days.push(addDays(base, i));
     }
     return days;
-  }, []);
+  }, [propWeekStart]);
 
   // Group meetings by day
   const groupedMeetings = useMemo(() => {
@@ -65,7 +65,7 @@ export function MeetingsList({ meetings }: MeetingsListProps) {
   if (meetings.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500">
-        אין פגישות השבוע
+        אין פגישות בשבוע זה
       </div>
     );
   }

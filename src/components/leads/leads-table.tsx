@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Phone, MessageCircle } from "lucide-react";
+import { Phone, MessageCircle, Download } from "lucide-react";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { Lead } from "@/lib/types/database";
 import { formatDistanceToNow } from "date-fns";
@@ -16,8 +16,34 @@ const sourceLabels: Record<string, string> = {
   organic: "אורגני",
   youtube: "יוטיוב",
   referral: "הפנייה",
+  instagram: "אינסטגרם",
+  linkedin: "לינקדאין",
+  content: "תוכן",
+  webinar: "וובינר",
+  skool: "Skool",
   other: "אחר",
 };
+
+function exportCsv(leads: Lead[]) {
+  const headers = ["שם", "אימייל", "טלפון", "סטטוס", "מקור", "מודעה", "תאריך"];
+  const rows = leads.map(l => [
+    l.name,
+    l.email || "",
+    l.phone || "",
+    l.current_status,
+    sourceLabels[l.source] || l.source,
+    l.ad_name || "",
+    new Date(l.created_at).toLocaleDateString("he-IL"),
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function LeadsTable({ leads }: LeadsTableProps) {
   if (leads.length === 0) {
@@ -30,6 +56,16 @@ export function LeadsTable({ leads }: LeadsTableProps) {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+        <span className="text-sm text-gray-500 dark:text-gray-400">{leads.length} לידים</span>
+        <button
+          onClick={() => exportCsv(leads)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+        >
+          <Download size={13} />
+          ייצוא CSV
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

@@ -20,8 +20,8 @@ const viewModes = [
   { key: "table", icon: List },
 ];
 
-const oneVipStatuses: LeadStatus[] = ["new", "consumed_content", "engaged", "applied", "active_client"];
-const oneCoreStatuses: LeadStatus[] = ["new", "active_client"];
+const oneVipStatuses: LeadStatus[] = ["new", "consumed_content", "engaged", "applied", "qualified", "onboarding", "active_client"];
+const oneCoreStatuses: LeadStatus[] = ["new", "consumed_content", "engaged", "applied", "qualified", "active_client"];
 
 export default function LeadsPage() {
   const [program, setProgram] = useState<ProgramType>("one_vip");
