@@ -17,7 +17,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Lead, LeadStatus } from "@/lib/types/database";
-import { Phone, MessageCircle } from "lucide-react";
+import { Phone, MessageCircle, StickyNote } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { he } from "date-fns/locale";
@@ -43,6 +43,23 @@ interface LeadsKanbanProps {
 
 function KanbanCard({ lead }: { lead: Lead }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
+  const [showNote, setShowNote] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
+  async function handleQuickNote(e: React.FormEvent) {
+    e.preventDefault();
+    if (!noteText.trim() || savingNote) return;
+    setSavingNote(true);
+    await fetch("/api/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead_id: lead.id, content: noteText.trim(), author: "בן" }),
+    });
+    setNoteText("");
+    setShowNote(false);
+    setSavingNote(false);
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -93,7 +110,33 @@ function KanbanCard({ lead }: { lead: Lead }) {
             <MessageCircle size={12} />
           </a>
         )}
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowNote(v => !v); }}
+          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-300 dark:text-gray-500 hover:text-amber-500 transition-colors mr-auto"
+        >
+          <StickyNote size={12} />
+        </button>
       </div>
+      {showNote && (
+        <form onSubmit={handleQuickNote} onClick={e => e.stopPropagation()} className="mt-2">
+          <input
+            type="text"
+            value={noteText}
+            onChange={e => setNoteText(e.target.value)}
+            placeholder="הוסף הערה..."
+            autoFocus
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+          <div className="flex gap-1 mt-1">
+            <button type="submit" disabled={savingNote || !noteText.trim()} className="flex-1 py-1 text-xs bg-brand-600 text-white rounded-lg disabled:opacity-50 hover:bg-brand-700 transition-colors">
+              {savingNote ? "..." : "שמור"}
+            </button>
+            <button type="button" onClick={() => setShowNote(false)} className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              ✕
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

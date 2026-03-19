@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { MeetingsList } from "@/components/meetings/meetings-list";
-import { Calendar, ChevronRight, ChevronLeft } from "lucide-react";
+import { Calendar, ChevronRight, ChevronLeft, Plus } from "lucide-react";
+import { MeetingAddModal } from "@/components/meetings/meeting-add-modal";
 import type { MeetingType, MeetingStatus } from "@/lib/types/database";
 
 interface MeetingWithCustomer {
@@ -25,6 +26,7 @@ export default function MeetingsPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [meetings, setMeetings] = useState<MeetingWithCustomer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
 
   const baseDate = addWeeks(new Date(), weekOffset);
   const weekStart = startOfWeek(baseDate, { weekStartsOn: 0 });
@@ -67,6 +69,12 @@ export default function MeetingsPage() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
+          >
+            <Plus size={16} /> הוסף פגישה
+          </button>
+          <button
             onClick={() => setWeekOffset(w => w - 1)}
             className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400"
           >
@@ -94,6 +102,12 @@ export default function MeetingsPage() {
       ) : (
         <MeetingsList meetings={meetings} weekStart={weekStart} />
       )}
+
+      <MeetingAddModal
+        open={showAdd}
+        onClose={() => setShowAdd(false)}
+        onCreated={fetchMeetings}
+      />
     </div>
   );
 }

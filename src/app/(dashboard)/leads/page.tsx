@@ -71,6 +71,12 @@ export default function LeadsPage() {
     });
   }
 
+  async function handleBulkDelete(ids: string[]) {
+    // Optimistic update
+    setLeads(prev => prev.filter(l => !ids.includes(l.id)));
+    await Promise.all(ids.map(id => fetch(`/api/leads/${id}`, { method: "DELETE" })));
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -115,7 +121,7 @@ export default function LeadsPage() {
       ) : view === "kanban" ? (
         <LeadsKanban columns={columns} statuses={statuses} onStatusChange={handleStatusChange} />
       ) : (
-        <LeadsTable leads={leads} />
+        <LeadsTable leads={leads} onStatusChange={handleStatusChange} onBulkDelete={handleBulkDelete} />
       )}
 
       <LeadAddModal
