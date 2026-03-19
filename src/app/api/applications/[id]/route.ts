@@ -32,9 +32,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .from("applications")
     .update(updateData)
     .eq("id", id)
-    .select("*, leads(name, email, phone, occupation)")
+    .select("*, leads(id, name, email, phone, occupation)")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-update lead status when approved → qualified | rejected → lost
+  if (data?.leads?.id) {
+    if (body.status === "approved") {
+      await supabase.from("leads").update({ current_status: "qualified" }).eq("id", data.leads.id);
+      await supabase.from("funnel_events").insert({ lead_id: data.leads.id, event_type: "qualified", metadata: { source: "application_approved" } });
+    } else if (body.status === "rejected") {
+      await supabase.from("leads").update({ current_status: "lost" }).eq("id", data.leads.id);
+      await supabase.from("funnel_events").insert({ lead_id: data.leads.id, event_type: "lost", metadata: { source: "application_rejected" } });
+    }
+  }
+
   return NextResponse.json(data);
 }

@@ -17,6 +17,12 @@ const sourceOptions = [
   { value: "organic", label: "אורגני" },
   { value: "youtube", label: "יוטיוב" },
   { value: "referral", label: "הפנייה" },
+  { value: "instagram", label: "אינסטגרם" },
+  { value: "linkedin", label: "לינקדאין" },
+  { value: "content", label: "תוכן" },
+  { value: "webinar", label: "וובינר" },
+  { value: "skool", label: "Skool" },
+  { value: "other", label: "אחר" },
 ];
 
 const statusOptions = [

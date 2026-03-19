@@ -64,7 +64,7 @@ export function ActionItems({ hotLeads, upcomingMeetings, endingPrograms }: Acti
           <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">📅 פגישות קרובות</h3>
           <div className="space-y-3">
             {upcomingMeetings.map(meeting => (
-              <div key={meeting.id} className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-700 last:border-0">
+              <Link key={meeting.id} href="/meetings" className="flex items-center justify-between py-2 border-b border-gray-50 dark:border-gray-700 last:border-0 hover:bg-gray-50/50 dark:hover:bg-gray-700/30 rounded-lg px-1 -mx-1 transition-colors">
                 <div>
                   <span className="text-sm font-medium dark:text-gray-200">{meeting.customers?.name || "—"}</span>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400 dark:text-gray-500">
@@ -73,7 +73,7 @@ export function ActionItems({ hotLeads, upcomingMeetings, endingPrograms }: Acti
                     <span>{new Date(meeting.date).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

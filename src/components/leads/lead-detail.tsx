@@ -265,6 +265,24 @@ export function LeadDetail({ lead }: LeadDetailProps) {
                     >
                       {statusLabels[lead.current_status] || lead.current_status}
                     </span>
+                    {lead.lead_score != null && (
+                      <span className={clsx(
+                        "text-xs px-2.5 py-1 rounded-full font-bold",
+                        lead.lead_score >= 80 ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                        lead.lead_score >= 50 ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                        "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                      )}>
+                        Score {lead.lead_score}
+                      </span>
+                    )}
+                    {lead.customer && (
+                      <Link
+                        href={`/customers/${lead.customer.id}`}
+                        className="text-xs bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-3 py-1 rounded-full font-medium hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors"
+                      >
+                        → לקוח פעיל
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

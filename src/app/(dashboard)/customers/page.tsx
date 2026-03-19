@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Users, Phone, Mail, Search } from "lucide-react";
+import { Users, Phone, Mail, Search, Plus } from "lucide-react";
+import { CustomerAddModal } from "@/components/customers/customer-add-modal";
 
 const statusLabels: Record<string, string> = {
   active: "פעיל",
@@ -38,13 +39,16 @@ export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
 
-  useEffect(() => {
+  function loadCustomers() {
     setLoading(true);
     fetch("/api/customers")
       .then(r => r.json())
       .then(data => { setCustomers(Array.isArray(data) ? data : []); setLoading(false); });
-  }, []);
+  }
+
+  useEffect(() => { loadCustomers(); }, []);
 
   const filtered = customers.filter(c => {
     const matchSearch = !search ||
@@ -69,6 +73,12 @@ export default function CustomersPage() {
             <span>{completedCount} סיימו</span>
           </div>
         </div>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors"
+        >
+          <Plus size={16} /> הוסף לקוח
+        </button>
       </div>
 
       {/* Filters */}
@@ -141,6 +151,12 @@ export default function CustomersPage() {
           ))}
         </div>
       )}
+
+      <CustomerAddModal
+        open={showAdd}
+        onClose={() => setShowAdd(false)}
+        onCreated={loadCustomers}
+      />
     </div>
   );
 }

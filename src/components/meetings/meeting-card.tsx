@@ -40,9 +40,23 @@ const statusConfig: Record<MeetingStatus, { label: string; color: string }> = {
 
 export function MeetingCard({ meeting }: MeetingCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [status, setStatus] = useState<MeetingStatus>(meeting.status);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  async function updateStatus(newStatus: MeetingStatus, e: React.MouseEvent) {
+    e.stopPropagation();
+    setUpdatingStatus(true);
+    setStatus(newStatus);
+    await fetch(`/api/meetings/${meeting.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    setUpdatingStatus(false);
+  }
 
   const typeInfo = typeConfig[meeting.type];
-  const statusInfo = statusConfig[meeting.status];
+  const statusInfo = statusConfig[status];
   const meetingDate = new Date(meeting.date);
   const timeStr = format(meetingDate, "HH:mm");
   const contactName = meeting.customers?.name || "ללא שם";
@@ -85,6 +99,26 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
             {contactName}
           </div>
         </div>
+
+        {/* Status actions */}
+        {status === "scheduled" && (
+          <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={e => updateStatus("completed", e)}
+              disabled={updatingStatus}
+              className="px-2 py-1 text-xs font-medium bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition-colors disabled:opacity-50"
+            >
+              ✓ הושלם
+            </button>
+            <button
+              onClick={e => updateStatus("no_show", e)}
+              disabled={updatingStatus}
+              className="px-2 py-1 text-xs font-medium bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Expand arrow */}
         {hasSummary && (
