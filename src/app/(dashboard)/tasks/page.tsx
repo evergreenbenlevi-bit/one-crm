@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, List, LayoutGrid } from "lucide-react";
+import { Plus, List, LayoutGrid, Upload } from "lucide-react";
 import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { TASK_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels } from "@/lib/types/tasks";
 import { TaskKanban } from "@/components/tasks/task-kanban";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import { TaskAddModal } from "@/components/tasks/task-add-modal";
 import { TaskEditModal } from "@/components/tasks/task-edit-modal";
+import { TaskImportModal } from "@/components/tasks/task-import-modal";
 import { clsx } from "clsx";
 
 type ViewMode = "kanban" | "list";
@@ -19,6 +20,7 @@ export default function TasksPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [hideDone, setHideDone] = useState(true);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Filters
   const [filterPriority, setFilterPriority] = useState<TaskPriority | "all">("all");
@@ -150,6 +152,10 @@ export default function TasksPage() {
               <List size={16} className={viewMode === "list" ? "text-brand-600" : "text-gray-400"} />
             </button>
           </div>
+          <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl text-sm font-medium transition-colors">
+            <Upload size={14} />
+            ייבוא
+          </button>
           <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-bold transition-colors">
             <Plus size={16} />
             משימה חדשה
@@ -211,6 +217,7 @@ export default function TasksPage() {
 
       <TaskAddModal open={showAddModal} onClose={() => setShowAddModal(false)} onSave={handleAddTask} />
       <TaskEditModal task={editingTask} onClose={() => setEditingTask(null)} onSave={handleEditTask} onDelete={handleDeleteTask} />
+      <TaskImportModal open={showImportModal} onClose={() => setShowImportModal(false)} onImport={() => fetchTasks()} />
     </div>
   );
 }
