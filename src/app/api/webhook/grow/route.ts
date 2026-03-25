@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyNewPayment } from "@/lib/telegram";
 import { NextRequest, NextResponse } from "next/server";
 
 // GROW webhook formats:
@@ -265,6 +266,9 @@ export async function POST(request: NextRequest) {
       isRecurring: p.isRecurring,
     },
   });
+
+  // Telegram notification
+  notifyNewPayment(p.fullName || p.invoiceName || "(ללא שם)", p.amount, product);
 
   // Update lead status
   if (lead) {

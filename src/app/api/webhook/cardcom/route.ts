@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyNewPayment } from "@/lib/telegram";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -55,6 +56,9 @@ export async function POST(request: NextRequest) {
     status: "completed",
     external_id: body.transaction_id || null,
   });
+
+  // Telegram notification
+  notifyNewPayment(body.name || "(ללא שם)", body.amount || 165, "one_core");
 
   // Update lead status
   if (lead) {

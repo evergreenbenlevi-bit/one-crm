@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export type UserRole = "admin" | "user";
 
 // Routes only admin can access
-export const ADMIN_ONLY_ROUTES = ["/settings", "/goals", "/content"];
+export const ADMIN_ONLY_ROUTES = ["/settings", "/goals", "/content", "/research"];
 
 export async function getUserRole(): Promise<UserRole> {
   // Get authenticated user via cookie client

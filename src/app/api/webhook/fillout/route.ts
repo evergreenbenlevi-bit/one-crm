@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyNewLead } from "@/lib/telegram";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -24,6 +25,13 @@ export async function POST(request: NextRequest) {
   }).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Telegram notification
+  notifyNewLead(
+    lead.name || "(ללא שם)",
+    lead.source || "campaign",
+    lead.current_status || "new",
+  );
 
   // Create funnel event
   await supabase.from("funnel_events").insert({

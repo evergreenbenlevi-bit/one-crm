@@ -1,56 +1,59 @@
 -- RBAC: Role-Based Access Control for ONE™ CRM
 -- Added: 2026-03-18
 
--- ENUM
-create type user_role as enum ('admin', 'user');
+-- ENUM (idempotent)
+DO $$ BEGIN CREATE TYPE user_role AS ENUM ('admin', 'user'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- USER ROLES TABLE
-create table user_roles (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  role user_role not null default 'user',
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique(user_id)
+CREATE TABLE IF NOT EXISTS user_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role user_role NOT NULL DEFAULT 'user',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(user_id)
 );
 
 -- INDEXES
-create index idx_user_roles_user on user_roles(user_id);
-create index idx_user_roles_role on user_roles(role);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role);
 
 -- RLS
-alter table user_roles enable row level security;
+ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 
--- Users can read their own role
-create policy "Users can read own role" on user_roles
-  for select using (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "Users can read own role" ON user_roles FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Only admins can manage roles
-create policy "Admins can manage roles" on user_roles
-  for all using (
-    exists (
-      select 1 from user_roles ur
-      where ur.user_id = auth.uid() and ur.role = 'admin'
-    )
+DO $$ BEGIN
+  CREATE POLICY "Admins can manage roles" ON user_roles FOR ALL USING (
+    EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = auth.uid() AND ur.role = 'admin')
   );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Service role full access
-create policy "Service role full access" on user_roles
-  for all using (auth.role() = 'service_role');
+DO $$ BEGIN
+  CREATE POLICY "Service role full access" ON user_roles FOR ALL USING (auth.role() = 'service_role');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- UPDATED_AT TRIGGER
-create trigger set_updated_at before update on user_roles
-  for each row execute function update_updated_at();
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+DO $$ BEGIN
+  CREATE TRIGGER set_updated_at BEFORE UPDATE ON user_roles FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- AUTO-ASSIGN: New users get 'user' role by default
-create or replace function handle_new_user_role()
-returns trigger as $$
-begin
-  insert into user_roles (user_id, role) values (new.id, 'user');
-  return new;
-end;
-$$ language plpgsql security definer;
+CREATE OR REPLACE FUNCTION handle_new_user_role()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO user_roles (user_id, role) VALUES (new.id, 'user');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function handle_new_user_role();
+DO $$ BEGIN
+  CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user_role();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

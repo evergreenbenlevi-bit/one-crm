@@ -9,6 +9,7 @@ import { TaskFilters } from "@/components/tasks/task-filters";
 import { TaskAddModal } from "@/components/tasks/task-add-modal";
 import { TaskEditModal } from "@/components/tasks/task-edit-modal";
 import { TaskImportModal } from "@/components/tasks/task-import-modal";
+import { Big3Today } from "@/components/tasks/big3-today";
 import { clsx } from "clsx";
 
 type ViewMode = "today" | "week" | "backlog";
@@ -414,6 +415,9 @@ export default function TasksPage() {
       {/* ── TODAY VIEW ── */}
       {viewMode === "today" && (
         <div className="space-y-3">
+          {/* BIG 3 — Weekly projects with today's checklist */}
+          <Big3Today />
+
           {wipCount >= WIP_LIMIT && (
             <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl text-sm text-amber-700 dark:text-amber-300">
               <Zap size={14} className="flex-shrink-0" />
