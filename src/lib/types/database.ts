@@ -134,6 +134,29 @@ export interface Note {
   created_at: string;
 }
 
+export type ProposalStatus = "draft" | "sent" | "viewed" | "signed" | "rejected";
+
+export interface Proposal {
+  id: string;
+  lead_id: string | null;
+  customer_id: string | null;
+  title: string;
+  program: string | null;
+  amount: number | null;
+  payment_structure: string | null;
+  status: ProposalStatus;
+  sent_at: string | null;
+  viewed_at: string | null;
+  signed_at: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+  file_path: string | null;
+  notes: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Expense {
   id: string;
   category: ExpenseCategory;

@@ -135,6 +135,8 @@ export async function POST(request: NextRequest) {
     depends_on: body.depends_on || null,
     parent_id: body.parent_id || null,
     tags: Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string").slice(0, 20) : [],
+    is_recurring: Boolean(body.is_recurring) || false,
+    recur_pattern: body.is_recurring && body.recur_pattern ? String(body.recur_pattern) : null,
   };
 
   if (isLocalMode) {
@@ -184,6 +186,8 @@ export async function PATCH(request: NextRequest) {
   if (rawUpdates.tags !== undefined) updates.tags = Array.isArray(rawUpdates.tags)
     ? rawUpdates.tags.filter((t: unknown) => typeof t === "string").slice(0, 20)
     : [];
+  if (rawUpdates.is_recurring !== undefined) updates.is_recurring = Boolean(rawUpdates.is_recurring);
+  if (rawUpdates.recur_pattern !== undefined) updates.recur_pattern = rawUpdates.is_recurring && rawUpdates.recur_pattern ? String(rawUpdates.recur_pattern) : null;
 
   if (isLocalMode) {
     const task = updateTask(id, updates);

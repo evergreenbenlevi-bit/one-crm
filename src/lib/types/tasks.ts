@@ -3,6 +3,8 @@ export type TaskStatus = "backlog" | "todo" | "in_progress" | "waiting_ben" | "d
 export type TaskOwner = "claude" | "ben" | "both" | "avitar";
 export type TaskCategory = "one_tm" | "infrastructure" | "personal" | "research" | "content";
 
+export type RecurPattern = "daily" | `weekly:${number}` | `monthly:${number}`;
+
 export interface Task {
   id: string;
   title: string;
@@ -21,6 +23,10 @@ export interface Task {
   position: number;
   created_at: string;
   updated_at: string;
+  // Recurring
+  is_recurring?: boolean;
+  recur_pattern?: string | null;
+  recur_next_at?: string | null;
 }
 
 export const statusLabels: Record<TaskStatus, string> = {

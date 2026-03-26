@@ -1,0 +1,198 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { FlaskConical, ExternalLink } from "lucide-react";
+import { clsx } from "clsx";
+
+interface ResearchItem {
+  id: string;
+  title: string;
+  research_date: string;
+  category: string;
+  status: string;
+  file_path: string | null;
+  action_taken: string | null;
+  notes: string | null;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "עוד לא קיבל התייחסות",
+  waiting_ben: "ממתין לתשובת בן",
+  implementing: "הטמעה בתהליך",
+  done: "יושם / הושלם",
+  cancelled: "בוטל",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+  waiting_ben: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+  implementing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  done: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  cancelled: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  tech_tools: "Tech / Tools",
+  content_social: "Content / Social",
+  business_strategy: "Business / Strategy",
+  systems_automation: "Systems / Automation",
+  ai_agents: "AI / Agents",
+  personal: "Personal",
+};
+
+const STATUS_FILTERS = ["all", "pending", "waiting_ben", "implementing", "done", "cancelled"];
+const CATEGORY_FILTERS = ["all", "tech_tools", "content_social", "business_strategy", "systems_automation", "ai_agents", "personal"];
+
+export default function ResearchPage() {
+  const [items, setItems] = useState<ResearchItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (categoryFilter !== "all") params.set("category", categoryFilter);
+    const res = await fetch(`/api/research?${params}`);
+    if (res.ok) setItems(await res.json());
+    setLoading(false);
+  }, [statusFilter, categoryFilter]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const updateStatus = async (id: string, status: string) => {
+    await fetch("/api/research", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status }),
+    });
+    fetchData();
+  };
+
+  const counts = Object.fromEntries(
+    ["pending", "waiting_ben", "implementing", "done"].map(s => [
+      s, items.filter(i => i.status === s).length
+    ])
+  );
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto" dir="rtl">
+      <div className="flex items-center gap-3 mb-6">
+        <FlaskConical className="h-6 w-6 text-indigo-500" />
+        <h1 className="text-2xl font-bold">מחקרים</h1>
+        <span className="text-sm text-gray-500 mr-2">admin only</span>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        {[
+          { key: "pending", label: "ממתינים", color: "text-yellow-600" },
+          { key: "waiting_ben", label: "ממתין לבן", color: "text-orange-600" },
+          { key: "implementing", label: "בתהליך", color: "text-blue-600" },
+          { key: "done", label: "יושם", color: "text-green-600" },
+        ].map(({ key, label, color }) => (
+          <div key={key} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div className={clsx("text-2xl font-bold", color)}>{counts[key] ?? 0}</div>
+            <div className="text-sm text-gray-500">{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex gap-1">
+          {STATUS_FILTERS.map(s => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={clsx(
+                "px-3 py-1 rounded-full text-sm transition-colors",
+                statusFilter === s
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+              )}
+            >
+              {s === "all" ? "הכל" : STATUS_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1 mb-6">
+        {CATEGORY_FILTERS.map(c => (
+          <button
+            key={c}
+            onClick={() => setCategoryFilter(c)}
+            className={clsx(
+              "px-3 py-1 rounded-full text-sm transition-colors",
+              categoryFilter === c
+                ? "bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
+            )}
+          >
+            {c === "all" ? "כל הקטגוריות" : CATEGORY_LABELS[c]}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="text-center py-12 text-gray-400">טוען...</div>
+      ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <th className="text-right px-4 py-3 font-medium text-gray-500">תאריך</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-500">כותרת</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-500">קטגוריה</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-500">סטטוס</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-500">פעולה שנגזרה</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750">
+                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                    {new Date(item.research_date).toLocaleDateString("he-IL")}
+                  </td>
+                  <td className="px-4 py-3 font-medium">
+                    <div className="flex items-center gap-2">
+                      {item.title}
+                      {item.file_path && (
+                        <ExternalLink className="h-3 w-3 text-gray-400" />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500">
+                    {CATEGORY_LABELS[item.category] || item.category}
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={item.status}
+                      onChange={(e) => updateStatus(item.id, e.target.value)}
+                      className={clsx(
+                        "text-xs px-2 py-1 rounded-full border-0 cursor-pointer font-medium",
+                        STATUS_COLORS[item.status]
+                      )}
+                    >
+                      {Object.entries(STATUS_LABELS).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">
+                    {item.action_taken || "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {items.length === 0 && (
+            <div className="text-center py-12 text-gray-400">אין תוצאות</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

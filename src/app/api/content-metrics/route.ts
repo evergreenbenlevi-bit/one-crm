@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const platform = searchParams.get("platform");
   const sortBy = searchParams.get("sort_by") || "published_at";
+  // Note: post_date was renamed to published_at in 20260325_content_ideas migration
   const sortDir = searchParams.get("sort_dir") === "asc" ? true : false;
 
   let query = supabase

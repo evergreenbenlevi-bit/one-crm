@@ -19,6 +19,8 @@ interface TaskAddModalProps {
     category: TaskCategory;
     due_date: string | null;
     tags: string[];
+    is_recurring: boolean;
+    recur_pattern: string | null;
   }) => void;
   initialStatus?: TaskStatus;
 }
@@ -32,15 +34,18 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
   const [category, setCategory] = useState<TaskCategory>("one_tm");
   const [dueDate, setDueDate] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurPattern, setRecurPattern] = useState("weekly:0");
 
   if (!open) return null;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, tags });
+    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null });
     setTitle(""); setDescription(""); setPriority("p2"); setStatus(initialStatus);
     setOwner("claude"); setCategory("one_tm"); setDueDate(""); setTags([]);
+    setIsRecurring(false); setRecurPattern("weekly:0");
     onClose();
   }
 
@@ -132,6 +137,34 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
           <div>
             <label className={labelClass}>תגיות</label>
             <TagInput tags={tags} onChange={setTags} />
+          </div>
+
+          {/* Recurring */}
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                className="rounded border-gray-300 text-brand-600 focus:ring-brand-400"
+              />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">משימה חוזרת 🔁</span>
+            </label>
+            {isRecurring && (
+              <select value={recurPattern} onChange={(e) => setRecurPattern(e.target.value)} className={fieldClass}>
+                <option value="daily">כל יום</option>
+                <option value="weekly:0">כל שבוע — ראשון</option>
+                <option value="weekly:1">כל שבוע — שני</option>
+                <option value="weekly:2">כל שבוע — שלישי</option>
+                <option value="weekly:3">כל שבוע — רביעי</option>
+                <option value="weekly:4">כל שבוע — חמישי</option>
+                <option value="weekly:5">כל שבוע — שישי</option>
+                <option value="weekly:6">כל שבוע — שבת</option>
+                <option value="monthly:1">כל חודש — תאריך 1</option>
+                <option value="monthly:15">כל חודש — תאריך 15</option>
+                <option value="monthly:28">כל חודש — תאריך 28</option>
+              </select>
+            )}
           </div>
 
           {/* Submit */}
