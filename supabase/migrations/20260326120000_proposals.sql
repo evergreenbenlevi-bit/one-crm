@@ -1,7 +1,9 @@
 -- Proposals table for tracking client proposals lifecycle
 -- Status flow: draft → sent → viewed → signed | rejected
 
-CREATE TYPE proposal_status AS ENUM ('draft', 'sent', 'viewed', 'signed', 'rejected');
+DO $$ BEGIN
+  CREATE TYPE proposal_status AS ENUM ('draft', 'sent', 'viewed', 'signed', 'rejected');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 CREATE TABLE IF NOT EXISTS proposals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -33,10 +35,10 @@ CREATE TABLE IF NOT EXISTS proposals (
 );
 
 -- Indexes for common queries
-CREATE INDEX proposals_lead_id_idx ON proposals(lead_id);
-CREATE INDEX proposals_customer_id_idx ON proposals(customer_id);
-CREATE INDEX proposals_status_idx ON proposals(status);
-CREATE INDEX proposals_created_at_idx ON proposals(created_at DESC);
+CREATE INDEX IF NOT EXISTS proposals_lead_id_idx ON proposals(lead_id);
+CREATE INDEX IF NOT EXISTS proposals_customer_id_idx ON proposals(customer_id);
+CREATE INDEX IF NOT EXISTS proposals_status_idx ON proposals(status);
+CREATE INDEX IF NOT EXISTS proposals_created_at_idx ON proposals(created_at DESC);
 
 -- Auto-update updated_at
 CREATE OR REPLACE FUNCTION update_proposals_updated_at()
@@ -47,17 +49,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER proposals_updated_at
-  BEFORE UPDATE ON proposals
-  FOR EACH ROW EXECUTE FUNCTION update_proposals_updated_at();
+DO $$ BEGIN
+  CREATE TRIGGER proposals_updated_at
+    BEFORE UPDATE ON proposals
+    FOR EACH ROW EXECUTE FUNCTION update_proposals_updated_at();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- RLS
 ALTER TABLE proposals ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Authenticated users full access on proposals"
-  ON proposals FOR ALL
-  USING (auth.role() = 'authenticated');
+DO $$ BEGIN
+  CREATE POLICY "Authenticated users full access on proposals"
+    ON proposals FOR ALL
+    USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "Service role full access on proposals"
-  ON proposals FOR ALL
-  USING (auth.role() = 'service_role');
+DO $$ BEGIN
+  CREATE POLICY "Service role full access on proposals"
+    ON proposals FOR ALL
+    USING (auth.role() = 'service_role');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

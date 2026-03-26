@@ -15,22 +15,15 @@ EXCEPTION WHEN undefined_column THEN NULL; END $$;
 -- ============================================================
 -- 2. Content Ideas table
 -- ============================================================
-CREATE TYPE content_idea_type AS ENUM (
-  'short_form',       -- רילסים וסרטונים קצרים
-  'long_form',        -- YouTube ותוכן ארוך
-  'inspiration'       -- לינקים והשראות
-);
+DO $$ BEGIN
+  CREATE TYPE content_idea_type AS ENUM ('short_form','long_form','inspiration');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE content_idea_status AS ENUM (
-  'idea',             -- רעיון חדש
-  'working',          -- בתהליך
-  'scripted',         -- יש סקריפט
-  'filmed',           -- צולם
-  'published',        -- פורסם
-  'parked'            -- לא עכשיו
-);
+DO $$ BEGIN
+  CREATE TYPE content_idea_status AS ENUM ('idea','working','scripted','filmed','published','parked');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TABLE content_ideas (
+CREATE TABLE IF NOT EXISTS content_ideas (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   type content_idea_type NOT NULL,
@@ -46,14 +39,15 @@ CREATE TABLE content_ideas (
 );
 
 -- Indexes
-CREATE INDEX idx_content_ideas_type ON content_ideas(type);
-CREATE INDEX idx_content_ideas_status ON content_ideas(status);
-CREATE INDEX idx_content_ideas_type_status ON content_ideas(type, status);
+CREATE INDEX IF NOT EXISTS idx_content_ideas_type ON content_ideas(type);
+CREATE INDEX IF NOT EXISTS idx_content_ideas_status ON content_ideas(status);
+CREATE INDEX IF NOT EXISTS idx_content_ideas_type_status ON content_ideas(type, status);
 
 -- RLS — admin only
 ALTER TABLE content_ideas ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Admin only — content_ideas" ON content_ideas
+DO $$ BEGIN
+  CREATE POLICY "Admin only — content_ideas" ON content_ideas
   FOR ALL
   USING (
     EXISTS (
@@ -62,9 +56,12 @@ CREATE POLICY "Admin only — content_ideas" ON content_ideas
       AND ur.role = 'admin'
     )
   );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "Service role full access — content_ideas" ON content_ideas
+DO $$ BEGIN
+  CREATE POLICY "Service role full access — content_ideas" ON content_ideas
   FOR ALL USING (auth.role() = 'service_role');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- Updated_at trigger
 DO $$ BEGIN

@@ -26,10 +26,12 @@ CREATE INDEX IF NOT EXISTS task_reminders_pending ON task_reminders(remind_at)
 -- RLS
 ALTER TABLE task_reminders ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "admin_all_reminders" ON task_reminders
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM user_roles
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "admin_all_reminders" ON task_reminders
+    FOR ALL USING (
+      EXISTS (
+        SELECT 1 FROM user_roles
+        WHERE user_id = auth.uid() AND role = 'admin'
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
