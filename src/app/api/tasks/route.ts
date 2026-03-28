@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+
+// Prefer EU regions (Frankfurt/Stockholm) — closer to Israel than default US East
+export const preferredRegion = ["fra1", "arn1", "cdg1"];
 import { isLocalMode, getAllTasks, createTask, updateTask, deleteTask } from "@/lib/tasks-store";
 import type { TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { createAdminClient } from "@/lib/supabase/admin";
