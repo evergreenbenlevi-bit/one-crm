@@ -37,8 +37,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Skip auth for webhook endpoints — they use their own key-based auth
-  if (request.nextUrl.pathname.startsWith("/api/webhook")) {
+  // Skip auth for webhook endpoints and internal AI endpoints
+  if (
+    request.nextUrl.pathname.startsWith("/api/webhook") ||
+    request.nextUrl.pathname.startsWith("/api/chat") ||
+    request.nextUrl.pathname.startsWith("/api/crm-query")
+  ) {
     return NextResponse.next({ request });
   }
 
