@@ -10,7 +10,7 @@ const CRM_QUERY_SECRET = process.env.CRM_QUERY_SECRET
 export async function POST(req: Request) {
   // Validate Jarvis secret
   const authHeader = req.headers.get('x-crm-secret')
-  if (CRM_QUERY_SECRET && authHeader !== CRM_QUERY_SECRET) {
+  if (CRM_QUERY_SECRET && authHeader?.trim() !== CRM_QUERY_SECRET.trim()) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
   }
 
