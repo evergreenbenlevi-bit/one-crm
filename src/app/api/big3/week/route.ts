@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-
-async function getAuthUser(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
-}
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth } from "@/lib/api-auth";
 
 // Returns Monday of the given date's week
 function getMondayOf(date: Date): string {
@@ -23,15 +14,14 @@ function getMondayOf(date: Date): string {
 // GET /api/big3/week?date=YYYY-MM-DD
 // Returns big3_projects + their tasks for the week containing ?date (defaults to today)
 export async function GET(request: NextRequest) {
-  const user = await getAuthUser(request);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authUser = await requireAuth(request);
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get("date");
   const targetDate = dateParam ? new Date(dateParam) : new Date();
   const weekStart = getMondayOf(targetDate);
 
-  const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
 
   const { data: projects, error } = await supabase
@@ -47,8 +37,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/big3/week — create or replace a project for the week
 export async function POST(request: NextRequest) {
-  const user = await getAuthUser(request);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authUser = await requireAuth(request);
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
   const { name, description, why_now, success_definition, type, position, week_start } = body;
@@ -61,13 +51,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid type" }, { status: 400 });
   }
 
-  const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("big3_projects")
     .insert([{
-      user_id: user.id,
+      user_id: authUser.id,
       week_start,
       name: name.trim(),
       description: description?.trim() || null,

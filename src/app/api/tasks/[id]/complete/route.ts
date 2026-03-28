@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-
-async function getAuthUser(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { createAdminClient } = await import("@/lib/supabase/admin");
-  const admin = createAdminClient();
-  const { data } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
-  return { id: user.id, role: (data?.role as "admin" | "user") || "user" };
-}
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth } from "@/lib/api-auth";
 
 /** Calculate next due date from recur_pattern */
 function calcNextDate(pattern: string, from: Date = new Date()): Date {
@@ -50,15 +37,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authUser = await getAuthUser(request);
+  const authUser = await requireAuth(request);
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (authUser.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
   const body = await request.json();
   const completed = Boolean(body.completed);
 
-  const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
 
   // Fetch current task

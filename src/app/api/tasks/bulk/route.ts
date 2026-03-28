@@ -1,30 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isLocalMode, bulkCreateTasks } from "@/lib/tasks-store";
-import { createServerClient } from "@supabase/ssr";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth } from "@/lib/api-auth";
 import type { TaskPriority, TaskStatus, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 
 const VALID_PRIORITIES: TaskPriority[] = ["p1", "p2", "p3"];
 const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
 const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
-const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "infrastructure", "personal", "research", "content"];
-
-async function requireAdmin(request: NextRequest): Promise<boolean> {
-  if (isLocalMode) return true;
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-
-  const { createAdminClient } = await import("@/lib/supabase/admin");
-  const admin = createAdminClient();
-  const { data } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
-  return data?.role === "admin";
-}
+const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research"];
 
 interface RawTask {
   title?: unknown;
@@ -57,8 +40,8 @@ function sanitizeTask(raw: RawTask) {
 
 // POST /api/tasks/bulk — import multiple tasks (admin only)
 export async function POST(request: NextRequest) {
-  const isAdmin = await requireAdmin(request);
-  if (!isAdmin) {
+  const authUser = await requireAuth(request);
+  if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -72,7 +55,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Maximum 200 tasks per import" }, { status: 400 });
   }
 
-  // Sanitize + validate each task
   const sanitized = body.tasks
     .map((t: RawTask) => sanitizeTask(t))
     .filter(Boolean);
@@ -86,7 +68,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ imported: created.length, tasks: created }, { status: 201 });
   }
 
-  const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("tasks").insert(sanitized).select();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

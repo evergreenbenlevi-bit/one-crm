@@ -1,7 +1,7 @@
 export type TaskPriority = "p1" | "p2" | "p3";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "waiting_ben" | "done";
 export type TaskOwner = "claude" | "ben" | "both" | "avitar";
-export type TaskCategory = "one_tm" | "infrastructure" | "personal" | "research" | "content";
+export type TaskCategory = "one_tm" | "self" | "brand" | "temp" | "research";
 
 export type RecurPattern = "daily" | `weekly:${number}` | `monthly:${number}`;
 
@@ -23,6 +23,10 @@ export interface Task {
   position: number;
   created_at: string;
   updated_at: string;
+  // Workstream (sub-categorization within pillar)
+  workstream?: string | null;
+  // Sprint week (BIG3 cycle, format: "2026-W13")
+  sprint_week?: string | null;
   // Recurring
   is_recurring?: boolean;
   recur_pattern?: string | null;
@@ -81,20 +85,29 @@ export const ownerIcons: Record<TaskOwner, string> = {
 
 export const categoryLabels: Record<TaskCategory, string> = {
   one_tm: "ONE™",
-  infrastructure: "תשתיות / AI",
-  personal: "אישי",
-  research: "מחקר",
-  content: "תוכן",
+  self: "מציאת העצמי",
+  brand: "פרופיל עסקי",
+  temp: "זמני",
+  research: "מחקר / חד-פעמי",
 };
 
 export const categoryColors: Record<TaskCategory, string> = {
   one_tm: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-  infrastructure: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  personal: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+  self: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
+  brand: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
+  temp: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
   research: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
-  content: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
 };
 
 export const TASK_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
 
-export const SUGGESTED_TAGS = ["#blocked", "#quick-win", "#sprint", "#waiting-api", "#review", "#urgent", "#research", "#design"];
+export const SUGGESTED_TAGS = [
+  // פילרים
+  "#workbook", "#media-identity", "#human-design",
+  "#niche", "#content-system", "#avatar", "#video", "#miro",
+  "#docengine", "#crm", "#launch", "#manychat", "#copywriter",
+  // זמניים
+  "#lori-5years", "#contract-v3",
+  // סטטוס
+  "#blocked", "#quick-win", "#sprint", "#waiting-api", "#review", "#urgent",
+];

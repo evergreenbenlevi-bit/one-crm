@@ -1,34 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isLocalMode, getAllTasks, createTask, updateTask, deleteTask } from "@/lib/tasks-store";
 import type { TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
-import { createServerClient } from "@supabase/ssr";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth } from "@/lib/api-auth";
 
 // ── Valid enums for input validation ──
 const VALID_PRIORITIES: TaskPriority[] = ["p1", "p2", "p3"];
 const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
 const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
-const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "infrastructure", "personal", "research", "content"];
-
-// ── Auth helper ──
-async function getAuthUser(request: NextRequest) {
-  if (isLocalMode) return { id: "local-admin", role: "admin" as const };
-
-  // Cookie client for auth session
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return request.cookies.getAll(); }, setAll() {} } }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  // Admin client for user_roles — bypasses RLS infinite recursion bug
-  const { createAdminClient } = await import("@/lib/supabase/admin");
-  const admin = createAdminClient();
-  const { data } = await admin.from("user_roles").select("role").eq("user_id", user.id).single();
-  return { id: user.id, role: (data?.role as "admin" | "user") || "user" };
-}
+const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research"];
 
 // ── Validation helpers ──
 function validateTaskFields(body: Record<string, unknown>, requireTitle = false): string | null {
@@ -60,7 +40,7 @@ function validateTaskFields(body: Record<string, unknown>, requireTitle = false)
 
 // ── GET /api/tasks ──
 export async function GET(request: NextRequest) {
-  const authUser = await getAuthUser(request);
+  const authUser = await requireAuth(request);
   if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -77,8 +57,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(tasks);
   }
 
-  // Supabase mode
-  const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
   let query = supabase.from("tasks").select("*");
 
@@ -88,14 +66,11 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get("category");
 
   if (status && VALID_STATUSES.includes(status as TaskStatus)) query = query.eq("status", status);
+  // Lazy load: exclude backlog on initial fetch for fast page load
+  if (!status && searchParams.get("exclude_backlog") === "1") query = query.neq("status", "backlog");
   if (priority && VALID_PRIORITIES.includes(priority as TaskPriority)) query = query.eq("priority", priority);
   if (owner && VALID_OWNERS.includes(owner as TaskOwner)) query = query.eq("owner", owner);
   if (category && VALID_CATEGORIES.includes(category as TaskCategory)) query = query.eq("category", category);
-
-  // Non-admin users only see their own tasks
-  if (authUser.role !== "admin") {
-    query = query.in("owner", ["avitar", "both"]);
-  }
 
   const { data, error } = await query.order("position").order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -104,23 +79,18 @@ export async function GET(request: NextRequest) {
 
 // ── POST /api/tasks ──
 export async function POST(request: NextRequest) {
-  const authUser = await getAuthUser(request);
+  const authUser = await requireAuth(request);
   if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (authUser.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await request.json();
 
-  // Validate input
   const validationError = validateTaskFields(body, true);
   if (validationError) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
-  // Sanitize: only allow known fields
   const sanitized = {
     title: (body.title as string).trim(),
     description: body.description?.trim() || null,
@@ -144,7 +114,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(task, { status: 201 });
   }
 
-  const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("tasks").insert([sanitized]).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -153,12 +122,9 @@ export async function POST(request: NextRequest) {
 
 // ── PATCH /api/tasks ──
 export async function PATCH(request: NextRequest) {
-  const authUser = await getAuthUser(request);
+  const authUser = await requireAuth(request);
   if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (authUser.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const body = await request.json();
@@ -167,13 +133,11 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  // Validate fields
   const validationError = validateTaskFields(rawUpdates);
   if (validationError) {
     return NextResponse.json({ error: validationError }, { status: 400 });
   }
 
-  // Only allow known update fields
   const updates: Record<string, unknown> = {};
   if (rawUpdates.title !== undefined) updates.title = (rawUpdates.title as string).trim();
   if (rawUpdates.description !== undefined) updates.description = rawUpdates.description?.trim() || null;
@@ -195,7 +159,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json(task);
   }
 
-  const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -204,12 +167,9 @@ export async function PATCH(request: NextRequest) {
 
 // ── DELETE /api/tasks ──
 export async function DELETE(request: NextRequest) {
-  const authUser = await getAuthUser(request);
+  const authUser = await requireAuth(request);
   if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (authUser.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -224,7 +184,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
-  const { createAdminClient } = await import("@/lib/supabase/admin");
   const supabase = createAdminClient();
   const { error } = await supabase.from("tasks").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -125,9 +125,23 @@ function parseRSSItems(xml: string, source: string, topic: string) {
   return items;
 }
 
+type NewsItem = { title: string; link: string; pubDate: string; description: string; source: string; topic: string };
+
+// Module-level cache — survives across requests in the same process instance
+const _cache: Map<string, { items: NewsItem[]; ts: number }> = new Map();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const topic = searchParams.get("topic") || "all";
+
+  // Serve from in-process cache if fresh
+  const cached = _cache.get(topic);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    return NextResponse.json(cached.items, {
+      headers: { "Cache-Control": "s-maxage=3600, stale-while-revalidate" },
+    });
+  }
 
   const feeds =
     topic === "all" ? RSS_FEEDS : RSS_FEEDS.filter((f) => f.topic === topic);
@@ -145,7 +159,6 @@ export async function GET(request: NextRequest) {
     })
   );
 
-  type NewsItem = { title: string; link: string; pubDate: string; description: string; source: string; topic: string };
   const allItems = (results
     .filter((r) => r.status === "fulfilled") as PromiseFulfilledResult<NewsItem[]>[])
     .flatMap((r) => r.value)
@@ -155,6 +168,8 @@ export async function GET(request: NextRequest) {
       return db - da;
     })
     .slice(0, 60);
+
+  _cache.set(topic, { items: allItems, ts: Date.now() });
 
   return NextResponse.json(allItems, {
     headers: { "Cache-Control": "s-maxage=3600, stale-while-revalidate" },

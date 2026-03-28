@@ -23,16 +23,16 @@ interface TaskImportModalProps {
   onImport: (count: number) => void;
 }
 
-// Map Obsidian KANBAN sections to CRM categories
+// Map Obsidian KANBAN sections to CRM categories (3-pillar system)
 const SECTION_TO_CATEGORY: Record<string, TaskCategory> = {
-  "דחוף": "one_tm",
   "ONE™": "one_tm",
   "ONE": "one_tm",
-  "תשתיות": "infrastructure",
-  "תשתיות / AI": "infrastructure",
-  "אישי": "personal",
+  "דחוף": "one_tm",
+  "מציאת העצמי": "self",
+  "פרופיל": "brand",
+  "תוכן": "brand",
   "מחקר": "research",
-  "תוכן": "content",
+  "זמני": "temp",
 };
 
 function detectCategory(sectionTitle: string): TaskCategory {
