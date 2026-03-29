@@ -74,14 +74,7 @@ function extractText(str: string): string {
 }
 
 function parseRSSItems(xml: string, source: string, topic: string) {
-  const items: {
-    title: string;
-    link: string;
-    pubDate: string;
-    description: string;
-    source: string;
-    topic: string;
-  }[] = [];
+  const items: NewsItem[] = [];
 
   const isAtom = !xml.includes("<item>");
   const regex = isAtom
@@ -119,13 +112,76 @@ function parseRSSItems(xml: string, source: string, topic: string) {
       ? extractText(descMatch[1]).substring(0, 220)
       : "";
 
-    items.push({ title, link, pubDate, description, source, topic });
+    items.push({ title, link, pubDate, description, source, topic, relevanceScore: 5 });
   }
 
   return items;
 }
 
-type NewsItem = { title: string; link: string; pubDate: string; description: string; source: string; topic: string };
+type NewsItem = {
+  title: string;
+  link: string;
+  pubDate: string;
+  description: string;
+  source: string;
+  topic: string;
+  relevanceScore: number;
+};
+
+// Score items using Claude Haiku — single batch call
+async function scoreItems(items: NewsItem[]): Promise<NewsItem[]> {
+  if (!process.env.ANTHROPIC_API_KEY || items.length === 0) return items;
+
+  try {
+    const headlines = items
+      .map((item, i) => `${i + 1}. ${item.title}`)
+      .join("\n");
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        messages: [
+          {
+            role: "user",
+            content: `Rate each headline for relevance to a founder/creator who cares about: AI agents, LLMs, automation tools, content creation AI, business growth with AI, new AI frameworks/models.
+LOW relevance (1-3): job postings, hiring announcements, unrelated tech, math proofs, specific coding tools unrelated to AI business.
+HIGH relevance (8-10): new AI models, agent frameworks, automation breakthroughs, AI for content/business.
+
+Return ONLY a JSON array of integers 0-10, one per headline, same order. Example: [8,3,7,...]
+
+Headlines:
+${headlines}`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (!res.ok) return items;
+
+    const data = await res.json();
+    const text = data?.content?.[0]?.text ?? "";
+    const match = text.match(/\[[\d,\s]+\]/);
+    if (!match) return items;
+
+    const scores: number[] = JSON.parse(match[0]);
+
+    return items.map((item, i) => ({
+      ...item,
+      relevanceScore: typeof scores[i] === "number" ? Math.min(10, Math.max(0, scores[i])) : 5,
+    }));
+  } catch {
+    // Scoring failed — return items with default score
+    return items;
+  }
+}
 
 // Module-level cache — survives across requests in the same process instance
 const _cache: Map<string, { items: NewsItem[]; ts: number }> = new Map();
@@ -159,7 +215,7 @@ export async function GET(request: NextRequest) {
     })
   );
 
-  const allItems = (results
+  const rawItems = (results
     .filter((r) => r.status === "fulfilled") as PromiseFulfilledResult<NewsItem[]>[])
     .flatMap((r) => r.value)
     .sort((a, b) => {
@@ -169,9 +225,20 @@ export async function GET(request: NextRequest) {
     })
     .slice(0, 60);
 
-  _cache.set(topic, { items: allItems, ts: Date.now() });
+  // AI scoring — batch, cached with items
+  const scoredItems = await scoreItems(rawItems);
 
-  return NextResponse.json(allItems, {
+  // Sort: score desc, then date desc for ties
+  scoredItems.sort((a, b) => {
+    if (b.relevanceScore !== a.relevanceScore) return b.relevanceScore - a.relevanceScore;
+    const da = new Date(a.pubDate).getTime() || 0;
+    const db = new Date(b.pubDate).getTime() || 0;
+    return db - da;
+  });
+
+  _cache.set(topic, { items: scoredItems, ts: Date.now() });
+
+  return NextResponse.json(scoredItems, {
     headers: { "Cache-Control": "s-maxage=3600, stale-while-revalidate" },
   });
 }
