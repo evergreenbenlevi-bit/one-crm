@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth } from "@/lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 // Valid enum values for input validation
@@ -12,11 +13,16 @@ function sanitizeFilterValue(val: string): string {
   return val.replace(/[(),.'";\\%_]/g, "").trim();
 }
 
+const LEAD_LIST_FIELDS = "id,name,email,phone,program,interest_program,current_status,source,created_at,updated_at,instagram_handle,occupation";
+
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
+  const user = await requireAuth(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabase = createAdminClient();
   const searchParams = request.nextUrl.searchParams;
 
-  let query = supabase.from("leads").select("*").order("created_at", { ascending: false });
+  let query = supabase.from("leads").select(LEAD_LIST_FIELDS).order("created_at", { ascending: false });
 
   const program = searchParams.get("program");
   const status = searchParams.get("status");
@@ -63,7 +69,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
+  const user = await requireAuth(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabase = createAdminClient();
   const body = await request.json();
 
   // Validate required fields

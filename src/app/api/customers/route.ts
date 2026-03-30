@@ -1,15 +1,24 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth } from "@/lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
+const CUSTOMER_LIST_FIELDS = "id,name,email,phone,occupation,status,program,total_paid,payment_status,program_start_date,program_end_date,products_purchased,created_at";
+
+export async function GET(request: NextRequest) {
+  const user = await requireAuth(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.from("customers").select(CUSTOMER_LIST_FIELDS).order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
+  const user = await requireAuth(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabase = createAdminClient();
   const body = await request.json();
 
   if (!body.name?.trim()) {
