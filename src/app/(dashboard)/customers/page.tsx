@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import Link from "next/link";
 import { Users, Phone, Mail, Search, Plus } from "lucide-react";
 import { CustomerAddModal } from "@/components/customers/customer-add-modal";
@@ -34,21 +35,19 @@ interface Customer {
   program: string | null;
 }
 
+const fetcher = (url: string) => fetch(url).then(r => r.json());
+
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
 
-  function loadCustomers() {
-    setLoading(true);
-    fetch("/api/customers")
-      .then(r => r.json())
-      .then(data => { setCustomers(Array.isArray(data) ? data : []); setLoading(false); });
-  }
+  const { data, isLoading, mutate } = useSWR<Customer[]>("/api/customers", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000,
+  });
 
-  useEffect(() => { loadCustomers(); }, []);
+  const customers = data ?? [];
 
   const filtered = customers.filter(c => {
     const matchSearch = !search ||
@@ -106,7 +105,7 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="text-center py-12 text-gray-400 dark:text-gray-500">טוען...</div>
       ) : filtered.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 text-center text-gray-400 dark:text-gray-500">
@@ -155,7 +154,7 @@ export default function CustomersPage() {
       <CustomerAddModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        onCreated={loadCustomers}
+        onCreated={() => mutate()}
       />
     </div>
   );

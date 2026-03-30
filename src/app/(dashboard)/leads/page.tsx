@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useRef } from "react";
+import useSWR from "swr";
 import { Tabs } from "@/components/ui/tabs";
 import { LeadFilters } from "@/components/leads/lead-filters";
 import { LeadsTable } from "@/components/leads/leads-table";
@@ -23,53 +24,35 @@ const viewModes = [
 const oneVipStatuses: LeadStatus[] = ["new", "consumed_content", "engaged", "applied", "qualified", "onboarding", "active_client"];
 const oneCoreStatuses: LeadStatus[] = ["new", "consumed_content", "engaged", "applied", "qualified", "active_client"];
 
+const fetcher = (url: string) => fetch(url).then(r => {
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+});
+
 export default function LeadsPage() {
   const [program, setProgram] = useState<ProgramType>("one_vip");
   const [view, setView] = useState("kanban");
-  const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
   const [source, setSource] = useState("");
   const [status, setStatus] = useState("");
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Prevent race conditions
   const pendingOps = useRef(new Set<string>());
 
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams({ program: program });
-    if (search) params.set("search", search);
-    if (source) params.set("source", source);
-    if (status) params.set("status", status);
+  const params = new URLSearchParams({ program });
+  if (search) params.set("search", search);
+  if (source) params.set("source", source);
+  if (status) params.set("status", status);
+  const swrKey = `/api/leads?${params}`;
 
-    try {
-      const res = await fetch(`/api/leads?${params}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setLeads(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error fetching leads:", err);
-      setError("שגיאה בטעינת לידים. נסה לרענן.");
-      setLeads([]);
-    }
-    setLoading(false);
-  }, [program, search, source, status]);
+  const { data, isLoading, mutate } = useSWR<Lead[]>(swrKey, fetcher, {
+    onError: () => setError("שגיאה בטעינת לידים. נסה לרענן."),
+    revalidateOnFocus: false,
+    dedupingInterval: 5000,
+  });
 
-  useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
-
-  // Auto-dismiss error
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
-
+  const leads = data ?? [];
   const statuses = program === "one_vip" ? oneVipStatuses : oneCoreStatuses;
 
   const columns: Record<string, Lead[]> = {};
@@ -80,12 +63,21 @@ export default function LeadsPage() {
     }
   });
 
+  // Auto-dismiss error
+  function showError(msg: string) {
+    setError(msg);
+    setTimeout(() => setError(null), 5000);
+  }
+
   async function handleStatusChange(leadId: string, newStatus: LeadStatus) {
     if (pendingOps.current.has(leadId)) return;
     pendingOps.current.add(leadId);
 
-    const previousLeads = leads;
-    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, current_status: newStatus } : l));
+    // Optimistic update
+    mutate(
+      prev => prev?.map(l => l.id === leadId ? { ...l, current_status: newStatus } : l),
+      false
+    );
 
     try {
       const res = await fetch(`/api/leads/${leadId}/status`, {
@@ -95,16 +87,16 @@ export default function LeadsPage() {
       });
       if (!res.ok) throw new Error();
     } catch {
-      setLeads(previousLeads);
-      setError("שגיאה בעדכון סטטוס ליד");
+      mutate(); // revert by revalidating
+      showError("שגיאה בעדכון סטטוס ליד");
     } finally {
       pendingOps.current.delete(leadId);
     }
   }
 
   async function handleBulkDelete(ids: string[]) {
-    const previousLeads = leads;
-    setLeads(prev => prev.filter(l => !ids.includes(l.id)));
+    // Optimistic update
+    mutate(prev => prev?.filter(l => !ids.includes(l.id)), false);
 
     try {
       const results = await Promise.allSettled(
@@ -112,18 +104,17 @@ export default function LeadsPage() {
       );
       const failedCount = results.filter(r => r.status === "rejected").length;
       if (failedCount > 0) {
-        setLeads(previousLeads);
-        setError(`שגיאה במחיקת ${failedCount} לידים`);
+        mutate(); // revert
+        showError(`שגיאה במחיקת ${failedCount} לידים`);
       }
     } catch {
-      setLeads(previousLeads);
-      setError("שגיאה במחיקת לידים");
+      mutate();
+      showError("שגיאה במחיקת לידים");
     }
   }
 
   return (
     <div className="space-y-6">
-      {/* Error Toast */}
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300">
           <AlertCircle size={16} className="flex-shrink-0" />
@@ -169,7 +160,7 @@ export default function LeadsPage() {
         onStatusChange={setStatus}
       />
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-12 gap-2 text-gray-400 dark:text-gray-500">
           <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-brand-600 rounded-full animate-spin" />
           טוען...
@@ -183,7 +174,7 @@ export default function LeadsPage() {
       <LeadAddModal
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onCreated={fetchLeads}
+        onCreated={() => mutate()}
         defaultProgram={program}
       />
     </div>
