@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { isLocalMode } from "@/lib/tasks-store";
+import { isLocalMode } from "@/lib/env";
 
 /**
  * Verifies the request has a valid Supabase session.

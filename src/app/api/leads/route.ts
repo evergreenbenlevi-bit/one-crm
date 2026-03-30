@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";

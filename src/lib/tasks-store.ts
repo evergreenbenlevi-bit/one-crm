@@ -191,4 +191,4 @@ export function bulkCreateTasks(newTasks: Omit<Task, "id" | "created_at" | "upda
   return created;
 }
 
-export const isLocalMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === "https://placeholder.supabase.co";
+export { isLocalMode } from "@/lib/env";
