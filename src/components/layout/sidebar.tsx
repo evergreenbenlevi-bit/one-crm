@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { preload } from "swr";
 import { clsx } from "clsx";
 import {
   LayoutDashboard, Users, Briefcase, DollarSign,
@@ -11,7 +12,19 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { GlobalSearch } from "@/components/layout/global-search";
+import { fetcher } from "@/lib/fetcher";
 import type { UserRole } from "@/lib/rbac";
+
+const routePrefetchMap: Record<string, string> = {
+  "/tasks": "/api/tasks?exclude_backlog=1",
+  "/leads": "/api/leads",
+  "/customers": "/api/customers",
+  "/financial": "/api/financial",
+  "/meetings": "/api/meetings",
+  "/content": "/api/content-ideas?type=all",
+  "/news": "/api/news?topic=AI",
+  "/research": "/api/research",
+};
 
 const navItems = [
   { href: "/", label: "דשבורד", icon: LayoutDashboard, adminOnly: false },
@@ -64,6 +77,10 @@ export function Sidebar({ role = "admin", userEmail }: { role?: UserRole; userEm
             <Link
               key={item.href}
               href={item.href}
+              onMouseEnter={() => {
+                const url = routePrefetchMap[item.href];
+                if (url) preload(url, fetcher);
+              }}
               className={clsx(
                 "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors",
                 isActive

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { Newspaper, ExternalLink, RefreshCw, Clock } from "lucide-react";
 import { clsx } from "clsx";
+import { fetcher } from "@/lib/fetcher";
 
 interface NewsItem {
   title: string;
@@ -47,25 +49,16 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function NewsPage() {
-  const [items, setItems] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [topic, setTopic] = useState("all");
   const [source, setSource] = useState("all");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchNews = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/news?topic=${topic}&_=${refreshKey}`);
-      if (res.ok) setItems(await res.json());
-    } finally {
-      setLoading(false);
-    }
-  }, [topic, refreshKey]);
-
-  useEffect(() => {
-    fetchNews();
-  }, [fetchNews]);
+  const { data, isLoading: loading } = useSWR(
+    `/api/news?topic=${topic}&k=${refreshKey}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 300_000 }
+  );
+  const items: NewsItem[] = Array.isArray(data) ? data : [];
 
   const sources = ["all", ...Array.from(new Set(items.map((i) => i.source)))];
 

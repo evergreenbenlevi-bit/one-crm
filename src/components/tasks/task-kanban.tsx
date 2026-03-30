@@ -26,6 +26,9 @@ interface TaskKanbanProps {
   columns: Record<TaskStatus, Task[]>;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onEdit?: (task: Task) => void;
+  onPriorityChange?: (taskId: string, newPriority: import("@/lib/types/tasks").TaskPriority) => void;
+  onDelete?: (taskId: string) => void;
+  onDueDateChange?: (taskId: string, newDate: string | null) => void;
   visibleStatuses?: TaskStatus[];
 }
 
@@ -33,11 +36,19 @@ function KanbanColumn({
   status,
   tasks,
   onEdit,
+  onStatusChange,
+  onPriorityChange,
+  onDelete,
+  onDueDateChange,
   wipCount,
 }: {
   status: TaskStatus;
   tasks: Task[];
   onEdit?: (task: Task) => void;
+  onStatusChange?: (taskId: string, newStatus: TaskStatus) => void;
+  onPriorityChange?: (taskId: string, newPriority: import("@/lib/types/tasks").TaskPriority) => void;
+  onDelete?: (taskId: string) => void;
+  onDueDateChange?: (taskId: string, newDate: string | null) => void;
   wipCount?: number;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
@@ -124,7 +135,7 @@ function KanbanColumn({
         >
           <SortableContext items={displayTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
             {displayTasks.map(task => (
-              <TaskCard key={task.id} task={task} onEdit={onEdit} />
+              <TaskCard key={task.id} task={task} onEdit={onEdit} onStatusChange={onStatusChange} onPriorityChange={onPriorityChange} onDelete={onDelete} onDueDateChange={onDueDateChange} />
             ))}
           </SortableContext>
 
@@ -139,7 +150,7 @@ function KanbanColumn({
   );
 }
 
-export function TaskKanban({ columns, onStatusChange, onEdit, visibleStatuses }: TaskKanbanProps) {
+export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, onDelete, onDueDateChange, visibleStatuses }: TaskKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -190,6 +201,10 @@ export function TaskKanban({ columns, onStatusChange, onEdit, visibleStatuses }:
             status={status}
             tasks={columns[status] || []}
             onEdit={onEdit}
+            onStatusChange={onStatusChange}
+            onPriorityChange={onPriorityChange}
+            onDelete={onDelete}
+            onDueDateChange={onDueDateChange}
             wipCount={status === "in_progress" ? wipCount : undefined}
           />
         ))}

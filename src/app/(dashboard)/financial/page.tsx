@@ -5,7 +5,7 @@ import { KpiRow } from "@/components/financial/kpi-row";
 import { RevenueBreakdown } from "@/components/financial/revenue-breakdown";
 import { ExpenseBreakdown } from "@/components/financial/expense-breakdown";
 import { MarketingMetricsTable } from "@/components/financial/marketing-metrics-table";
-import { TrendsChart } from "@/components/financial/trends-chart";
+import { TrendsChartClient } from "@/components/financial/trends-chart-client";
 import { PeriodSelector } from "@/components/financial/period-selector";
 
 function getDateRange(period: string): { startDate: string; endDate: string } {
@@ -81,8 +81,8 @@ export default async function FinancialPage({ searchParams }: PageProps) {
         oneVip={financialData.marketing.oneVip}
       />
 
-      {/* Trends Chart */}
-      <TrendsChart
+      {/* Trends Chart — client component with dynamic import (recharts) */}
+      <TrendsChartClient
         transactions={trends.transactions}
         expenses={trends.expenses}
         campaigns={trends.campaigns}

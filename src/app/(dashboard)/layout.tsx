@@ -1,6 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import { AIChat } from "@/components/ai-chat";
+import { AIChatClient } from "@/components/ai-chat-client";
 import type { UserRole } from "@/lib/rbac";
 
 const isLocalMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL === "https://placeholder.supabase.co";
@@ -29,7 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </main>
       <MobileNav role={role} />
-      <AIChat />
+      <AIChatClient />
     </div>
   );
 }

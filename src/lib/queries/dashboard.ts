@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { format } from "date-fns";
 
 // Cache TTL: 60 seconds — dashboard data refreshes every minute max
-const CACHE_TTL = 60;
+const CACHE_TTL = 300;
 
 export const getDashboardData = unstable_cache(
   async (period: "today" | "week" | "month" = "month") => {

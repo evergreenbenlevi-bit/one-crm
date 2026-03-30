@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap } from "lucide-react";
+import { useState, useMemo, useRef, useCallback } from "react";
+import useSWR from "swr";
+import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2 } from "lucide-react";
+import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { TASK_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors } from "@/lib/types/tasks";
 import { TaskKanban } from "@/components/tasks/task-kanban";
@@ -13,8 +15,9 @@ import { Big3Today } from "@/components/tasks/big3-today";
 import { TaskPillars } from "@/components/tasks/task-pillars";
 import { loadSessionContext, saveSessionContext, sessionAgeLabel } from "@/lib/session-context";
 import { clsx } from "clsx";
+import { useEffect } from "react";
 
-type ViewMode = "today" | "pillars" | "backlog";
+type ViewMode = "today" | "pillars" | "backlog" | "completed";
 type QueueMode = "claude" | "ben" | "all";
 
 // Max tasks visible in Focus (Today) view — AUDHD threshold
@@ -40,11 +43,7 @@ const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
 };
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [backlogTasks, setBacklogTasks] = useState<Task[]>([]);
   const [backlogLoaded, setBacklogLoaded] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [backlogLoading, setBacklogLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [queueMode, setQueueMode] = useState<QueueMode>("claude");
@@ -53,6 +52,9 @@ export default function TasksPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<TaskCategory>>(new Set());
   const [sessionCtx, setSessionCtx] = useState<ReturnType<typeof loadSessionContext>>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddTitle, setQuickAddTitle] = useState("");
+  const quickAddRef = useRef<HTMLInputElement>(null);
 
   const pendingOps = useRef(new Set<string>());
 
@@ -60,44 +62,35 @@ export default function TasksPage() {
   const [filterCategory, setFilterCategory] = useState<TaskCategory | "all">("all");
   const [filterOwner, setFilterOwner] = useState<TaskOwner | "all">("all");
 
+  // SWR — active tasks (excludes backlog)
+  const { data: tasksData, isLoading: loading, mutate: mutateTasks } = useSWR(
+    "/api/tasks?exclude_backlog=1",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30_000 }
+  );
+  const tasks: Task[] = Array.isArray(tasksData) ? tasksData : [];
+
+  // SWR — backlog (lazy: only fetched when backlogLoaded = true)
+  const { data: backlogData, isLoading: backlogLoading, mutate: mutateBacklog } = useSWR(
+    backlogLoaded ? "/api/tasks?status=backlog" : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
+  );
+  const backlogTasks: Task[] = Array.isArray(backlogData) ? backlogData : [];
+
+  // SWR — completed (lazy: only fetched when viewing completed tab)
+  const [completedLoaded, setCompletedLoaded] = useState(false);
+  const { data: completedData, isLoading: completedLoading, mutate: mutateCompleted } = useSWR(
+    completedLoaded ? "/api/tasks?status=done" : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
+  );
+  const completedTasks: Task[] = Array.isArray(completedData) ? completedData : [];
+
   // Load session context on mount
   useEffect(() => {
     setSessionCtx(loadSessionContext());
   }, []);
-
-  // Fetch active tasks (excludes backlog — fast load)
-  const fetchTasks = useCallback(async () => {
-    try {
-      setError(null);
-      const res = await fetch("/api/tasks?exclude_backlog=1");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setTasks(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-      setError("שגיאה בטעינת משימות. נסה לרענן.");
-    }
-    setLoading(false);
-  }, []);
-
-  // Lazy load backlog only when tab clicked
-  const fetchBacklog = useCallback(async () => {
-    if (backlogLoaded) return;
-    setBacklogLoading(true);
-    try {
-      const res = await fetch("/api/tasks?status=backlog");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setBacklogTasks(Array.isArray(data) ? data : []);
-      setBacklogLoaded(true);
-    } catch (err) {
-      console.error("Error fetching backlog:", err);
-      setError("שגיאה בטעינת backlog.");
-    }
-    setBacklogLoading(false);
-  }, [backlogLoaded]);
-
-  useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
   useEffect(() => {
     if (error) {
@@ -106,9 +99,27 @@ export default function TasksPage() {
     }
   }, [error]);
 
+  // Cmd+K quick add
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setQuickAddOpen(prev => !prev);
+        setTimeout(() => quickAddRef.current?.focus(), 50);
+      }
+      if (e.key === "Escape" && quickAddOpen) {
+        setQuickAddOpen(false);
+        setQuickAddTitle("");
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [quickAddOpen]);
+
   function handleViewChange(mode: ViewMode) {
     setViewMode(mode);
-    if (mode === "backlog") fetchBacklog();
+    if (mode === "backlog") setBacklogLoaded(true);
+    if (mode === "completed") setCompletedLoaded(true);
   }
 
   // Queue filter — base for all views
@@ -185,8 +196,9 @@ export default function TasksPage() {
     if (pendingOps.current.has(taskId)) return;
     pendingOps.current.add(taskId);
 
-    const previousTasks = tasks;
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    // Optimistic update via SWR mutate
+    const optimistic = tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
+    mutateTasks(optimistic, false);
 
     try {
       const res = await fetch("/api/tasks", {
@@ -195,8 +207,9 @@ export default function TasksPage() {
         body: JSON.stringify({ id: taskId, status: newStatus }),
       });
       if (!res.ok) throw new Error();
+      mutateTasks();
     } catch {
-      setTasks(previousTasks);
+      mutateTasks(); // revert by revalidating
       setError("שגיאה בעדכון סטטוס");
     } finally {
       pendingOps.current.delete(taskId);
@@ -207,6 +220,48 @@ export default function TasksPage() {
     e.stopPropagation();
     const next = NEXT_STATUS[task.status];
     if (next) handleStatusChange(task.id, next);
+  }
+
+  async function handlePriorityChange(taskId: string, newPriority: TaskPriority) {
+    if (pendingOps.current.has(taskId)) return;
+    pendingOps.current.add(taskId);
+    const optimistic = tasks.map(t => t.id === taskId ? { ...t, priority: newPriority } : t);
+    mutateTasks(optimistic, false);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, priority: newPriority }),
+      });
+      if (!res.ok) throw new Error();
+      mutateTasks();
+    } catch { mutateTasks(); setError("שגיאה בעדכון עדיפות"); }
+    finally { pendingOps.current.delete(taskId); }
+  }
+
+  async function handleDueDateChange(taskId: string, newDate: string | null) {
+    if (pendingOps.current.has(taskId)) return;
+    pendingOps.current.add(taskId);
+    const optimistic = tasks.map(t => t.id === taskId ? { ...t, due_date: newDate } : t);
+    mutateTasks(optimistic, false);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, due_date: newDate }),
+      });
+      if (!res.ok) throw new Error();
+      mutateTasks();
+    } catch { mutateTasks(); setError("שגיאה בעדכון תאריך"); }
+    finally { pendingOps.current.delete(taskId); }
+  }
+
+  async function handleQuickAdd() {
+    if (!quickAddTitle.trim()) return;
+    await handleAddTask({
+      title: quickAddTitle.trim(), description: "", priority: "p2",
+      status: "todo", owner: "claude", category: "one_tm", due_date: null, tags: [],
+    });
+    setQuickAddTitle("");
+    setQuickAddOpen(false);
   }
 
   function handleTaskClick(task: Task) {
@@ -241,8 +296,7 @@ export default function TasksPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as { error?: string }).error || "שגיאה ביצירת משימה");
       }
-      const task = await res.json();
-      setTasks(prev => [task, ...prev]);
+      mutateTasks();
     } catch (err) {
       setError(err instanceof Error ? err.message : "שגיאה ביצירת משימה");
     }
@@ -252,8 +306,8 @@ export default function TasksPage() {
     if (pendingOps.current.has(task.id)) return;
     pendingOps.current.add(task.id);
 
-    const previousTasks = tasks;
-    setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+    // Optimistic update
+    mutateTasks(tasks.map(t => t.id === task.id ? task : t), false);
 
     try {
       const res = await fetch("/api/tasks", {
@@ -266,8 +320,9 @@ export default function TasksPage() {
         }),
       });
       if (!res.ok) throw new Error();
+      mutateTasks();
     } catch {
-      setTasks(previousTasks);
+      mutateTasks(); // revert by revalidating
       setError("שגיאה בעדכון משימה");
     } finally {
       pendingOps.current.delete(task.id);
@@ -278,14 +333,15 @@ export default function TasksPage() {
     if (pendingOps.current.has(taskId)) return;
     pendingOps.current.add(taskId);
 
-    const previousTasks = tasks;
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+    // Optimistic update
+    mutateTasks(tasks.filter(t => t.id !== taskId), false);
 
     try {
       const res = await fetch(`/api/tasks?id=${taskId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
+      mutateTasks();
     } catch {
-      setTasks(previousTasks);
+      mutateTasks(); // revert by revalidating
       setError("שגיאה במחיקת משימה");
     } finally {
       pendingOps.current.delete(taskId);
@@ -411,12 +467,38 @@ export default function TasksPage() {
         ))}
       </div>
 
-      {/* View Tabs — Focus / Pillars / Backlog */}
+      {/* Quick Add Bar (Cmd+K) */}
+      {quickAddOpen && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-gray-800 border border-brand-200 dark:border-brand-700 rounded-xl shadow-lg animate-in fade-in">
+          <span className="text-xs text-gray-400 dark:text-gray-500 font-mono flex-shrink-0">⌘K</span>
+          <input
+            ref={quickAddRef}
+            type="text"
+            value={quickAddTitle}
+            onChange={(e) => setQuickAddTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleQuickAdd(); }}
+            placeholder="הוסף משימה מהירה..."
+            className="flex-1 text-sm bg-transparent outline-none dark:text-gray-200 placeholder-gray-400"
+            autoFocus
+          />
+          <button
+            onClick={handleQuickAdd}
+            disabled={!quickAddTitle.trim()}
+            className="px-3 py-1 bg-brand-600 text-white rounded-lg text-xs font-bold hover:bg-brand-700 transition-colors disabled:opacity-40"
+          >
+            הוסף
+          </button>
+          <button onClick={() => { setQuickAddOpen(false); setQuickAddTitle(""); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+        </div>
+      )}
+
+      {/* View Tabs — Focus / Pillars / Backlog / Completed */}
       <div className="flex items-center gap-0 border-b border-gray-200 dark:border-gray-700">
         {([
-          { id: "today",   icon: Sun,    label: "Focus",    count: todayTasks.length },
-          { id: "pillars", icon: Layers, label: "פילרים",   count: pillarTasks.length },
-          { id: "backlog", icon: Archive, label: "Backlog", count: stats.backlogCount },
+          { id: "today",     icon: Sun,          label: "Focus",    count: todayTasks.length },
+          { id: "pillars",   icon: Layers,       label: "פילרים",   count: pillarTasks.length },
+          { id: "backlog",   icon: Archive,      label: "Backlog",  count: stats.backlogCount },
+          { id: "completed", icon: CheckCircle2, label: "הושלמו",   count: completedTasks.length },
         ] as const).map(({ id, icon: Icon, label, count }) => (
           <button
             key={id}
@@ -642,9 +724,54 @@ export default function TasksPage() {
         </div>
       )}
 
+      {/* ── COMPLETED VIEW ── */}
+      {viewMode === "completed" && (
+        <div className="space-y-2">
+          {completedLoading ? (
+            <div className="flex items-center justify-center py-12 text-gray-400 dark:text-gray-500 gap-2">
+              <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-green-500 rounded-full animate-spin" />
+              טוען הושלמו...
+            </div>
+          ) : completedTasks.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+              <CheckCircle2 size={32} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">אין משימות שהושלמו</p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+              {completedTasks
+                .sort((a, b) => new Date(b.completed_at || b.updated_at).getTime() - new Date(a.completed_at || a.updated_at).getTime())
+                .map((task, i) => (
+                  <div
+                    key={task.id}
+                    onClick={() => handleTaskClick(task)}
+                    className={clsx(
+                      "flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors",
+                      i < completedTasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/50"
+                    )}
+                  >
+                    <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
+                    <span className="flex-1 text-sm text-gray-500 dark:text-gray-400 line-through truncate">
+                      {task.title}
+                    </span>
+                    <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium", categoryColors[task.category])}>
+                      {categoryLabels[task.category]}
+                    </span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">
+                      {task.completed_at
+                        ? new Date(task.completed_at).toLocaleDateString("he-IL")
+                        : new Date(task.updated_at).toLocaleDateString("he-IL")}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <TaskAddModal open={showAddModal} onClose={() => setShowAddModal(false)} onSave={handleAddTask} />
       <TaskEditModal task={editingTask} onClose={() => setEditingTask(null)} onSave={handleEditTask} onDelete={handleDeleteTask} />
-      <TaskImportModal open={showImportModal} onClose={() => setShowImportModal(false)} onImport={() => { fetchTasks(); setBacklogLoaded(false); }} />
+      <TaskImportModal open={showImportModal} onClose={() => setShowImportModal(false)} onImport={() => { mutateTasks(); setBacklogLoaded(false); mutateBacklog(); }} />
     </div>
   );
 }

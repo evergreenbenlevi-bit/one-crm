@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { FlaskConical, ExternalLink } from "lucide-react";
 import { clsx } from "clsx";
+import { fetcher } from "@/lib/fetcher";
 
 interface ResearchItem {
   id: string;
@@ -44,22 +46,19 @@ const STATUS_FILTERS = ["all", "pending", "waiting_ben", "implementing", "done",
 const CATEGORY_FILTERS = ["all", "tech_tools", "content_social", "business_strategy", "systems_automation", "ai_agents", "personal"];
 
 export default function ResearchPage() {
-  const [items, setItems] = useState<ResearchItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (statusFilter !== "all") params.set("status", statusFilter);
-    if (categoryFilter !== "all") params.set("category", categoryFilter);
-    const res = await fetch(`/api/research?${params}`);
-    if (res.ok) setItems(await res.json());
-    setLoading(false);
-  }, [statusFilter, categoryFilter]);
+  const searchParams = new URLSearchParams();
+  if (statusFilter !== "all") searchParams.set("status", statusFilter);
+  if (categoryFilter !== "all") searchParams.set("category", categoryFilter);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const { data, isLoading: loading, mutate } = useSWR(
+    `/api/research?${searchParams}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30_000 }
+  );
+  const items: ResearchItem[] = Array.isArray(data) ? data : [];
 
   const updateStatus = async (id: string, status: string) => {
     await fetch("/api/research", {
@@ -67,7 +66,7 @@ export default function ResearchPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
     });
-    fetchData();
+    mutate();
   };
 
   const counts = Object.fromEntries(

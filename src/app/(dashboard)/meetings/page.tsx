@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { MeetingsList } from "@/components/meetings/meetings-list";
 import { Calendar, ChevronRight, ChevronLeft, Plus } from "lucide-react";
 import { MeetingAddModal } from "@/components/meetings/meeting-add-modal";
 import type { MeetingType, MeetingStatus } from "@/lib/types/database";
+import { fetcher } from "@/lib/fetcher";
 
 interface MeetingWithCustomer {
   id: string;
@@ -24,8 +26,6 @@ import { he } from "date-fns/locale";
 
 export default function MeetingsPage() {
   const [weekOffset, setWeekOffset] = useState(0);
-  const [meetings, setMeetings] = useState<MeetingWithCustomer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
 
   const baseDate = addWeeks(new Date(), weekOffset);
@@ -37,22 +37,12 @@ export default function MeetingsPage() {
     ? "השבוע"
     : `${format(weekStart, "d בMMM", { locale: he })} — ${format(weekEnd, "d בMMM", { locale: he })}`;
 
-  const fetchMeetings = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams({
-      start: format(weekStart, "yyyy-MM-dd"),
-      end: format(weekEnd, "yyyy-MM-dd"),
-    });
-    const res = await fetch(`/api/meetings?${params}`);
-    const data = await res.json();
-    setMeetings(Array.isArray(data) ? data : []);
-    setLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekOffset]);
-
-  useEffect(() => {
-    fetchMeetings();
-  }, [fetchMeetings]);
+  const { data, isLoading: loading, mutate } = useSWR(
+    `/api/meetings?start=${format(weekStart, "yyyy-MM-dd")}&end=${format(weekEnd, "yyyy-MM-dd")}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
+  );
+  const meetings: MeetingWithCustomer[] = Array.isArray(data) ? data : [];
 
   return (
     <div className="space-y-6">
@@ -106,7 +96,7 @@ export default function MeetingsPage() {
       <MeetingAddModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        onCreated={fetchMeetings}
+        onCreated={() => mutate()}
       />
     </div>
   );

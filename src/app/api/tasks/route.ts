@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
   if (status && VALID_STATUSES.includes(status as TaskStatus)) query = query.eq("status", status);
   // Lazy load: exclude backlog on initial fetch for fast page load
-  if (!status && searchParams.get("exclude_backlog") === "1") query = query.neq("status", "backlog");
+  if (!status && searchParams.get("exclude_backlog") === "1") query = query.neq("status", "backlog").neq("status", "done");
   if (priority && VALID_PRIORITIES.includes(priority as TaskPriority)) query = query.eq("priority", priority);
   if (owner && VALID_OWNERS.includes(owner as TaskOwner)) query = query.eq("owner", owner);
   if (category && VALID_CATEGORIES.includes(category as TaskCategory)) query = query.eq("category", category);

@@ -3,30 +3,99 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { clsx } from "clsx";
-import { Calendar, ChevronDown, ChevronUp, Tag } from "lucide-react";
-import { useState } from "react";
-import type { Task } from "@/lib/types/tasks";
+import { Calendar, ChevronDown, ChevronUp, Trash2, ArrowRight, ChevronUp as PriorityUp, ChevronDown as PriorityDown } from "lucide-react";
+import { useState, useCallback } from "react";
+import type { Task, TaskStatus, TaskPriority } from "@/lib/types/tasks";
 import {
   priorityColors,
   ownerIcons,
   ownerLabels,
   categoryColors,
   categoryLabels,
+  statusLabels,
 } from "@/lib/types/tasks";
+
+const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
+  backlog: "todo", todo: "in_progress", in_progress: "done", waiting_ben: "in_progress", done: null,
+};
+
+const PRIORITY_CYCLE: Record<TaskPriority, TaskPriority> = {
+  p1: "p2", p2: "p3", p3: "p1",
+};
 
 interface TaskCardProps {
   task: Task;
   onEdit?: (task: Task) => void;
+  onStatusChange?: (taskId: string, newStatus: TaskStatus) => void;
+  onPriorityChange?: (taskId: string, newPriority: TaskPriority) => void;
+  onDelete?: (taskId: string) => void;
+  onDueDateChange?: (taskId: string, newDate: string | null) => void;
 }
 
-export function TaskCard({ task, onEdit }: TaskCardProps) {
+export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDelete, onDueDateChange }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [undoDelete, setUndoDelete] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
 
   const style = { transform: CSS.Transform.toString(transform), transition };
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "done";
   const isP1 = task.priority === "p1";
   const tags = task.tags || [];
+  const nextStatus = NEXT_STATUS[task.status];
+
+  const handleAdvanceStatus = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (nextStatus && onStatusChange) onStatusChange(task.id, nextStatus);
+  }, [task.id, nextStatus, onStatusChange]);
+
+  const handleCyclePriority = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onPriorityChange) onPriorityChange(task.id, PRIORITY_CYCLE[task.priority]);
+  }, [task.id, task.priority, onPriorityChange]);
+
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setUndoDelete(true);
+    const timer = setTimeout(() => {
+      if (onDelete) onDelete(task.id);
+      setUndoDelete(false);
+    }, 2500);
+    // Store timer for undo
+    (window as unknown as Record<string, NodeJS.Timeout>)[`__undo_${task.id}`] = timer;
+  }, [task.id, onDelete]);
+
+  const handleUndoDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const timer = (window as unknown as Record<string, NodeJS.Timeout>)[`__undo_${task.id}`];
+    if (timer) clearTimeout(timer);
+    setUndoDelete(false);
+  }, [task.id]);
+
+  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    if (onDueDateChange) onDueDateChange(task.id, e.target.value || null);
+    setShowDatePicker(false);
+  }, [task.id, onDueDateChange]);
+
+  if (undoDelete) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 flex items-center justify-between"
+      >
+        <span className="text-xs text-red-600 dark:text-red-400 font-medium">נמחק</span>
+        <button
+          onClick={handleUndoDelete}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="text-xs font-bold text-red-700 dark:text-red-300 hover:underline px-2 py-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+        >
+          בטל
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -35,7 +104,7 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
       {...attributes}
       {...listeners}
       className={clsx(
-        "rounded-xl shadow-sm border cursor-grab active:cursor-grabbing transition-all duration-150 overflow-hidden relative",
+        "group rounded-xl shadow-sm border cursor-grab active:cursor-grabbing transition-all duration-150 overflow-hidden relative",
         isDragging ? "opacity-50 shadow-xl scale-105" : "hover:shadow-md hover:-translate-y-0.5",
         isP1
           ? "bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-gray-800 border-red-100 dark:border-red-900/40"
@@ -46,6 +115,68 @@ export function TaskCard({ task, onEdit }: TaskCardProps) {
       {/* P1 accent bar */}
       {isP1 && (
         <div className="absolute top-0 right-0 bottom-0 w-[3px] bg-gradient-to-b from-red-400 to-red-600" />
+      )}
+
+      {/* ── Hover Quick-Action Bar ── */}
+      <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        {/* Advance status */}
+        {nextStatus && onStatusChange && (
+          <button
+            onClick={handleAdvanceStatus}
+            onPointerDown={(e) => e.stopPropagation()}
+            title={`→ ${statusLabels[nextStatus]}`}
+            className="p-1 rounded-md bg-white/90 dark:bg-gray-700/90 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/40 dark:hover:text-brand-300 transition-colors"
+          >
+            <ArrowRight size={11} />
+          </button>
+        )}
+        {/* Cycle priority */}
+        {onPriorityChange && (
+          <button
+            onClick={handleCyclePriority}
+            onPointerDown={(e) => e.stopPropagation()}
+            title={`עדיפות → ${PRIORITY_CYCLE[task.priority].toUpperCase()}`}
+            className="p-1 rounded-md bg-white/90 dark:bg-gray-700/90 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/40 dark:hover:text-yellow-300 transition-colors"
+          >
+            <PriorityUp size={11} />
+          </button>
+        )}
+        {/* Date picker toggle */}
+        {onDueDateChange && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowDatePicker(!showDatePicker); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            title="שנה תאריך"
+            className="p-1 rounded-md bg-white/90 dark:bg-gray-700/90 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/40 dark:hover:text-blue-300 transition-colors"
+          >
+            <Calendar size={11} />
+          </button>
+        )}
+        {/* Delete */}
+        {onDelete && (
+          <button
+            onClick={handleDelete}
+            onPointerDown={(e) => e.stopPropagation()}
+            title="מחק"
+            className="p-1 rounded-md bg-white/90 dark:bg-gray-700/90 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/40 dark:hover:text-red-400 transition-colors"
+          >
+            <Trash2 size={11} />
+          </button>
+        )}
+      </div>
+
+      {/* Inline date picker */}
+      {showDatePicker && (
+        <div className="absolute top-9 left-1.5 z-20" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+          <input
+            type="date"
+            defaultValue={task.due_date || ""}
+            onChange={handleDateChange}
+            className="text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg focus:ring-2 focus:ring-brand-400 outline-none"
+            autoFocus
+            onBlur={() => setShowDatePicker(false)}
+          />
+        </div>
       )}
 
       <div className="p-3">

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Lightbulb, BarChart3, Plus, Film, Youtube, Sparkles, X } from "lucide-react";
+import { useState } from "react";
+import useSWR from "swr";
+import { Lightbulb, Plus, Film, Youtube, Sparkles, X } from "lucide-react";
+import { fetcher } from "@/lib/fetcher";
 import { clsx } from "clsx";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -156,25 +158,19 @@ function AddIdeaModal({
 
 // ─── Main Page ───────────────────────────────────────────────
 export default function ContentPage() {
-  const [ideas, setIdeas] = useState<ContentIdea[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState<string>("short_form");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
 
-  const fetchIdeas = useCallback(async () => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    params.set("type", activeType);
-    if (statusFilter !== "all") params.set("status", statusFilter);
-    const res = await fetch(`/api/content-ideas?${params}`);
-    if (res.ok) setIdeas(await res.json());
-    setLoading(false);
-  }, [activeType, statusFilter]);
+  const searchParams = new URLSearchParams({ type: activeType });
+  if (statusFilter !== "all") searchParams.set("status", statusFilter);
 
-  useEffect(() => {
-    fetchIdeas();
-  }, [fetchIdeas]);
+  const { data, isLoading: loading, mutate } = useSWR(
+    `/api/content-ideas?${searchParams}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 30_000 }
+  );
+  const ideas: ContentIdea[] = Array.isArray(data) ? data : [];
 
   const updateStatus = async (id: string, status: string) => {
     await fetch("/api/content-ideas", {
@@ -182,7 +178,7 @@ export default function ContentPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
     });
-    fetchIdeas();
+    mutate();
   };
 
   const addIdea = async (idea: Partial<ContentIdea>) => {
@@ -192,7 +188,7 @@ export default function ContentPage() {
       body: JSON.stringify(idea),
     });
     setShowAdd(false);
-    fetchIdeas();
+    mutate();
   };
 
   const deleteIdea = async (id: string) => {
@@ -201,7 +197,7 @@ export default function ContentPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    fetchIdeas();
+    mutate();
   };
 
   const counts = Object.fromEntries(

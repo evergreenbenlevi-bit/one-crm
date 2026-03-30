@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { clsx } from "clsx";
 import type { Big3Project, Big3Task } from "@/lib/types/big3";
 import { projectTypeEmoji } from "@/lib/types/big3";
 import { Target, Clock, AlertTriangle } from "lucide-react";
+import { fetcher } from "@/lib/fetcher";
 
 const MAX_DAILY_MINUTES = 150;
 
@@ -13,42 +15,33 @@ interface Big3TodayProps {
 }
 
 export function Big3Today({ className }: Big3TodayProps) {
-  const [projects, setProjects] = useState<Big3Project[]>([]);
-  const [weekStart, setWeekStart] = useState<string>("");
-  const [loading, setLoading] = useState(true);
   const [pendingTasks, setPendingTasks] = useState<Set<string>>(new Set());
 
-  const fetchBig3 = useCallback(async () => {
-    try {
-      const res = await fetch("/api/big3/week");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setProjects(data.projects ?? []);
-      setWeekStart(data.week_start ?? "");
-    } catch {
-      // Silently fail — BIG 3 is optional enhancement
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data, isLoading: loading, mutate } = useSWR("/api/big3/week", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
 
-  useEffect(() => { fetchBig3(); }, [fetchBig3]);
+  const projects: Big3Project[] = data?.projects ?? [];
+  const weekStart: string = data?.week_start ?? "";
 
   async function toggleTask(task: Big3Task) {
     if (pendingTasks.has(task.id)) return;
 
-    // Optimistic update
     setPendingTasks(prev => new Set([...prev, task.id]));
     const newCompleted = !task.completed;
 
-    setProjects(prev =>
-      prev.map(p => ({
+    // Optimistic update via SWR mutate
+    const optimisticData = {
+      ...data,
+      projects: projects.map(p => ({
         ...p,
         tasks: p.tasks?.map(t =>
           t.id === task.id ? { ...t, completed: newCompleted, completed_at: newCompleted ? new Date().toISOString() : null } : t
         ),
-      }))
-    );
+      })),
+    };
+    mutate(optimisticData, false);
 
     try {
       const res = await fetch(`/api/big3/tasks/${task.id}/complete`, {
@@ -57,16 +50,9 @@ export function Big3Today({ className }: Big3TodayProps) {
         body: JSON.stringify({ completed: newCompleted }),
       });
       if (!res.ok) throw new Error();
+      mutate();
     } catch {
-      // Rollback
-      setProjects(prev =>
-        prev.map(p => ({
-          ...p,
-          tasks: p.tasks?.map(t =>
-            t.id === task.id ? { ...t, completed: task.completed, completed_at: task.completed_at } : t
-          ),
-        }))
-      );
+      mutate(); // revert by revalidating
     } finally {
       setPendingTasks(prev => { const next = new Set(prev); next.delete(task.id); return next; });
     }

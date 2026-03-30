@@ -35,7 +35,8 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user ?? null;
 
   // Skip auth for webhook endpoints and internal AI endpoints
   if (
@@ -65,15 +66,30 @@ export async function middleware(request: NextRequest) {
     );
 
     if (isAdminRoute) {
-      // Use service role key via direct fetch to bypass RLS infinite recursion bug
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const roleRes = await fetch(
-        `${supabaseUrl}/rest/v1/user_roles?select=role&user_id=eq.${user.id}&limit=1`,
-        { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
-      );
-      const roleRows: { role: string }[] = roleRes.ok ? await roleRes.json() : [];
-      const isAdmin = roleRows[0]?.role === "admin";
+      const ROLE_COOKIE = `crm_role_${user.id}`;
+      const cachedRole = request.cookies.get(ROLE_COOKIE)?.value;
+
+      let isAdmin: boolean;
+      if (cachedRole) {
+        // Use cached role — no Supabase round-trip
+        isAdmin = cachedRole === "admin";
+      } else {
+        // First time: fetch role and cache in cookie for 5 minutes
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const roleRes = await fetch(
+          `${supabaseUrl}/rest/v1/user_roles?select=role&user_id=eq.${user.id}&limit=1`,
+          { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
+        );
+        const roleRows: { role: string }[] = roleRes.ok ? await roleRes.json() : [];
+        isAdmin = roleRows[0]?.role === "admin";
+        supabaseResponse.cookies.set(ROLE_COOKIE, isAdmin ? "admin" : "member", {
+          httpOnly: true,
+          sameSite: "lax",
+          maxAge: 300, // 5 minutes
+          path: "/",
+        });
+      }
 
       if (!isAdmin) {
         const url = request.nextUrl.clone();
