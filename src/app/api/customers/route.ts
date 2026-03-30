@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
 import { NextRequest, NextResponse } from "next/server";
 
-const CUSTOMER_LIST_FIELDS = "id,name,email,phone,occupation,status,program,total_paid,payment_status,program_start_date,program_end_date,products_purchased,created_at";
+const CUSTOMER_LIST_FIELDS = "id,name,email,phone,occupation,status,program,total_paid,payment_status,program_start_date,program_end_date,created_at";
 
 export async function GET(request: NextRequest) {
   const user = await requireAuth(request);
