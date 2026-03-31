@@ -111,7 +111,7 @@ function TaskRow({ task, pendingLayer, onLayerChange }: {
   pendingLayer?: TaskLayer;
   onLayerChange: (id: string, layer: TaskLayer) => void;
 }) {
-  const currentLayer = pendingLayer ?? task.layer ?? "low_priority";
+  const currentLayer = pendingLayer ?? task.layer ?? "nice_to_have";
   const layerCfg = LAYER_MAP[currentLayer];
   const catColor = categoryColors[task.category as TaskCategory] ?? "bg-gray-100 text-gray-600";
   const changed = pendingLayer && pendingLayer !== task.layer;
@@ -215,7 +215,7 @@ function CategoryGroup({ category, tasks, pending, onLayerChange }: {
 function StatsBar({ tasks, pending }: { tasks: Task[]; pending: Record<string, TaskLayer> }) {
   const counts = LAYERS.reduce<Record<string, number>>((acc, l) => ({ ...acc, [l.id]: 0 }), {});
   tasks.forEach((t) => {
-    const layer = pending[t.id] ?? t.layer ?? "low_priority";
+    const layer = pending[t.id] ?? t.layer ?? "nice_to_have";
     counts[layer] = (counts[layer] ?? 0) + 1;
   });
 
@@ -280,7 +280,7 @@ export default function TriagePage() {
 
   const filtered = filterLayer === "all"
     ? tasks
-    : tasks.filter((t) => (pending[t.id] ?? t.layer ?? "low_priority") === filterLayer);
+    : tasks.filter((t) => (pending[t.id] ?? t.layer ?? "nice_to_have") === filterLayer);
 
   const byCategory = filtered.reduce<Record<string, Task[]>>((acc, t) => {
     const cat = t.category ?? "other";
@@ -340,7 +340,7 @@ export default function TriagePage() {
           הכל ({tasks.length})
         </button>
         {LAYERS.map((l) => {
-          const count = tasks.filter((t) => (pending[t.id] ?? t.layer ?? "low_priority") === l.id).length;
+          const count = tasks.filter((t) => (pending[t.id] ?? t.layer ?? "nice_to_have") === l.id).length;
           return (
             <button
               key={l.id}
