@@ -1,7 +1,8 @@
 export type TaskPriority = "p1" | "p2" | "p3";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "waiting_ben" | "done";
 export type TaskOwner = "claude" | "ben" | "both" | "avitar";
-export type TaskCategory = "one_tm" | "self" | "brand" | "temp" | "research";
+export type TaskCategory = "one_tm" | "self" | "brand" | "temp" | "research" | "infrastructure" | "personal";
+export type TaskLayer = "quick_win" | "low_priority" | "project" | "deleted";
 
 export type RecurPattern = "daily" | `weekly:${number}` | `monthly:${number}`;
 
@@ -27,6 +28,8 @@ export interface Task {
   workstream?: string | null;
   // Sprint week (BIG3 cycle, format: "2026-W13")
   sprint_week?: string | null;
+  // Triage layer (3-tier system)
+  layer?: TaskLayer | null;
   // Recurring
   is_recurring?: boolean;
   recur_pattern?: string | null;
@@ -89,6 +92,8 @@ export const categoryLabels: Record<TaskCategory, string> = {
   brand: "פרופיל עסקי",
   temp: "זמני",
   research: "מחקר / חד-פעמי",
+  infrastructure: "תשתית",
+  personal: "אישי",
 };
 
 export const categoryColors: Record<TaskCategory, string> = {
@@ -97,9 +102,14 @@ export const categoryColors: Record<TaskCategory, string> = {
   brand: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300",
   temp: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
   research: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+  infrastructure: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  personal: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
 };
 
 export const TASK_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
+
+// Categories visible in CRM UI — self/temp are personal (live in KANBAN.md)
+export const CRM_CATEGORIES: TaskCategory[] = ["one_tm", "brand", "research"];
 
 export const SUGGESTED_TAGS = [
   // פילרים

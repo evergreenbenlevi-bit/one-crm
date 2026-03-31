@@ -12,6 +12,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  // Skip auth for webhook endpoints and internal AI endpoints
+  if (
+    request.nextUrl.pathname.startsWith("/api/webhook") ||
+    request.nextUrl.pathname.startsWith("/api/chat") ||
+    request.nextUrl.pathname.startsWith("/api/crm-query")
+  ) {
+    return NextResponse.next({ request });
+  }
+
+  // Skip auth for API routes with valid x-crm-secret header (Jarvis / CLI access)
+  const CRM_SECRET = process.env.CRM_API_SECRET || "crm-jarvis-dda52f158017635af1a4deba";
+  if (
+    request.nextUrl.pathname.startsWith("/api/") &&
+    request.headers.get("x-crm-secret") === CRM_SECRET
+  ) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -37,15 +55,6 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user ?? null;
-
-  // Skip auth for webhook endpoints and internal AI endpoints
-  if (
-    request.nextUrl.pathname.startsWith("/api/webhook") ||
-    request.nextUrl.pathname.startsWith("/api/chat") ||
-    request.nextUrl.pathname.startsWith("/api/crm-query")
-  ) {
-    return NextResponse.next({ request });
-  }
 
   if (!user && !request.nextUrl.pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();

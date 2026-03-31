@@ -55,6 +55,8 @@ export default function TasksPage() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [quickAddTitle, setQuickAddTitle] = useState("");
   const quickAddRef = useRef<HTMLInputElement>(null);
+  const [focusedTaskIndex, setFocusedTaskIndex] = useState(-1);
+  const todayTasksRef = useRef<Task[]>([]);
 
   const pendingOps = useRef(new Set<string>());
 
@@ -99,7 +101,7 @@ export default function TasksPage() {
     }
   }, [error]);
 
-  // Cmd+K quick add
+  // Cmd+K quick add + arrow key navigation in focus view
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -111,13 +113,35 @@ export default function TasksPage() {
         setQuickAddOpen(false);
         setQuickAddTitle("");
       }
+      // Arrow navigation in focus view (skip if typing in input/textarea)
+      if (viewMode === "today" && !quickAddOpen && !editingTask) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        const tasks_ = todayTasksRef.current;
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setFocusedTaskIndex(i => Math.min(i + 1, tasks_.length - 1));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setFocusedTaskIndex(i => Math.max(i - 1, 0));
+        } else if (e.key === "Enter" && focusedTaskIndex >= 0 && tasks_[focusedTaskIndex]) {
+          e.preventDefault();
+          handleTaskClick(tasks_[focusedTaskIndex]);
+        } else if (e.key === "ArrowRight" && focusedTaskIndex >= 0 && tasks_[focusedTaskIndex]) {
+          e.preventDefault();
+          const t = tasks_[focusedTaskIndex];
+          const next = NEXT_STATUS[t.status];
+          if (next) handleStatusChange(t.id, next);
+        }
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [quickAddOpen]);
+  }, [quickAddOpen, viewMode, focusedTaskIndex, editingTask]);
 
   function handleViewChange(mode: ViewMode) {
     setViewMode(mode);
+    setFocusedTaskIndex(-1);
     if (mode === "backlog") setBacklogLoaded(true);
     if (mode === "completed") setCompletedLoaded(true);
   }
@@ -144,6 +168,7 @@ export default function TasksPage() {
     active.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || priorityOrder[a.priority] - priorityOrder[b.priority]);
     return active.slice(0, FOCUS_LIMIT);
   }, [queueFiltered, filterCategory, filterPriority]);
+  todayTasksRef.current = todayTasks;
 
   // PILLARS: all non-done, non-backlog tasks
   const pillarTasks = useMemo(() => {
@@ -161,7 +186,7 @@ export default function TasksPage() {
 
   const backlogByCategory = useMemo(() => {
     const groups = {} as Record<TaskCategory, Task[]>;
-    const cats: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research"];
+    const cats: TaskCategory[] = ["one_tm", "brand", "research"];
     cats.forEach(c => { groups[c] = []; });
     backlogFiltered.forEach(t => { if (groups[t.category]) groups[t.category].push(t); });
     const priorityOrder = { p1: 0, p2: 1, p3: 2 };
@@ -562,14 +587,16 @@ export default function TasksPage() {
               {todayTasks.map((task, i) => {
                 const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "done";
                 const nextS = NEXT_STATUS[task.status];
+                const isFocused = focusedTaskIndex === i;
                 return (
                   <div
                     key={task.id}
-                    onClick={() => handleTaskClick(task)}
+                    onClick={() => { setFocusedTaskIndex(i); handleTaskClick(task); }}
                     className={clsx(
                       "flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50",
                       i < todayTasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/50",
-                      task.priority === "p1" && "border-r-4 border-red-500"
+                      task.priority === "p1" && "border-r-4 border-red-500",
+                      isFocused && "bg-brand-50 dark:bg-brand-900/20 ring-1 ring-inset ring-brand-200 dark:ring-brand-700"
                     )}
                   >
                     <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0", priorityColors[task.priority])}>

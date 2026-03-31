@@ -13,13 +13,11 @@ interface TaskPillarsProps {
 }
 
 const PILLARS: { id: TaskCategory; label: string; emoji: string; color: string }[] = [
-  { id: "self",    label: "מציאת העצמי",    emoji: "🔵", color: "border-teal-200 dark:border-teal-800" },
   { id: "brand",   label: "פרופיל עסקי",    emoji: "🟣", color: "border-pink-200 dark:border-pink-800" },
   { id: "one_tm",  label: "ONE™",           emoji: "🟠", color: "border-orange-200 dark:border-orange-800" },
 ];
 
 const PILLAR_HEADER: Record<string, string> = {
-  self:   "bg-teal-50 dark:bg-teal-900/20 border-teal-100 dark:border-teal-800",
   brand:  "bg-pink-50 dark:bg-pink-900/20 border-pink-100 dark:border-pink-800",
   one_tm: "bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800",
 };
@@ -64,9 +62,9 @@ export function TaskPillars({ tasks, onEdit, onStatusChange }: TaskPillarsProps)
     });
   }, [tasks]);
 
-  // Also show temp + research below as a compact section
+  // Also show research below as a compact section
   const otherTasks = useMemo(() => {
-    return tasks.filter(t => t.category === "temp" || t.category === "research");
+    return tasks.filter(t => t.category === "research");
   }, [tasks]);
 
   function toggleWorkstream(key: string) {
@@ -211,7 +209,7 @@ export function TaskPillars({ tasks, onEdit, onStatusChange }: TaskPillarsProps)
       {otherTasks.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-50 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-700/30">
-            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">זמני / חד-פעמי</span>
+            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">מחקר / חד-פעמי</span>
             <span className="text-xs text-gray-400">{otherTasks.length}</span>
           </div>
           <div>
@@ -228,7 +226,7 @@ export function TaskPillars({ tasks, onEdit, onStatusChange }: TaskPillarsProps)
                   {task.priority.toUpperCase()}
                 </span>
                 <span className="flex-1 text-xs dark:text-gray-200 truncate">{task.title}</span>
-                <span className="text-[10px] text-gray-400">{task.category === "temp" ? "זמני" : "חד-פעמי"}</span>
+                <span className="text-[10px] text-gray-400">חד-פעמי</span>
                 <span className="text-[10px]">{ownerIcons[task.owner]}</span>
               </div>
             ))}

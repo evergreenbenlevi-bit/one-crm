@@ -12,6 +12,13 @@ import { isLocalMode } from "@/lib/env";
 export async function requireAuth(request: NextRequest) {
   if (isLocalMode) return { id: "local-admin", role: "admin" as const };
 
+  // Accept x-crm-secret header for CLI/agent access (Jarvis, crons, scripts)
+  const CRM_SECRET = process.env.CRM_API_SECRET || "crm-jarvis-dda52f158017635af1a4deba";
+  const headerSecret = request.headers.get("x-crm-secret");
+  if (headerSecret === CRM_SECRET) {
+    return { id: "api-secret", role: "admin" as const };
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

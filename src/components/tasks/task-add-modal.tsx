@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { clsx } from "clsx";
 import type { TaskPriority, TaskOwner, TaskCategory, TaskStatus } from "@/lib/types/tasks";
-import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES } from "@/lib/types/tasks";
+import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES } from "@/lib/types/tasks";
 import { TagInput } from "./tag-input";
 
 interface TaskAddModalProps {
@@ -117,7 +117,7 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
             <div>
               <label className={labelClass}>קטגוריה</label>
               <select value={category} onChange={(e) => setCategory(e.target.value as TaskCategory)} className={fieldClass}>
-                {Object.entries(categoryLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {CRM_CATEGORIES.map(k => <option key={k} value={k}>{categoryLabels[k]}</option>)}
               </select>
             </div>
             <div>
