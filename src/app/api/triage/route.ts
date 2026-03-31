@@ -5,7 +5,7 @@ import type { TaskLayer } from "@/lib/types/tasks";
 
 export const preferredRegion = ["fra1", "arn1", "cdg1"];
 
-const VALID_LAYERS: TaskLayer[] = ["quick_win", "low_priority", "project", "deleted"];
+const VALID_LAYERS: TaskLayer[] = ["needle_mover", "project", "quick_win", "wishlist", "nice_to_have", "deleted"];
 
 // PATCH /api/triage — bulk update layers
 // Body: { updates: Array<{ id: string; layer: TaskLayer }> }
