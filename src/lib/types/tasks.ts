@@ -2,7 +2,7 @@ export type TaskPriority = "p1" | "p2" | "p3";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "waiting_ben" | "done";
 export type TaskOwner = "claude" | "ben" | "both" | "avitar";
 export type TaskCategory = "one_tm" | "self" | "brand" | "temp" | "research" | "infrastructure" | "personal";
-export type TaskLayer = "quick_win" | "low_priority" | "project" | "deleted";
+export type TaskLayer = "needle_mover" | "project" | "quick_win" | "wishlist" | "nice_to_have" | "deleted";
 
 export type RecurPattern = "daily" | `weekly:${number}` | `monthly:${number}`;
 

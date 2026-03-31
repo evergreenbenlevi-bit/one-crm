@@ -5,14 +5,16 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskLayer, TaskCategory } from "@/lib/types/tasks";
 import { categoryLabels, categoryColors } from "@/lib/types/tasks";
-import { Zap, Clock, FolderOpen, Trash2, Brain, Save, ChevronDown, ChevronUp } from "lucide-react";
+import { Zap, Clock, FolderOpen, Trash2, Brain, Save, ChevronDown, ChevronUp, Rocket, ShoppingBag, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 
 // ─── Layer config ────────────────────────────────────────────────────────────
 const LAYERS: { id: TaskLayer; label: string; labelHe: string; color: string; icon: typeof Zap; bg: string }[] = [
-  { id: "quick_win",    label: "Quick Win",    labelHe: "קוויק ווין",  color: "text-green-700 dark:text-green-300",  icon: Zap,        bg: "bg-green-50  dark:bg-green-900/20  border-green-200 dark:border-green-800" },
+  { id: "needle_mover",label: "Needle Mover", labelHe: "מזיז מחט",    color: "text-rose-700  dark:text-rose-300",   icon: Rocket,     bg: "bg-rose-50   dark:bg-rose-900/20   border-rose-200  dark:border-rose-800"  },
   { id: "project",     label: "Project",      labelHe: "פרויקט",      color: "text-blue-700  dark:text-blue-300",   icon: FolderOpen, bg: "bg-blue-50   dark:bg-blue-900/20   border-blue-200  dark:border-blue-800"  },
-  { id: "low_priority",label: "Low Priority", labelHe: "נמוך",         color: "text-gray-600  dark:text-gray-400",   icon: Clock,      bg: "bg-gray-50   dark:bg-gray-800/40   border-gray-200  dark:border-gray-700"  },
+  { id: "quick_win",   label: "Quick Win",    labelHe: "קוויק ווין",  color: "text-green-700 dark:text-green-300",  icon: Zap,        bg: "bg-green-50  dark:bg-green-900/20  border-green-200 dark:border-green-800" },
+  { id: "wishlist",    label: "Wishlist",     labelHe: "ווישליסט",    color: "text-amber-700 dark:text-amber-300",  icon: ShoppingBag,bg: "bg-amber-50  dark:bg-amber-900/20  border-amber-200 dark:border-amber-800" },
+  { id: "nice_to_have",label: "Nice to Have", labelHe: "נחמד",        color: "text-violet-600 dark:text-violet-400",icon: Sparkles,   bg: "bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800"},
   { id: "deleted",     label: "Delete",       labelHe: "מחק",         color: "text-red-600   dark:text-red-400",    icon: Trash2,     bg: "bg-red-50    dark:bg-red-900/20    border-red-200   dark:border-red-800"   },
 ];
 
