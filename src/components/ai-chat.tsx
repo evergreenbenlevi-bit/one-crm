@@ -21,18 +21,25 @@ export function AIChat() {
 
   return (
     <>
-      {/* כפתור צף */}
+      {/* כפתור צף — mobile: smaller icon above nav bar; desktop: full button bottom-left */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 left-6 z-50 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 shadow-lg transition-all"
+        className={[
+          "fixed z-[60] bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all",
+          // Mobile: 32px icon, positioned right side above mobile nav (64px) + 8px gap
+          "bottom-[80px] right-4 p-1.5 lg:p-3",
+          // Desktop: original position bottom-left
+          "lg:bottom-6 lg:left-6 lg:right-auto",
+        ].join(" ")}
         aria-label="פתח AI עוזר"
       >
-        {open ? <X size={22} /> : <MessageSquare size={22} />}
+        {open ? <X size={18} className="lg:hidden" /> : <MessageSquare size={18} className="lg:hidden" />}
+        {open ? <X size={22} className="hidden lg:block" /> : <MessageSquare size={22} className="hidden lg:block" />}
       </button>
 
       {/* חלון צ'אט */}
       {open && (
-        <div className="fixed bottom-20 left-6 z-50 w-80 h-[420px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col">
+        <div className="fixed bottom-[148px] right-4 lg:bottom-20 lg:left-6 lg:right-auto z-[60] w-80 h-[420px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col">
           {/* כותרת */}
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full" />

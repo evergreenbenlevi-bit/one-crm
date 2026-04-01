@@ -5,9 +5,10 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskLayer, TaskCategory } from "@/lib/types/tasks";
 import { categoryLabels, categoryColors } from "@/lib/types/tasks";
-import { Zap, Clock, FolderOpen, Trash2, Brain, Save, ChevronDown, ChevronUp, Rocket, ShoppingBag, Sparkles, SkipForward } from "lucide-react";
+import { Zap, FolderOpen, Trash2, Brain, Save, ChevronDown, ChevronUp, Rocket, ShoppingBag, Sparkles, SkipForward, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
+import { TaskEditModal } from "@/components/tasks/task-edit-modal";
 
 // ─── Layer config ────────────────────────────────────────────────────────────
 const LAYERS: { id: TaskLayer; label: string; labelHe: string; color: string; icon: typeof Zap; bg: string; emoji: string }[] = [
@@ -22,9 +23,10 @@ const LAYERS: { id: TaskLayer; label: string; labelHe: string; color: string; ic
 const LAYER_MAP = Object.fromEntries(LAYERS.map((l) => [l.id, l])) as Record<TaskLayer, typeof LAYERS[0]>;
 
 // ─── Mobile Card Swipe View ───────────────────────────────────────────────────
-function MobileTriageView({ tasks, onSaveLayer }: {
+function MobileTriageView({ tasks, onSaveLayer, onEditTask }: {
   tasks: Task[];
   onSaveLayer: (id: string, layer: TaskLayer) => Promise<void>;
+  onEditTask: (task: Task) => void;
 }) {
   // Tasks without a layer (unclassified) — show all if none unclassified
   const unclassified = tasks.filter((t) => !t.layer);
@@ -107,10 +109,20 @@ function MobileTriageView({ tasks, onSaveLayer }: {
             className="w-full max-w-sm"
           >
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-5 space-y-4">
-              {/* Title */}
-              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug text-right">
-                {current.title}
-              </p>
+              {/* Title — tap to edit */}
+              <button
+                type="button"
+                onClick={() => onEditTask(current)}
+                className="w-full text-right group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <Pencil className="w-4 h-4 text-gray-300 group-hover:text-blue-400 transition-colors mt-1 shrink-0" />
+                  <p className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug text-right flex-1">
+                    {current.title}
+                  </p>
+                </div>
+                <p className="text-[11px] text-gray-400 text-right mt-0.5">לחץ לעריכת פרטים</p>
+              </button>
 
               {/* Badges row */}
               <div className="flex flex-wrap gap-2 justify-end">
@@ -260,10 +272,11 @@ function BrainDump({ tasks, onUpdates }: {
 }
 
 // ─── Single task row ──────────────────────────────────────────────────────────
-function TaskRow({ task, pendingLayer, onLayerChange }: {
+function TaskRow({ task, pendingLayer, onLayerChange, onEdit }: {
   task: Task;
   pendingLayer?: TaskLayer;
   onLayerChange: (id: string, layer: TaskLayer) => void;
+  onEdit: (task: Task) => void;
 }) {
   const currentLayer = pendingLayer ?? task.layer ?? "nice_to_have";
   const layerCfg = LAYER_MAP[currentLayer];
@@ -280,9 +293,14 @@ function TaskRow({ task, pendingLayer, onLayerChange }: {
       <span className={clsx("shrink-0 text-xs px-1.5 py-0.5 rounded font-medium", catColor)}>
         {categoryLabels[task.category as TaskCategory] ?? task.category}
       </span>
-      <span className="flex-1 text-gray-800 dark:text-gray-200 truncate" title={task.title}>
+      <button
+        type="button"
+        onClick={() => onEdit(task)}
+        className="flex-1 text-left text-gray-800 dark:text-gray-200 truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+        title={`לחץ לעריכת: ${task.title}`}
+      >
         {task.title}
-      </span>
+      </button>
       <div className="shrink-0 flex items-center gap-1">
         <span className="text-xs text-gray-400">
           {task.owner === "ben" ? "🙋" : task.owner === "claude" ? "🤖" : "👥"}
@@ -320,11 +338,12 @@ function TaskRow({ task, pendingLayer, onLayerChange }: {
 }
 
 // ─── Category group ───────────────────────────────────────────────────────────
-function CategoryGroup({ category, tasks, pending, onLayerChange }: {
+function CategoryGroup({ category, tasks, pending, onLayerChange, onEdit }: {
   category: string;
   tasks: Task[];
   pending: Record<string, TaskLayer>;
   onLayerChange: (id: string, layer: TaskLayer) => void;
+  onEdit: (task: Task) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const label = categoryLabels[category as TaskCategory] ?? category;
@@ -357,6 +376,7 @@ function CategoryGroup({ category, tasks, pending, onLayerChange }: {
               task={t}
               pendingLayer={pending[t.id]}
               onLayerChange={onLayerChange}
+              onEdit={onEdit}
             />
           ))}
         </div>
@@ -401,6 +421,7 @@ export default function TriagePage() {
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [filterLayer, setFilterLayer] = useState<TaskLayer | "all">("all");
+  const [editTask, setEditTask] = useState<Task | null>(null);
 
   const handleLayerChange = useCallback((id: string, layer: TaskLayer) => {
     setPending((p) => ({ ...p, [id]: layer }));
@@ -432,6 +453,36 @@ export default function TriagePage() {
     }
   };
 
+  // Edit modal: save updated task
+  const handleEditSave = async (updated: Task) => {
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: updated.id,
+        title: updated.title,
+        description: updated.description,
+        priority: updated.priority,
+        status: updated.status,
+        owner: updated.owner,
+        category: updated.category,
+        due_date: updated.due_date,
+        tags: updated.tags,
+        is_recurring: updated.is_recurring,
+        recur_pattern: updated.recur_pattern,
+      }),
+    });
+    setEditTask(null);
+    mutate();
+  };
+
+  // Edit modal: delete task
+  const handleEditDelete = async (taskId: string) => {
+    await fetch(`/api/tasks?id=${taskId}`, { method: "DELETE" });
+    setEditTask(null);
+    mutate();
+  };
+
   // Mobile: save one card immediately
   const handleMobileSave = async (id: string, layer: TaskLayer) => {
     await fetch("/api/triage", {
@@ -456,9 +507,17 @@ export default function TriagePage() {
 
   return (
     <>
+      {/* Edit modal */}
+      <TaskEditModal
+        task={editTask}
+        onClose={() => setEditTask(null)}
+        onSave={handleEditSave}
+        onDelete={handleEditDelete}
+      />
+
       {/* ── MOBILE VIEW (< md) ── */}
       <div className="md:hidden">
-        <MobileTriageView tasks={tasks} onSaveLayer={handleMobileSave} />
+        <MobileTriageView tasks={tasks} onSaveLayer={handleMobileSave} onEditTask={setEditTask} />
       </div>
 
       {/* ── DESKTOP VIEW (md+) ── */}
@@ -539,6 +598,7 @@ export default function TriagePage() {
                 tasks={catTasks}
                 pending={pending}
                 onLayerChange={handleLayerChange}
+                onEdit={setEditTask}
               />
             ))}
         </div>
