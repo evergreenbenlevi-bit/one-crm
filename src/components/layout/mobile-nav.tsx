@@ -4,15 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal, CheckSquare, FolderKanban
+  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal, CheckSquare, FolderKanban, Target
 } from "lucide-react";
 import type { UserRole } from "@/lib/rbac";
 
 const adminNavItems = [
   { href: "/", label: "דשבורד", icon: LayoutDashboard },
   { href: "/leads", label: "לידים", icon: Users },
+  { href: "/triage", label: "טריאז׳", icon: Target },
   { href: "/meetings", label: "פגישות", icon: CalendarDays },
-  { href: "/customers", label: "לקוחות", icon: Briefcase },
   { href: "/more", label: "עוד", icon: MoreHorizontal },
 ];
 

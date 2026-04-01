@@ -5,20 +5,174 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskLayer, TaskCategory } from "@/lib/types/tasks";
 import { categoryLabels, categoryColors } from "@/lib/types/tasks";
-import { Zap, Clock, FolderOpen, Trash2, Brain, Save, ChevronDown, ChevronUp, Rocket, ShoppingBag, Sparkles } from "lucide-react";
+import { Zap, Clock, FolderOpen, Trash2, Brain, Save, ChevronDown, ChevronUp, Rocket, ShoppingBag, Sparkles, SkipForward } from "lucide-react";
 import { clsx } from "clsx";
+import { AnimatePresence, motion } from "framer-motion";
 
 // ─── Layer config ────────────────────────────────────────────────────────────
-const LAYERS: { id: TaskLayer; label: string; labelHe: string; color: string; icon: typeof Zap; bg: string }[] = [
-  { id: "needle_mover",label: "Needle Mover", labelHe: "מזיז מחט",    color: "text-rose-700  dark:text-rose-300",   icon: Rocket,     bg: "bg-rose-50   dark:bg-rose-900/20   border-rose-200  dark:border-rose-800"  },
-  { id: "project",     label: "Project",      labelHe: "פרויקט",      color: "text-blue-700  dark:text-blue-300",   icon: FolderOpen, bg: "bg-blue-50   dark:bg-blue-900/20   border-blue-200  dark:border-blue-800"  },
-  { id: "quick_win",   label: "Quick Win",    labelHe: "קוויק ווין",  color: "text-green-700 dark:text-green-300",  icon: Zap,        bg: "bg-green-50  dark:bg-green-900/20  border-green-200 dark:border-green-800" },
-  { id: "wishlist",    label: "Wishlist",     labelHe: "ווישליסט",    color: "text-amber-700 dark:text-amber-300",  icon: ShoppingBag,bg: "bg-amber-50  dark:bg-amber-900/20  border-amber-200 dark:border-amber-800" },
-  { id: "nice_to_have",label: "Nice to Have", labelHe: "נחמד",        color: "text-violet-600 dark:text-violet-400",icon: Sparkles,   bg: "bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800"},
-  { id: "deleted",     label: "Delete",       labelHe: "מחק",         color: "text-red-600   dark:text-red-400",    icon: Trash2,     bg: "bg-red-50    dark:bg-red-900/20    border-red-200   dark:border-red-800"   },
+const LAYERS: { id: TaskLayer; label: string; labelHe: string; color: string; icon: typeof Zap; bg: string; emoji: string }[] = [
+  { id: "needle_mover",label: "Needle Mover", labelHe: "מזיז מחט",    color: "text-rose-700  dark:text-rose-300",   icon: Rocket,     bg: "bg-rose-50   dark:bg-rose-900/20   border-rose-200  dark:border-rose-800",  emoji: "🚀" },
+  { id: "project",     label: "Project",      labelHe: "פרויקט",      color: "text-blue-700  dark:text-blue-300",   icon: FolderOpen, bg: "bg-blue-50   dark:bg-blue-900/20   border-blue-200  dark:border-blue-800",  emoji: "📁" },
+  { id: "quick_win",   label: "Quick Win",    labelHe: "קוויק ווין",  color: "text-green-700 dark:text-green-300",  icon: Zap,        bg: "bg-green-50  dark:bg-green-900/20  border-green-200 dark:border-green-800", emoji: "⚡" },
+  { id: "wishlist",    label: "Wishlist",     labelHe: "ווישליסט",    color: "text-amber-700 dark:text-amber-300",  icon: ShoppingBag,bg: "bg-amber-50  dark:bg-amber-900/20  border-amber-200 dark:border-amber-800", emoji: "🛍️" },
+  { id: "nice_to_have",label: "Nice to Have", labelHe: "נחמד",        color: "text-violet-600 dark:text-violet-400",icon: Sparkles,   bg: "bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800",emoji: "✨" },
+  { id: "deleted",     label: "Delete",       labelHe: "מחק",         color: "text-red-600   dark:text-red-400",    icon: Trash2,     bg: "bg-red-50    dark:bg-red-900/20    border-red-200   dark:border-red-800",   emoji: "🗑️" },
 ];
 
 const LAYER_MAP = Object.fromEntries(LAYERS.map((l) => [l.id, l])) as Record<TaskLayer, typeof LAYERS[0]>;
+
+// ─── Mobile Card Swipe View ───────────────────────────────────────────────────
+function MobileTriageView({ tasks, onSaveLayer }: {
+  tasks: Task[];
+  onSaveLayer: (id: string, layer: TaskLayer) => Promise<void>;
+}) {
+  // Tasks without a layer (unclassified) — show all if none unclassified
+  const unclassified = tasks.filter((t) => !t.layer);
+  const queue = unclassified.length > 0 ? unclassified : tasks;
+  const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
+
+  const total = queue.length;
+  const done = index;
+  const current = queue[index];
+
+  async function handleLayer(layer: TaskLayer) {
+    if (!current || saving) return;
+    setSaving(true);
+    await onSaveLayer(current.id, layer);
+    setSaving(false);
+    setDirection(-1);
+    setIndex((i) => i + 1);
+  }
+
+  function handleSkip() {
+    if (!current) return;
+    setSkipped((s) => new Set(s).add(current.id));
+    setDirection(-1);
+    setIndex((i) => i + 1);
+  }
+
+  if (!current || index >= total) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
+        <div className="text-5xl">🎉</div>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">סיימת!</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {total} משימות סווגו
+          {skipped.size > 0 && ` · ${skipped.size} דולגו`}
+        </p>
+        <button
+          onClick={() => setIndex(0)}
+          className="px-6 py-2.5 rounded-xl bg-brand-600 text-white font-semibold text-sm hover:bg-brand-700 transition-colors"
+        >
+          התחל מחדש
+        </button>
+      </div>
+    );
+  }
+
+  const catColor = categoryColors[current.category as TaskCategory] ?? "bg-gray-100 text-gray-600";
+  const layerCfg = current.layer ? LAYER_MAP[current.layer] : null;
+
+  const row1 = LAYERS.slice(0, 3);
+  const row2 = LAYERS.slice(3);
+
+  return (
+    <div className="flex flex-col min-h-[calc(100vh-8rem)] px-4 pt-4 pb-6">
+      {/* Progress bar */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+          <span>{done} מתוך {total} סווגו</span>
+          {skipped.size > 0 && <span className="text-amber-500">{skipped.size} דלגת</span>}
+        </div>
+        <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-brand-600 rounded-full transition-all duration-300"
+            style={{ width: `${total > 0 ? (done / total) * 100 : 0}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Card */}
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current.id}
+            initial={{ opacity: 0, x: direction > 0 ? 80 : -80 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction > 0 ? -80 : 80 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="w-full max-w-sm"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-5 space-y-4">
+              {/* Title */}
+              <p className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug text-right">
+                {current.title}
+              </p>
+
+              {/* Badges row */}
+              <div className="flex flex-wrap gap-2 justify-end">
+                <span className={clsx("text-xs px-2.5 py-1 rounded-full font-medium", catColor)}>
+                  {categoryLabels[current.category as TaskCategory] ?? current.category}
+                </span>
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                  {current.owner === "ben" ? "🙋 בן" : current.owner === "claude" ? "🤖 Claude" : "👥 שניהם"}
+                </span>
+                <span className={clsx(
+                  "text-xs px-2.5 py-1 rounded-full font-bold",
+                  current.priority === "p1" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" :
+                  current.priority === "p2" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" :
+                  "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                )}>
+                  {current.priority.toUpperCase()}
+                </span>
+                {layerCfg && (
+                  <span className={clsx("text-xs px-2.5 py-1 rounded-full font-medium border", layerCfg.bg, layerCfg.color)}>
+                    {layerCfg.emoji} {layerCfg.labelHe}
+                  </span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Layer buttons */}
+      <div className="space-y-3 mt-4">
+        {[row1, row2].map((row, ri) => (
+          <div key={ri} className="grid grid-cols-3 gap-2">
+            {row.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => handleLayer(l.id)}
+                disabled={saving}
+                className={clsx(
+                  "flex flex-col items-center justify-center gap-1 py-3.5 rounded-xl border-2 font-semibold text-sm transition-all active:scale-95 disabled:opacity-50",
+                  l.bg, l.color
+                )}
+              >
+                <span className="text-xl">{l.emoji}</span>
+                <span className="text-[11px] font-bold leading-tight text-center">{l.labelHe}</span>
+              </button>
+            ))}
+          </div>
+        ))}
+
+        {/* Skip button */}
+        <button
+          onClick={handleSkip}
+          disabled={saving}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+        >
+          <SkipForward className="w-4 h-4" />
+          דלג
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ─── Brain dump panel ────────────────────────────────────────────────────────
 function BrainDump({ tasks, onUpdates }: {
@@ -278,6 +432,16 @@ export default function TriagePage() {
     }
   };
 
+  // Mobile: save one card immediately
+  const handleMobileSave = async (id: string, layer: TaskLayer) => {
+    await fetch("/api/triage", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updates: [{ id, layer }] }),
+    });
+    mutate();
+  };
+
   const filtered = filterLayer === "all"
     ? tasks
     : tasks.filter((t) => (pending[t.id] ?? t.layer ?? "nice_to_have") === filterLayer);
@@ -291,86 +455,94 @@ export default function TriagePage() {
   const pendingCount = Object.keys(pending).length;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+    <>
+      {/* ── MOBILE VIEW (< md) ── */}
+      <div className="md:hidden">
+        <MobileTriageView tasks={tasks} onSaveLayer={handleMobileSave} />
+      </div>
+
+      {/* ── DESKTOP VIEW (md+) ── */}
+      <div className="hidden md:block p-6 max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">טריאז׳ משימות</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {tasks.length} משימות — סווג כל משימה לשכבה הנכונה
+            </p>
+          </div>
+          <button
+            onClick={save}
+            disabled={saving || pendingCount === 0}
+            className={clsx(
+              "flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm",
+              pendingCount > 0
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
+            )}
+          >
+            <Save className="w-4 h-4" />
+            {saving ? "שומר..." : `שמור${pendingCount > 0 ? ` (${pendingCount})` : ""}`}
+          </button>
+        </div>
+
+        {savedCount > 0 && (
+          <div className="mb-4 px-4 py-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 text-sm font-medium">
+            ✓ {savedCount} משימות עודכנו בהצלחה
+          </div>
+        )}
+
+        {/* Brain Dump */}
+        <BrainDump tasks={tasks} onUpdates={handleBrainDumpUpdates} />
+
+        {/* Stats */}
+        <StatsBar tasks={tasks} pending={pending} />
+
+        {/* Layer filter tabs */}
+        <div className="flex gap-2 flex-wrap mb-4">
+          <button
+            onClick={() => setFilterLayer("all")}
+            className={clsx("px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+              filterLayer === "all"
+                ? "bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 border-gray-800 dark:border-gray-200"
+                : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400"
+            )}
+          >
+            הכל ({tasks.length})
+          </button>
+          {LAYERS.map((l) => {
+            const count = tasks.filter((t) => (pending[t.id] ?? t.layer ?? "nice_to_have") === l.id).length;
+            return (
+              <button
+                key={l.id}
+                onClick={() => setFilterLayer(l.id)}
+                className={clsx("px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                  filterLayer === l.id
+                    ? clsx(l.bg, l.color, "border-current")
+                    : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400"
+                )}
+              >
+                {l.labelHe} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Task groups */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">טריאז׳ משימות</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {tasks.length} משימות — סווג כל משימה לשכבה הנכונה
-          </p>
+          {Object.entries(byCategory)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([cat, catTasks]) => (
+              <CategoryGroup
+                key={cat}
+                category={cat}
+                tasks={catTasks}
+                pending={pending}
+                onLayerChange={handleLayerChange}
+              />
+            ))}
         </div>
-        <button
-          onClick={save}
-          disabled={saving || pendingCount === 0}
-          className={clsx(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm",
-            pendingCount > 0
-              ? "bg-blue-600 hover:bg-blue-700 text-white"
-              : "bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed"
-          )}
-        >
-          <Save className="w-4 h-4" />
-          {saving ? "שומר..." : `שמור${pendingCount > 0 ? ` (${pendingCount})` : ""}`}
-        </button>
       </div>
-
-      {savedCount > 0 && (
-        <div className="mb-4 px-4 py-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 text-sm font-medium">
-          ✓ {savedCount} משימות עודכנו בהצלחה
-        </div>
-      )}
-
-      {/* Brain Dump */}
-      <BrainDump tasks={tasks} onUpdates={handleBrainDumpUpdates} />
-
-      {/* Stats */}
-      <StatsBar tasks={tasks} pending={pending} />
-
-      {/* Layer filter tabs */}
-      <div className="flex gap-2 flex-wrap mb-4">
-        <button
-          onClick={() => setFilterLayer("all")}
-          className={clsx("px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-            filterLayer === "all"
-              ? "bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 border-gray-800 dark:border-gray-200"
-              : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400"
-          )}
-        >
-          הכל ({tasks.length})
-        </button>
-        {LAYERS.map((l) => {
-          const count = tasks.filter((t) => (pending[t.id] ?? t.layer ?? "nice_to_have") === l.id).length;
-          return (
-            <button
-              key={l.id}
-              onClick={() => setFilterLayer(l.id)}
-              className={clsx("px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                filterLayer === l.id
-                  ? clsx(l.bg, l.color, "border-current")
-                  : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400"
-              )}
-            >
-              {l.labelHe} ({count})
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Task groups */}
-      <div>
-        {Object.entries(byCategory)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([cat, catTasks]) => (
-            <CategoryGroup
-              key={cat}
-              category={cat}
-              tasks={catTasks}
-              pending={pending}
-              onLayerChange={handleLayerChange}
-            />
-          ))}
-      </div>
-    </div>
+    </>
   );
 }

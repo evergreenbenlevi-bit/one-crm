@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
   const priority = searchParams.get("priority");
   const owner = searchParams.get("owner");
   const category = searchParams.get("category");
+  const parent_id = searchParams.get("parent_id");
 
   if (status && VALID_STATUSES.includes(status as TaskStatus)) query = query.eq("status", status);
   // Lazy load: exclude backlog on initial fetch for fast page load
@@ -74,6 +75,7 @@ export async function GET(request: NextRequest) {
   if (priority && VALID_PRIORITIES.includes(priority as TaskPriority)) query = query.eq("priority", priority);
   if (owner && VALID_OWNERS.includes(owner as TaskOwner)) query = query.eq("owner", owner);
   if (category && VALID_CATEGORIES.includes(category as TaskCategory)) query = query.eq("category", category);
+  if (parent_id) query = query.eq("parent_id", parent_id);
 
   const { data, error } = await query.order("position").order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

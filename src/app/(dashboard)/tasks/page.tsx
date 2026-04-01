@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback } from "react";
 import useSWR from "swr";
-import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2 } from "lucide-react";
+import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2, ChevronDown, ChevronRight, GitBranch } from "lucide-react";
 import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { TASK_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors } from "@/lib/types/tasks";
@@ -17,6 +17,113 @@ import { loadSessionContext, saveSessionContext, sessionAgeLabel } from "@/lib/s
 import { clsx } from "clsx";
 import { useEffect } from "react";
 
+// ─── Sub-tasks panel ──────────────────────────────────────────────────────────
+const STATUS_BADGE: Record<TaskStatus, string> = {
+  in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  waiting_ben: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  todo:        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  backlog:     "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
+  done:        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+};
+
+function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask: (t: Task) => void }) {
+  const { data: subTasks = [], mutate } = useSWR<Task[]>(
+    `/api/tasks?parent_id=${parentId}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  const [adding, setAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (adding) setTimeout(() => inputRef.current?.focus(), 50);
+  }, [adding]);
+
+  async function handleAdd() {
+    if (!newTitle.trim() || saving) return;
+    setSaving(true);
+    try {
+      await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          priority: "p2",
+          status: "todo",
+          owner: "claude",
+          category: "one_tm",
+          parent_id: parentId,
+          tags: [],
+          position: 0,
+        }),
+      });
+      setNewTitle("");
+      setAdding(false);
+      mutate();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="px-4 pb-3 pt-1 bg-gray-50 dark:bg-gray-800/60 border-t border-gray-50 dark:border-gray-700/30">
+      <div className="flex items-center gap-1.5 mb-2">
+        <GitBranch size={11} className="text-gray-400" />
+        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">תת-משימות</span>
+      </div>
+
+      {subTasks.length > 0 && (
+        <div className="space-y-1 mb-2">
+          {subTasks.map((sub) => (
+            <div
+              key={sub.id}
+              onClick={() => onEditTask(sub)}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-brand-200 dark:hover:border-brand-700 transition-colors"
+            >
+              <span className={clsx("text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0", STATUS_BADGE[sub.status])}>
+                {statusLabels[sub.status]}
+              </span>
+              <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{sub.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {adding ? (
+        <div className="flex items-center gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") { setAdding(false); setNewTitle(""); } }}
+            placeholder="שם תת-משימה..."
+            className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-brand-300 dark:border-brand-600 bg-white dark:bg-gray-800 outline-none focus:ring-2 focus:ring-brand-300 dark:text-gray-200 placeholder-gray-400"
+          />
+          <button
+            onClick={handleAdd}
+            disabled={!newTitle.trim() || saving}
+            className="px-2.5 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition-colors disabled:opacity-40"
+          >
+            {saving ? "..." : "הוסף"}
+          </button>
+          <button onClick={() => { setAdding(false); setNewTitle(""); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs">✕</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="flex items-center gap-1.5 text-[11px] text-brand-600 dark:text-brand-400 hover:text-brand-700 font-medium transition-colors"
+        >
+          <Plus size={12} />
+          הוסף תת-משימה
+        </button>
+      )}
+    </div>
+  );
+}
+
 type ViewMode = "today" | "pillars" | "backlog" | "completed";
 type QueueMode = "claude" | "ben" | "all";
 
@@ -29,14 +136,6 @@ const QUEUE_TABS: { id: QueueMode; label: string; icon: string }[] = [
   { id: "ben",    label: "Ben",    icon: "🙋" },
   { id: "all",    label: "הכל",    icon: "👥" },
 ];
-
-const STATUS_BADGE: Record<TaskStatus, string> = {
-  in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  waiting_ben: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  todo:        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  backlog:     "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
-  done:        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-};
 
 const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
   backlog: "todo", todo: "in_progress", in_progress: "done", waiting_ben: "in_progress", done: null,
@@ -63,6 +162,7 @@ export default function TasksPage() {
   const [filterPriority, setFilterPriority] = useState<TaskPriority | "all">("all");
   const [filterCategory, setFilterCategory] = useState<TaskCategory | "all">("all");
   const [filterOwner, setFilterOwner] = useState<TaskOwner | "all">("all");
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   // SWR — active tasks (excludes backlog)
   const { data: tasksData, isLoading: loading, mutate: mutateTasks } = useSWR(
@@ -588,39 +688,57 @@ export default function TasksPage() {
                 const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "done";
                 const nextS = NEXT_STATUS[task.status];
                 const isFocused = focusedTaskIndex === i;
+                const isExpanded = expandedTaskId === task.id;
                 return (
-                  <div
-                    key={task.id}
-                    onClick={() => { setFocusedTaskIndex(i); handleTaskClick(task); }}
-                    className={clsx(
-                      "flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50",
-                      i < todayTasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/50",
-                      task.priority === "p1" && "border-r-4 border-red-500",
-                      isFocused && "bg-brand-50 dark:bg-brand-900/20 ring-1 ring-inset ring-brand-200 dark:ring-brand-700"
-                    )}
-                  >
-                    <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0", priorityColors[task.priority])}>
-                      {task.priority.toUpperCase()}
-                    </span>
-                    <span className="flex-1 text-sm font-medium dark:text-gray-200 truncate">
-                      {isOverdue && "🔴 "}{task.title}
-                    </span>
-                    <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0", categoryColors[task.category])}>
-                      {categoryLabels[task.category]}
-                    </span>
-                    <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0", STATUS_BADGE[task.status])}>
-                      {statusLabels[task.status]}
-                    </span>
-                    <span className="text-sm flex-shrink-0">{ownerIcons[task.owner]}</span>
-                    {/* Quick advance */}
-                    {nextS && (
+                  <div key={task.id} className={clsx(i < todayTasks.length - 1 && !isExpanded && "border-b border-gray-50 dark:border-gray-700/50")}>
+                    <div
+                      onClick={() => { setFocusedTaskIndex(i); handleTaskClick(task); }}
+                      className={clsx(
+                        "flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50",
+                        task.priority === "p1" && "border-r-4 border-red-500",
+                        isFocused && "bg-brand-50 dark:bg-brand-900/20 ring-1 ring-inset ring-brand-200 dark:ring-brand-700"
+                      )}
+                    >
+                      <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0", priorityColors[task.priority])}>
+                        {task.priority.toUpperCase()}
+                      </span>
+                      <span className="flex-1 text-sm font-medium dark:text-gray-200 truncate">
+                        {isOverdue && "🔴 "}{task.title}
+                      </span>
+                      <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0", categoryColors[task.category])}>
+                        {categoryLabels[task.category]}
+                      </span>
+                      <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0", STATUS_BADGE[task.status])}>
+                        {statusLabels[task.status]}
+                      </span>
+                      <span className="text-sm flex-shrink-0">{ownerIcons[task.owner]}</span>
+                      {/* Quick advance */}
+                      {nextS && (
+                        <button
+                          onClick={(e) => handleQuickAdvance(e, task)}
+                          title={`→ ${statusLabels[nextS]}`}
+                          className="text-[10px] px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-brand-100 hover:text-brand-700 dark:hover:bg-brand-900/40 dark:hover:text-brand-300 transition-colors font-semibold flex-shrink-0"
+                        >
+                          →
+                        </button>
+                      )}
+                      {/* Sub-tasks toggle */}
                       <button
-                        onClick={(e) => handleQuickAdvance(e, task)}
-                        title={`→ ${statusLabels[nextS]}`}
-                        className="text-[10px] px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-brand-100 hover:text-brand-700 dark:hover:bg-brand-900/40 dark:hover:text-brand-300 transition-colors font-semibold flex-shrink-0"
+                        onClick={(e) => { e.stopPropagation(); setExpandedTaskId(isExpanded ? null : task.id); }}
+                        title="תת-משימות"
+                        className={clsx(
+                          "flex items-center gap-0.5 px-1.5 py-1 rounded-lg transition-colors flex-shrink-0",
+                          isExpanded
+                            ? "bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400"
+                            : "text-gray-300 dark:text-gray-600 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        )}
                       >
-                        →
+                        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                        <GitBranch size={10} />
                       </button>
+                    </div>
+                    {isExpanded && (
+                      <SubTasksPanel parentId={task.id} onEditTask={handleTaskClick} />
                     )}
                   </div>
                 );
@@ -709,27 +827,44 @@ export default function TasksPage() {
                             </div>
                             {wsTasks.map((task, i) => {
                               const isOverdue = task.due_date && new Date(task.due_date) < new Date();
+                              const isExpanded = expandedTaskId === task.id;
                               return (
-                                <div
-                                  key={task.id}
-                                  onClick={() => handleTaskClick(task)}
-                                  className={clsx(
-                                    "flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors",
-                                    i < wsTasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/30",
-                                    task.priority === "p1" && "border-r-4 border-red-500"
-                                  )}
-                                >
-                                  <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0", priorityColors[task.priority])}>
-                                    {task.priority.toUpperCase()}
-                                  </span>
-                                  <span className="flex-1 text-sm dark:text-gray-200 truncate">
-                                    {isOverdue && "🔴 "}{task.title}
-                                  </span>
-                                  <span className="text-sm flex-shrink-0">{ownerIcons[task.owner]}</span>
-                                  {task.due_date && (
-                                    <span className={clsx("text-[10px] flex-shrink-0", isOverdue ? "text-red-500 font-bold" : "text-gray-400 dark:text-gray-500")}>
-                                      {task.due_date}
+                                <div key={task.id} className={clsx(i < wsTasks.length - 1 && !isExpanded && "border-b border-gray-50 dark:border-gray-700/30")}>
+                                  <div
+                                    onClick={() => handleTaskClick(task)}
+                                    className={clsx(
+                                      "flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors",
+                                      task.priority === "p1" && "border-r-4 border-red-500"
+                                    )}
+                                  >
+                                    <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0", priorityColors[task.priority])}>
+                                      {task.priority.toUpperCase()}
                                     </span>
+                                    <span className="flex-1 text-sm dark:text-gray-200 truncate">
+                                      {isOverdue && "🔴 "}{task.title}
+                                    </span>
+                                    <span className="text-sm flex-shrink-0">{ownerIcons[task.owner]}</span>
+                                    {task.due_date && (
+                                      <span className={clsx("text-[10px] flex-shrink-0", isOverdue ? "text-red-500 font-bold" : "text-gray-400 dark:text-gray-500")}>
+                                        {task.due_date}
+                                      </span>
+                                    )}
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setExpandedTaskId(isExpanded ? null : task.id); }}
+                                      title="תת-משימות"
+                                      className={clsx(
+                                        "flex items-center gap-0.5 px-1.5 py-1 rounded-lg transition-colors flex-shrink-0",
+                                        isExpanded
+                                          ? "bg-brand-100 dark:bg-brand-900/40 text-brand-600 dark:text-brand-400"
+                                          : "text-gray-300 dark:text-gray-600 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                      )}
+                                    >
+                                      {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                      <GitBranch size={10} />
+                                    </button>
+                                  </div>
+                                  {isExpanded && (
+                                    <SubTasksPanel parentId={task.id} onEditTask={handleTaskClick} />
                                   )}
                                 </div>
                               );
