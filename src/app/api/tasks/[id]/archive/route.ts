@@ -4,16 +4,16 @@ import { requireAuth } from "@/lib/api-auth";
 
 export const preferredRegion = ["fra1", "arn1", "cdg1"];
 
-// POST /api/tasks/[taskId]/archive — archive a task with reason
+// POST /api/tasks/[id]/archive — archive a task with reason
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authUser = await requireAuth(request);
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { taskId } = await params;
-  if (!taskId) return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+  const { id } = await params;
+  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
   const body = await request.json();
   const reason = body?.reason?.trim() || "לא צוינה סיבה";
@@ -27,7 +27,7 @@ export async function POST(
       archived_at: new Date().toISOString(),
       archive_reason: reason,
     })
-    .eq("id", taskId)
+    .eq("id", id)
     .select()
     .single();
 
@@ -35,7 +35,7 @@ export async function POST(
 
   // Log activity
   await supabase.from("task_activity").insert({
-    task_id: taskId,
+    task_id: id,
     activity_type: "archived",
     actor: "ben",
     content: reason,
@@ -44,16 +44,16 @@ export async function POST(
   return NextResponse.json(task);
 }
 
-// DELETE /api/tasks/[taskId]/archive — unarchive (restore) a task
+// DELETE /api/tasks/[id]/archive — unarchive (restore) a task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authUser = await requireAuth(request);
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { taskId } = await params;
-  if (!taskId) return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+  const { id } = await params;
+  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
   const supabase = createAdminClient();
 
@@ -63,7 +63,7 @@ export async function DELETE(
       archived_at: null,
       archive_reason: null,
     })
-    .eq("id", taskId)
+    .eq("id", id)
     .select()
     .single();
 
@@ -71,7 +71,7 @@ export async function DELETE(
 
   // Log activity
   await supabase.from("task_activity").insert({
-    task_id: taskId,
+    task_id: id,
     activity_type: "field_change",
     actor: "ben",
     content: "שוחזר מארכיון",

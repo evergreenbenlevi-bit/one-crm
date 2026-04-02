@@ -4,16 +4,16 @@ import { requireAuth } from "@/lib/api-auth";
 
 export const preferredRegion = ["fra1", "arn1", "cdg1"];
 
-// GET /api/tasks/[taskId]/activity — fetch activity log for a task
+// GET /api/tasks/[id]/activity — fetch activity log for a task
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authUser = await requireAuth(request);
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { taskId } = await params;
-  if (!taskId) return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+  const { id } = await params;
+  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
@@ -23,7 +23,7 @@ export async function GET(
   const { data, error } = await supabase
     .from("task_activity")
     .select("*")
-    .eq("task_id", taskId)
+    .eq("task_id", id)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -31,16 +31,16 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-// POST /api/tasks/[taskId]/activity — add a note/comment to a task
+// POST /api/tasks/[id]/activity — add a note/comment to a task
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const authUser = await requireAuth(request);
   if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { taskId } = await params;
-  if (!taskId) return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+  const { id } = await params;
+  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
   const body = await request.json();
   const content = body?.content?.trim();
@@ -62,7 +62,7 @@ export async function POST(
   const { data, error } = await supabase
     .from("task_activity")
     .insert({
-      task_id: taskId,
+      task_id: id,
       activity_type: "note",
       actor,
       content,
