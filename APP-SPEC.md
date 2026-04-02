@@ -11,7 +11,7 @@
 |-----|------|---------|----------------|
 | `/` | `(dashboard)/page.tsx` | Main dashboard — overview, BIG3, stats | `Big3Today`, `StatCard` |
 | `/leads` | `(dashboard)/leads/` | Lead pipeline — kanban + table views | `LeadsKanban`, `LeadsTable`, `LeadDetail`, `LeadEditModal` |
-| `/triage` | `(dashboard)/triage/page.tsx` | Task triage — swipe-card (mobile) / grouped table (desktop) | `MobileTriageView`, `TaskRow`, `CategoryGroup`, `TaskEditModal` |
+| `/triage` | `(dashboard)/triage/page.tsx` | Task triage — card-by-card decision UI (mobile+desktop). Quick actions: Claude/Ben/Done/Delete/Skip. Inline date picker for Ben tasks. Expand to edit all fields. Filters: untriaged/overdue/owner/category. | `TriageCard`, `StatsStrip`, filters, `AnimatePresence` |
 | `/tasks` | `(dashboard)/tasks/` | Task management — kanban board | `TaskKanban`, `TaskEditModal`, `TaskAddModal` |
 | `/customers` | `(dashboard)/customers/` | Customer profiles, payments, program tracking | `CustomerTabs`, `CustomerEditModal`, `Timeline` |
 | `/meetings` | `(dashboard)/meetings/` | Meeting scheduler + history | meetings components |
@@ -25,6 +25,7 @@
 | `/financial` | `(dashboard)/financial/` | Revenue, transactions, expenses | financial components |
 | `/news` | `(dashboard)/news/` | AI-curated news feed | news components |
 | `/settings` | `(dashboard)/settings/` | App settings | settings components |
+| `/dump` | `(dashboard)/dump/page.tsx` | Brain Dump — free-text thought dump, Claude classifies to task/idea/reminder/note, routes to CRM or Vault | textarea, results list, history |
 | `/more` | `(dashboard)/more/` | Mobile overflow nav (links to hidden pages) | nav list |
 | `/login` | `app/login/` | Auth page | login form |
 
