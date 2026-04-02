@@ -1,14 +1,14 @@
 import { unstable_cache } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const getFinancialData = unstable_cache(
   async (startDate: string, endDate: string) => {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const [transactionsRes, expensesRes, campaignsRes, leadsRes] = await Promise.all([
-      supabase.from("transactions").select("*").gte("date", startDate).lte("date", endDate).eq("status", "completed"),
-      supabase.from("expenses").select("*").gte("date", startDate.split("T")[0]).lte("date", endDate.split("T")[0]),
-      supabase.from("campaigns").select("*").gte("date", startDate.split("T")[0]).lte("date", endDate.split("T")[0]),
+      supabase.from("transactions").select("amount, date, program, status").gte("date", startDate).lte("date", endDate).eq("status", "completed"),
+      supabase.from("expenses").select("amount, date, category").gte("date", startDate.split("T")[0]).lte("date", endDate.split("T")[0]),
+      supabase.from("campaigns").select("daily_spend, date").gte("date", startDate.split("T")[0]).lte("date", endDate.split("T")[0]),
       supabase.from("leads").select("*", { count: "exact", head: true }).gte("created_at", startDate).lte("created_at", endDate),
     ]);
 
@@ -61,7 +61,7 @@ export const getFinancialData = unstable_cache(
 
 export const getRevenueTrends = unstable_cache(
   async (months = 6) => {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
 

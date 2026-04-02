@@ -24,7 +24,7 @@ export function TeamDashboard() {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const res = await fetch("/api/tasks");
+      const res = await fetch("/api/tasks?exclude_backlog=1&limit=100");
       if (!res.ok) throw new Error();
       const data = await res.json();
       setTasks(Array.isArray(data) ? data : []);

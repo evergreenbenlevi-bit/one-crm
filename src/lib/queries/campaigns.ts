@@ -1,10 +1,14 @@
 import { unstable_cache } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const getCampaigns = unstable_cache(
   async (startDate?: string, endDate?: string) => {
-    const supabase = await createClient();
-    let query = supabase.from("campaigns").select("*").order("date", { ascending: false });
+    const supabase = createAdminClient();
+    let query = supabase
+      .from("campaigns")
+      .select("*")
+      .order("date", { ascending: false })
+      .limit(200);
 
     if (startDate) query = query.gte("date", startDate);
     if (endDate) query = query.lte("date", endDate);

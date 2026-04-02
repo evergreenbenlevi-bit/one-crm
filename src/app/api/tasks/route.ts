@@ -3,15 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 // Prefer EU regions (Frankfurt/Stockholm) — closer to Israel than default US East
 export const preferredRegion = ["fra1", "arn1", "cdg1"];
 import { isLocalMode, getAllTasks, createTask, updateTask, deleteTask } from "@/lib/tasks-store";
-import type { TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
+import type { TaskStatus, TaskPriority, TaskOwner, TaskCategory, TaskImpact, TaskSize } from "@/lib/types/tasks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
 
 // ── Valid enums for input validation ──
 const VALID_PRIORITIES: TaskPriority[] = ["p1", "p2", "p3"];
-const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
+const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done", "inbox", "up_next", "scheduled", "waiting", "someday", "archived"];
 const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
 const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research", "infrastructure", "personal", "errands"];
+const VALID_IMPACTS: TaskImpact[] = ["needle_mover", "important", "nice"];
+const VALID_SIZES: TaskSize[] = ["quick", "medium", "big"];
 
 // ── Validation helpers ──
 function validateTaskFields(body: Record<string, unknown>, requireTitle = false): string | null {
@@ -32,6 +34,12 @@ function validateTaskFields(body: Record<string, unknown>, requireTitle = false)
   }
   if (body.category !== undefined && !VALID_CATEGORIES.includes(body.category as TaskCategory)) {
     return `category must be one of: ${VALID_CATEGORIES.join(", ")}`;
+  }
+  if (body.impact !== undefined && body.impact !== null && !VALID_IMPACTS.includes(body.impact as TaskImpact)) {
+    return `impact must be one of: ${VALID_IMPACTS.join(", ")}`;
+  }
+  if (body.size !== undefined && body.size !== null && !VALID_SIZES.includes(body.size as TaskSize)) {
+    return `size must be one of: ${VALID_SIZES.join(", ")}`;
   }
   if (body.due_date !== undefined && body.due_date !== null) {
     if (typeof body.due_date !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(body.due_date)) {
@@ -85,6 +93,15 @@ export async function GET(request: NextRequest) {
   if (category && VALID_CATEGORIES.includes(category as TaskCategory)) query = query.eq("category", category);
   if (parent_id) query = query.eq("parent_id", parent_id);
 
+  const impact = searchParams.get("impact");
+  const size = searchParams.get("size");
+  if (impact && VALID_IMPACTS.includes(impact as TaskImpact)) query = query.eq("impact", impact);
+  if (size && VALID_SIZES.includes(size as TaskSize)) query = query.eq("size", size);
+
+  const limit = searchParams.get("limit");
+  const parsedLimit = limit ? parseInt(limit, 10) : 200;
+  if (parsedLimit > 0 && parsedLimit <= 1000) query = query.limit(parsedLimit);
+
   const { data, error } = await query.order("position").order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
@@ -120,6 +137,8 @@ export async function POST(request: NextRequest) {
     tags: Array.isArray(body.tags) ? body.tags.filter((t: unknown) => typeof t === "string").slice(0, 20) : [],
     is_recurring: Boolean(body.is_recurring) || false,
     recur_pattern: body.is_recurring && body.recur_pattern ? String(body.recur_pattern) : null,
+    impact: body.impact || "important",
+    size: body.size || "medium",
   };
 
   if (isLocalMode) {
@@ -167,6 +186,12 @@ export async function PATCH(request: NextRequest) {
     const validEfforts = ["quick", "small", "medium", "large"];
     updates.effort = validEfforts.includes(rawUpdates.effort as string) ? rawUpdates.effort : null;
   }
+  if (rawUpdates.impact !== undefined) {
+    updates.impact = VALID_IMPACTS.includes(rawUpdates.impact as TaskImpact) ? rawUpdates.impact : null;
+  }
+  if (rawUpdates.size !== undefined) {
+    updates.size = VALID_SIZES.includes(rawUpdates.size as TaskSize) ? rawUpdates.size : null;
+  }
   if (rawUpdates.is_recurring !== undefined) updates.is_recurring = Boolean(rawUpdates.is_recurring);
   if (rawUpdates.recur_pattern !== undefined) updates.recur_pattern = rawUpdates.is_recurring && rawUpdates.recur_pattern ? String(rawUpdates.recur_pattern) : null;
 
@@ -186,7 +211,7 @@ export async function PATCH(request: NextRequest) {
 
   // Auto-log changes to task_activity
   if (currentTask) {
-    const trackedFields = ["status", "priority", "category", "layer", "owner", "due_date", "title", "effort"];
+    const trackedFields = ["status", "priority", "category", "layer", "owner", "due_date", "title", "effort", "impact", "size"];
     const activities: { task_id: string; activity_type: string; actor: string; content?: string; field_name?: string; old_value?: string; new_value?: string }[] = [];
 
     for (const field of trackedFields) {

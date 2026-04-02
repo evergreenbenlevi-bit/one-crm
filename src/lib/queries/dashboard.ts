@@ -31,7 +31,7 @@ export const getDashboardData = unstable_cache(
     const [transactionsResult, leadsResult, campaignResult] = await Promise.all([
       supabase
         .from("transactions")
-        .select("*")
+        .select("amount, date, program, status")
         .gte("date", startISO)
         .eq("status", "completed"),
       supabase
@@ -41,7 +41,8 @@ export const getDashboardData = unstable_cache(
       supabase
         .from("campaigns")
         .select("daily_spend")
-        .gte("date", startDateStr),
+        .gte("date", startDateStr)
+        .limit(500),
     ]);
 
     const transactions = transactionsResult.data;
@@ -127,8 +128,6 @@ export const getHotLeads = unstable_cache(
       .from("leads")
       .select("*")
       .in("current_status", ["applied", "qualified", "engaged", "consumed_content"])
-      .neq("current_status", "active_client")
-      .neq("current_status", "lost")
       .order("updated_at", { ascending: false })
       .limit(5);
 
@@ -170,7 +169,8 @@ export const getEndingPrograms = unstable_cache(
       .select("*")
       .eq("status", "active")
       .lte("program_end_date", format(thirtyDaysFromNow, "yyyy-MM-dd"))
-      .order("program_end_date", { ascending: true });
+      .order("program_end_date", { ascending: true })
+      .limit(10);
 
     return data || [];
   },
