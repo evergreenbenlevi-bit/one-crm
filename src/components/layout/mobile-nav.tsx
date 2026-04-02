@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal, CheckSquare, FolderKanban, Target
+  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal, CheckSquare, FolderKanban, Target, Brain
 } from "lucide-react";
 import type { UserRole } from "@/lib/rbac";
 

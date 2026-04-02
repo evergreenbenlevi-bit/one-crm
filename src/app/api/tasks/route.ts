@@ -163,6 +163,10 @@ export async function PATCH(request: NextRequest) {
   if (rawUpdates.tags !== undefined) updates.tags = Array.isArray(rawUpdates.tags)
     ? rawUpdates.tags.filter((t: unknown) => typeof t === "string").slice(0, 20)
     : [];
+  if (rawUpdates.effort !== undefined) {
+    const validEfforts = ["quick", "small", "medium", "large"];
+    updates.effort = validEfforts.includes(rawUpdates.effort as string) ? rawUpdates.effort : null;
+  }
   if (rawUpdates.is_recurring !== undefined) updates.is_recurring = Boolean(rawUpdates.is_recurring);
   if (rawUpdates.recur_pattern !== undefined) updates.recur_pattern = rawUpdates.is_recurring && rawUpdates.recur_pattern ? String(rawUpdates.recur_pattern) : null;
 
@@ -182,7 +186,7 @@ export async function PATCH(request: NextRequest) {
 
   // Auto-log changes to task_activity
   if (currentTask) {
-    const trackedFields = ["status", "priority", "category", "layer", "owner", "due_date", "title"];
+    const trackedFields = ["status", "priority", "category", "layer", "owner", "due_date", "title", "effort"];
     const activities: { task_id: string; activity_type: string; actor: string; content?: string; field_name?: string; old_value?: string; new_value?: string }[] = [];
 
     for (const field of trackedFields) {

@@ -3,6 +3,7 @@ export type TaskStatus = "backlog" | "todo" | "in_progress" | "waiting_ben" | "d
 export type TaskOwner = "claude" | "ben" | "both" | "avitar";
 export type TaskCategory = "one_tm" | "self" | "brand" | "temp" | "research" | "infrastructure" | "personal" | "errands";
 export type TaskLayer = "needle_mover" | "project" | "quick_win" | "wishlist" | "nice_to_have";
+export type TaskEffort = "quick" | "small" | "medium" | "large";
 
 export type RecurPattern = "daily" | `weekly:${number}` | `monthly:${number}`;
 
@@ -28,8 +29,10 @@ export interface Task {
   workstream?: string | null;
   // Sprint week (BIG3 cycle, format: "2026-W13")
   sprint_week?: string | null;
-  // Triage layer
+  // Triage layer (deprecated — use effort instead)
   layer?: TaskLayer | null;
+  // Effort estimate
+  effort?: TaskEffort | null;
   // Archive
   archived_at?: string | null;
   archive_reason?: string | null;
@@ -112,6 +115,22 @@ export const categoryColors: Record<TaskCategory, string> = {
 };
 
 export const TASK_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
+
+export const effortLabels: Record<TaskEffort, string> = {
+  quick: "⚡ מהיר (5 דק׳)",
+  small: "🕐 קטן (עד שעה)",
+  medium: "📋 בינוני (עד יום)",
+  large: "🏗️ פרויקט (כמה ימים+)",
+};
+
+export const effortColors: Record<TaskEffort, string> = {
+  quick: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  small: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  large: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+};
+
+export const EFFORT_OPTIONS: TaskEffort[] = ["quick", "small", "medium", "large"];
 
 // Categories visible in CRM UI
 export const CRM_CATEGORIES: TaskCategory[] = ["one_tm", "brand", "research", "self", "errands", "infrastructure", "personal"];

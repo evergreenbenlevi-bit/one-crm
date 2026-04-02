@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { X, Trash2, FileText, MessageSquare } from "lucide-react";
 import { clsx } from "clsx";
-import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus } from "@/lib/types/tasks";
-import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES } from "@/lib/types/tasks";
+import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskEffort } from "@/lib/types/tasks";
+import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, effortLabels, EFFORT_OPTIONS } from "@/lib/types/tasks";
 import { TagInput } from "./tag-input";
 import { TaskActivityTimeline } from "./task-activity-timeline";
 
@@ -27,6 +27,7 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   const [category, setCategory] = useState<TaskCategory>("one_tm");
   const [dueDate, setDueDate] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [effort, setEffort] = useState<TaskEffort | "">("");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurPattern, setRecurPattern] = useState("weekly:0");
 
@@ -40,6 +41,7 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
       setCategory(task.category);
       setDueDate(task.due_date || "");
       setTags(task.tags || []);
+      setEffort(task.effort || "");
       setIsRecurring(task.is_recurring || false);
       setRecurPattern(task.recur_pattern || "weekly:0");
       setActiveTab("details");
@@ -51,7 +53,7 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave({ ...task!, title: title.trim(), description: description.trim() || null, priority, status, owner, category, due_date: dueDate || null, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, recur_next_at: task!.recur_next_at });
+    onSave({ ...task!, title: title.trim(), description: description.trim() || null, priority, status, owner, category, due_date: dueDate || null, tags, effort: (effort || null) as TaskEffort | null, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, recur_next_at: task!.recur_next_at });
     onClose();
   }
 
@@ -159,9 +161,18 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
                   </div>
                 </div>
 
-                <div>
-                  <label className={labelClass}>דדליין</label>
-                  <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldClass} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelClass}>דדליין</label>
+                    <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldClass} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>מאמץ</label>
+                    <select value={effort} onChange={(e) => setEffort(e.target.value as TaskEffort)} className={fieldClass}>
+                      <option value="">ללא</option>
+                      {EFFORT_OPTIONS.map(e => <option key={e} value={e}>{effortLabels[e]}</option>)}
+                    </select>
+                  </div>
                 </div>
 
                 <div>

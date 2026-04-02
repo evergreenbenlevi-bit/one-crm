@@ -3,14 +3,15 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import type { Task, TaskLayer, TaskCategory, TaskPriority, TaskOwner, TaskStatus } from "@/lib/types/tasks";
+import type { Task, TaskLayer, TaskCategory, TaskPriority, TaskOwner, TaskStatus, TaskEffort } from "@/lib/types/tasks";
 import {
   categoryLabels, categoryColors, priorityLabels, priorityColors,
   ownerLabels, ownerIcons, statusLabels, CRM_CATEGORIES, TASK_STATUSES,
+  effortLabels, effortColors, EFFORT_OPTIONS,
 } from "@/lib/types/tasks";
 import {
   Bot, Hand, Trash2, Check, SkipForward, ChevronDown, ChevronUp,
-  Calendar, Clock, Pencil, X, Save, Filter, Layers, Zap, Archive,
+  Calendar, Clock, Pencil, X, Save, Filter, Layers, Zap, Archive, FileDown,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
@@ -22,8 +23,8 @@ type QuickAction = "claude" | "ben" | "done" | "delete" | "skip";
 type FilterMode = "all" | "untriaged" | "overdue" | "no_owner" | "ben" | "claude";
 
 const FILTER_OPTIONS: { id: FilterMode; label: string; icon?: typeof Bot }[] = [
-  { id: "all", label: "הכל" },
-  { id: "untriaged", label: "ללא שכבה" },
+  { id: "all", label: "הכל (מיון מחדש)" },
+  { id: "untriaged", label: "ללא effort" },
   { id: "overdue", label: "באיחור" },
   { id: "no_owner", label: "ללא אחראי" },
   { id: "ben", label: "🙋 של בן" },
@@ -38,6 +39,7 @@ function TriageCard({
   onAction,
   onUpdate,
   onNext,
+  onEffortChange,
 }: {
   task: Task;
   index: number;
@@ -45,6 +47,7 @@ function TriageCard({
   onAction: (action: QuickAction, extra?: Record<string, unknown>) => Promise<void>;
   onUpdate: (updates: Partial<Task>) => Promise<void>;
   onNext: () => void;
+  onEffortChange: (effort: TaskEffort) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -233,9 +236,9 @@ function TriageCard({
                     📅 {new Date(task.due_date).toLocaleDateString("he-IL")}
                   </span>
                 )}
-                {task.layer && (
-                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-violet-50 text-violet-600 dark:bg-violet-900/20 dark:text-violet-300 font-medium">
-                    {task.layer === "needle_mover" ? "🚀" : task.layer === "quick_win" ? "⚡" : task.layer === "project" ? "📁" : "✨"} {task.layer.replace("_", " ")}
+                {task.effort && (
+                  <span className={clsx("text-[11px] px-2.5 py-1 rounded-full font-medium", effortColors[task.effort])}>
+                    {effortLabels[task.effort]}
                   </span>
                 )}
               </>
@@ -352,6 +355,32 @@ function TriageCard({
           )}
         </AnimatePresence>
 
+        {/* Effort selection */}
+        {!expanded && !showDatePicker && (
+          <div className="px-4 pb-2 pt-0">
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 text-center">כמה זמן ייקח?</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {EFFORT_OPTIONS.map(eff => {
+                const isActive = task.effort === eff;
+                return (
+                  <button
+                    key={eff}
+                    onClick={() => onEffortChange(eff)}
+                    className={clsx(
+                      "py-2 rounded-lg text-[10px] font-bold border transition-all active:scale-95",
+                      isActive
+                        ? clsx(effortColors[eff], "border-current shadow-sm")
+                        : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-gray-400"
+                    )}
+                  >
+                    {effortLabels[eff].split(" ")[0]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Quick action buttons */}
         {!expanded && !showDatePicker && (
           <div className="px-4 pb-4 pt-1">
@@ -431,7 +460,7 @@ export default function TriagePage() {
 
   const filtered = openTasks.filter(t => {
     // Mode filter
-    if (filter === "untriaged" && t.layer) return false;
+    if (filter === "untriaged" && t.effort) return false;
     if (filter === "overdue" && (!t.due_date || new Date(t.due_date) >= now)) return false;
     if (filter === "no_owner" && t.owner) return false;
     if (filter === "ben" && t.owner !== "ben") return false;
@@ -533,6 +562,16 @@ export default function TriagePage() {
     advance();
   }, [current, mutate]);
 
+  const handleEffortChange = useCallback(async (effort: TaskEffort) => {
+    if (!current) return;
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: current.id, effort }),
+    });
+    mutate();
+  }, [current, mutate]);
+
   // Reset index when filter changes
   useEffect(() => {
     setCurrentIndex(0);
@@ -553,17 +592,43 @@ export default function TriagePage() {
               {sorted.length} משימות · קלף אחד, החלטה אחת
             </p>
           </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={clsx(
-              "p-2 rounded-lg border transition-colors",
-              showFilters
-                ? "bg-brand-50 dark:bg-brand-900/20 border-brand-300 dark:border-brand-700 text-brand-600"
-                : "border-gray-200 dark:border-gray-700 text-gray-400 hover:text-gray-600"
-            )}
-          >
-            <Filter size={18} />
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                // Export tasks as styled HTML report
+                const grouped: Record<string, Task[]> = {};
+                openTasks.forEach(t => {
+                  const cat = categoryLabels[t.category] || t.category;
+                  (grouped[cat] ??= []).push(t);
+                });
+                const priLabel: Record<string, string> = { p1: "🔴 P1", p2: "🟡 P2", p3: "⚪ P3" };
+                const effLabel: Record<string, string> = { quick: "⚡", small: "🕐", medium: "📋", large: "🏗️" };
+                const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>דוח משימות — ${new Date().toLocaleDateString("he-IL")}</title><style>body{font-family:system-ui,-apple-system,sans-serif;max-width:700px;margin:40px auto;padding:20px;color:#1a1a1a;background:#fff}h1{font-size:22px;border-bottom:2px solid #333;padding-bottom:8px}h2{font-size:16px;color:#555;margin-top:24px;padding:6px 12px;background:#f5f5f5;border-radius:8px}.task{padding:8px 0;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:baseline}.pri{font-size:12px;font-weight:700}.eff{font-size:11px;color:#888}.title{flex:1}.owner{font-size:12px;color:#999}.meta{font-size:11px;color:#aaa;margin-top:4px}</style></head><body><h1>דוח משימות — ${new Date().toLocaleDateString("he-IL")}</h1><p style="color:#888;font-size:13px">${openTasks.length} משימות פתוחות</p>${Object.entries(grouped).map(([cat, tasks]) => `<h2>${cat} (${tasks.length})</h2>${tasks.sort((a,b) => a.priority.localeCompare(b.priority)).map(t => `<div class="task"><span class="pri">${priLabel[t.priority] || t.priority}</span><span class="eff">${effLabel[t.effort || ""] || ""}</span><span class="title">${t.title}</span><span class="owner">${t.owner === "ben" ? "🙋" : "🤖"}</span></div>`).join("")}`).join("")}</body></html>`;
+                const blob = new Blob([html], { type: "text/html" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `tasks-report-${new Date().toISOString().split("T")[0]}.html`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              title="ייצוא דוח"
+              className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <FileDown size={18} />
+            </button>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={clsx(
+                "p-2 rounded-lg border transition-colors",
+                showFilters
+                  ? "bg-brand-50 dark:bg-brand-900/20 border-brand-300 dark:border-brand-700 text-brand-600"
+                  : "border-gray-200 dark:border-gray-700 text-gray-400 hover:text-gray-600"
+              )}
+            >
+              <Filter size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -680,6 +745,7 @@ export default function TriagePage() {
               onAction={handleAction}
               onUpdate={handleUpdate}
               onNext={advance}
+              onEffortChange={handleEffortChange}
             />
           ) : null}
         </AnimatePresence>

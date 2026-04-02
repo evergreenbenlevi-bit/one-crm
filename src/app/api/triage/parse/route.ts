@@ -28,16 +28,18 @@ export async function POST(request: NextRequest) {
     messages: [
       {
         role: "user",
-        content: `You are a task triage assistant. Given a brain dump in Hebrew or English and a list of tasks, return a JSON array of updates.
+        content: `You are a task triage assistant. Given a brain dump in Hebrew or English and a list of tasks, classify each mentioned task by EFFORT (how long it takes) and optionally suggest PRIORITY changes.
 
-Layer values:
-- needle_mover: Revenue/growth/product tasks that move the business forward significantly
-- project: Ongoing important work — infrastructure, AI systems, tools
-- quick_win: BUSINESS tasks that take ≤5 minutes AND move the needle. NOT personal errands!
-- wishlist: Things to buy or nice-to-have purchases
-- nice_to_have: Can be deferred indefinitely, not urgent
+Effort values:
+- quick: Takes ≤5 minutes (a quick action, not a project)
+- small: Takes up to 1 hour
+- medium: Takes up to a full day
+- large: Multi-day project, requires planning
 
-IMPORTANT: Personal errands (grocery shopping, glasses repair, cancellations, bills) should NOT be classified as quick_win. Those belong in a different category, not in layers.
+Priority values:
+- p1: Critical — directly moves business/life forward
+- p2: Important — should be done this week
+- p3: Nice to have — can wait
 
 Brain dump:
 ${text}
@@ -46,7 +48,7 @@ Task list:
 ${taskList}
 
 Return ONLY valid JSON array, no explanation:
-[{"id": "...", "title": "...", "layer": "needle_mover|project|quick_win|wishlist|nice_to_have"}, ...]
+[{"id": "...", "title": "...", "effort": "quick|small|medium|large", "priority": "p1|p2|p3"}, ...]
 
 Only include tasks explicitly mentioned in the brain dump. If a task is not mentioned, do not include it.`,
       },

@@ -13,6 +13,8 @@ import {
   categoryColors,
   categoryLabels,
   statusLabels,
+  effortLabels,
+  effortColors,
 } from "@/lib/types/tasks";
 
 const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
@@ -216,6 +218,12 @@ export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDel
           <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium", categoryColors[task.category])}>
             {categoryLabels[task.category]}
           </span>
+
+          {task.effort && (
+            <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium", effortColors[task.effort])}>
+              {effortLabels[task.effort].split(" ")[0]}
+            </span>
+          )}
 
           {task.due_date && (
             <div className={clsx("flex items-center gap-0.5 text-[10px]", isOverdue ? "text-red-500 font-bold" : "text-gray-400 dark:text-gray-500")}>

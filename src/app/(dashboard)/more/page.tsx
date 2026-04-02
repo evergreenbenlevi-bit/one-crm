@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, Calendar, Target, Settings, LogOut, ChevronLeft } from "lucide-react";
+import { BarChart3, Calendar, Target, Settings, LogOut, ChevronLeft, Brain } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const menuItems = [
+  { href: "/dump", label: "Brain Dump", description: "פרוק מחשבות — Claude מסווג ל-CRM/Vault", icon: Brain, color: "bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400" },
   { href: "/campaigns", label: "קמפיינים", description: "ביצועי קמפיינים ממומנים", icon: BarChart3, color: "bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400" },
   { href: "/meetings", label: "פגישות", description: "לוח פגישות שבועי", icon: Calendar, color: "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" },
   { href: "/goals", label: "יעדים", description: "יעדים רבעוניים ומעקב", icon: Target, color: "bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" },
