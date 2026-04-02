@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskLayer, TaskCategory } from "@/lib/types/tasks";
 import { categoryLabels, categoryColors } from "@/lib/types/tasks";
-import { Zap, FolderOpen, Trash2, Brain, Save, ChevronDown, ChevronUp, Rocket, ShoppingBag, Sparkles, SkipForward, Pencil } from "lucide-react";
+import { Zap, FolderOpen, Archive, Brain, Save, ChevronDown, ChevronUp, Rocket, ShoppingBag, Sparkles, SkipForward, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { TaskEditModal } from "@/components/tasks/task-edit-modal";
@@ -17,7 +17,6 @@ const LAYERS: { id: TaskLayer; label: string; labelHe: string; color: string; ic
   { id: "quick_win",   label: "Quick Win",    labelHe: "קוויק ווין",  color: "text-green-700 dark:text-green-300",  icon: Zap,        bg: "bg-green-50  dark:bg-green-900/20  border-green-200 dark:border-green-800", emoji: "⚡" },
   { id: "wishlist",    label: "Wishlist",     labelHe: "ווישליסט",    color: "text-amber-700 dark:text-amber-300",  icon: ShoppingBag,bg: "bg-amber-50  dark:bg-amber-900/20  border-amber-200 dark:border-amber-800", emoji: "🛍️" },
   { id: "nice_to_have",label: "Nice to Have", labelHe: "נחמד",        color: "text-violet-600 dark:text-violet-400",icon: Sparkles,   bg: "bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800",emoji: "✨" },
-  { id: "deleted",     label: "Delete",       labelHe: "מחק",         color: "text-red-600   dark:text-red-400",    icon: Trash2,     bg: "bg-red-50    dark:bg-red-900/20    border-red-200   dark:border-red-800",   emoji: "🗑️" },
 ];
 
 const LAYER_MAP = Object.fromEntries(LAYERS.map((l) => [l.id, l])) as Record<TaskLayer, typeof LAYERS[0]>;
@@ -422,6 +421,7 @@ export default function TriagePage() {
   const [savedCount, setSavedCount] = useState(0);
   const [filterLayer, setFilterLayer] = useState<TaskLayer | "all">("all");
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [showSavePreview, setShowSavePreview] = useState(false);
 
   const handleLayerChange = useCallback((id: string, layer: TaskLayer) => {
     setPending((p) => ({ ...p, [id]: layer }));
@@ -435,9 +435,15 @@ export default function TriagePage() {
     });
   }, []);
 
+  const confirmSave = () => {
+    if (Object.keys(pending).length === 0) return;
+    setShowSavePreview(true);
+  };
+
   const save = async () => {
     const updates = Object.entries(pending).map(([id, layer]) => ({ id, layer }));
     if (!updates.length) return;
+    setShowSavePreview(false);
     setSaving(true);
     try {
       await fetch("/api/triage", {
@@ -531,7 +537,7 @@ export default function TriagePage() {
             </p>
           </div>
           <button
-            onClick={save}
+            onClick={confirmSave}
             disabled={saving || pendingCount === 0}
             className={clsx(
               "flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm",
@@ -602,6 +608,55 @@ export default function TriagePage() {
               />
             ))}
         </div>
+
+        {/* Save Preview Modal */}
+        {showSavePreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowSavePreview(false)}>
+            <div
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[80vh] flex flex-col border border-gray-100 dark:border-gray-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+                <h3 className="text-base font-bold dark:text-gray-100">תצוגה מקדימה — {pendingCount} שינויים</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">בדוק שהכל נכון לפני שמירה</p>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
+                {Object.entries(pending).map(([id, layer]) => {
+                  const task = tasks.find(t => t.id === id);
+                  if (!task) return null;
+                  const oldLayer = task.layer ? LAYER_MAP[task.layer] : null;
+                  const newLayer = LAYER_MAP[layer];
+                  return (
+                    <div key={id} className="flex items-center gap-2 text-sm py-1.5 border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+                      <span className="flex-1 text-gray-700 dark:text-gray-300 truncate">{task.title}</span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">
+                        {oldLayer?.labelHe || "ללא"}
+                      </span>
+                      <span className="text-gray-400 text-xs flex-shrink-0">→</span>
+                      <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-full font-medium border flex-shrink-0", newLayer?.bg, newLayer?.color)}>
+                        {newLayer?.labelHe}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex gap-2">
+                <button
+                  onClick={() => setShowSavePreview(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={save}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors"
+                >
+                  שמור {pendingCount} שינויים
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

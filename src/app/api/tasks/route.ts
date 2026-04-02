@@ -11,7 +11,7 @@ import { requireAuth } from "@/lib/api-auth";
 const VALID_PRIORITIES: TaskPriority[] = ["p1", "p2", "p3"];
 const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
 const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
-const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research"];
+const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research", "infrastructure", "personal", "errands"];
 
 // ── Validation helpers ──
 function validateTaskFields(body: Record<string, unknown>, requireTitle = false): string | null {
@@ -68,6 +68,14 @@ export async function GET(request: NextRequest) {
   const owner = searchParams.get("owner");
   const category = searchParams.get("category");
   const parent_id = searchParams.get("parent_id");
+
+  // Archived filter
+  const showArchived = searchParams.get("archived");
+  if (showArchived === "1") {
+    query = query.not("archived_at", "is", null);
+  } else {
+    query = query.is("archived_at", null);
+  }
 
   if (status && VALID_STATUSES.includes(status as TaskStatus)) query = query.eq("status", status);
   // Lazy load: exclude backlog on initial fetch for fast page load
@@ -165,8 +173,49 @@ export async function PATCH(request: NextRequest) {
   }
 
   const supabase = createAdminClient();
+
+  // Fetch current task for change logging
+  const { data: currentTask } = await supabase.from("tasks").select("*").eq("id", id).single();
+
   const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-log changes to task_activity
+  if (currentTask) {
+    const trackedFields = ["status", "priority", "category", "layer", "owner", "due_date", "title"];
+    const activities: { task_id: string; activity_type: string; actor: string; content?: string; field_name?: string; old_value?: string; new_value?: string }[] = [];
+
+    for (const field of trackedFields) {
+      const oldVal = currentTask[field];
+      const newVal = (updates as Record<string, unknown>)[field];
+      if (newVal !== undefined && String(oldVal ?? "") !== String(newVal ?? "")) {
+        const actType = field === "status" ? "status_change" : "field_change";
+        activities.push({
+          task_id: id,
+          activity_type: actType,
+          actor: "ben",
+          field_name: field,
+          old_value: oldVal != null ? String(oldVal) : null as unknown as string,
+          new_value: newVal != null ? String(newVal) : null as unknown as string,
+        });
+
+        // Special: completion
+        if (field === "status" && newVal === "done" && oldVal !== "done") {
+          activities.push({
+            task_id: id,
+            activity_type: "completed",
+            actor: "ben",
+            content: rawUpdates.completion_summary as string || null as unknown as string,
+          });
+        }
+      }
+    }
+
+    if (activities.length > 0) {
+      await supabase.from("task_activity").insert(activities);
+    }
+  }
+
   return NextResponse.json(data);
 }
 

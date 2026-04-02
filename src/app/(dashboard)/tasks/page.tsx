@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback } from "react";
 import useSWR from "swr";
-import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2, ChevronDown, ChevronRight, GitBranch } from "lucide-react";
+import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2, ChevronDown, ChevronRight, GitBranch, RotateCcw } from "lucide-react";
 import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { TASK_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors } from "@/lib/types/tasks";
@@ -13,6 +13,7 @@ import { TaskEditModal } from "@/components/tasks/task-edit-modal";
 import { TaskImportModal } from "@/components/tasks/task-import-modal";
 import { Big3Today } from "@/components/tasks/big3-today";
 import { TaskPillars } from "@/components/tasks/task-pillars";
+import { BulkActionBar } from "@/components/tasks/bulk-action-bar";
 import { loadSessionContext, saveSessionContext, sessionAgeLabel } from "@/lib/session-context";
 import { clsx } from "clsx";
 import { useEffect } from "react";
@@ -124,7 +125,7 @@ function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask:
   );
 }
 
-type ViewMode = "today" | "pillars" | "backlog" | "completed";
+type ViewMode = "today" | "pillars" | "backlog" | "completed" | "archived";
 type QueueMode = "claude" | "ben" | "all";
 
 // Max tasks visible in Focus (Today) view — AUDHD threshold
@@ -163,6 +164,7 @@ export default function TasksPage() {
   const [filterCategory, setFilterCategory] = useState<TaskCategory | "all">("all");
   const [filterOwner, setFilterOwner] = useState<TaskOwner | "all">("all");
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // SWR — active tasks (excludes backlog)
   const { data: tasksData, isLoading: loading, mutate: mutateTasks } = useSWR(
@@ -188,6 +190,15 @@ export default function TasksPage() {
     { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
   const completedTasks: Task[] = Array.isArray(completedData) ? completedData : [];
+
+  // SWR — archived (lazy)
+  const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const { data: archivedData, isLoading: archivedLoading, mutate: mutateArchived } = useSWR(
+    archivedLoaded ? "/api/tasks?archived=1" : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
+  );
+  const archivedTasks: Task[] = Array.isArray(archivedData) ? archivedData : [];
 
   // Load session context on mount
   useEffect(() => {
@@ -244,6 +255,7 @@ export default function TasksPage() {
     setFocusedTaskIndex(-1);
     if (mode === "backlog") setBacklogLoaded(true);
     if (mode === "completed") setCompletedLoaded(true);
+    if (mode === "archived") setArchivedLoaded(true);
   }
 
   // Queue filter — base for all views
@@ -309,6 +321,78 @@ export default function TasksPage() {
       }).length,
     };
   }, [queueFiltered, backlogTasks, queueMode]);
+
+  // ── Bulk selection helpers ──
+  function toggleSelect(taskId: string, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  async function handleBulkPriority(priority: TaskPriority) {
+    const ids = Array.from(selectedIds);
+    // Optimistic update
+    mutateTasks(tasks.map(t => ids.includes(t.id) ? { ...t, priority } : t), false);
+    try {
+      const res = await fetch("/api/tasks/bulk-update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, updates: { priority } }),
+      });
+      if (!res.ok) throw new Error();
+      mutateTasks(); mutateBacklog();
+    } catch { mutateTasks(); mutateBacklog(); setError("שגיאה בעדכון bulk"); }
+    clearSelection();
+  }
+
+  async function handleBulkStatus(status: TaskStatus) {
+    const ids = Array.from(selectedIds);
+    mutateTasks(tasks.map(t => ids.includes(t.id) ? { ...t, status } : t), false);
+    try {
+      const res = await fetch("/api/tasks/bulk-update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, updates: { status } }),
+      });
+      if (!res.ok) throw new Error();
+      mutateTasks(); mutateBacklog(); mutateCompleted();
+    } catch { mutateTasks(); mutateBacklog(); mutateCompleted(); setError("שגיאה בעדכון bulk"); }
+    clearSelection();
+  }
+
+  async function handleRestore(taskId: string) {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/archive`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      mutateArchived();
+      mutateTasks();
+    } catch {
+      setError("שגיאה בשחזור");
+    }
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    mutateTasks(tasks.filter(t => !ids.includes(t.id)), false);
+    try {
+      const res = await fetch("/api/tasks/bulk-update", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) throw new Error();
+      mutateTasks(); mutateBacklog(); mutateCompleted();
+    } catch { mutateTasks(); mutateBacklog(); mutateCompleted(); setError("שגיאה במחיקת bulk"); }
+    clearSelection();
+  }
 
   async function handleStatusChange(taskId: string, newStatus: TaskStatus) {
     if (newStatus === "in_progress") {
@@ -624,6 +708,7 @@ export default function TasksPage() {
           { id: "pillars",   icon: Layers,       label: "פילרים",   count: pillarTasks.length },
           { id: "backlog",   icon: Archive,      label: "Backlog",  count: stats.backlogCount },
           { id: "completed", icon: CheckCircle2, label: "הושלמו",   count: completedTasks.length },
+          { id: "archived",  icon: Archive,      label: "ארכיון",   count: archivedTasks.length },
         ] as const).map(({ id, icon: Icon, label, count }) => (
           <button
             key={id}
@@ -696,9 +781,17 @@ export default function TasksPage() {
                       className={clsx(
                         "flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50",
                         task.priority === "p1" && "border-r-4 border-red-500",
-                        isFocused && "bg-brand-50 dark:bg-brand-900/20 ring-1 ring-inset ring-brand-200 dark:ring-brand-700"
+                        isFocused && "bg-brand-50 dark:bg-brand-900/20 ring-1 ring-inset ring-brand-200 dark:ring-brand-700",
+                        selectedIds.has(task.id) && "bg-brand-50/60 dark:bg-brand-900/30"
                       )}
                     >
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(task.id)}
+                        onChange={() => toggleSelect(task.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-brand-600 focus:ring-brand-500 flex-shrink-0 cursor-pointer"
+                      />
                       <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0", priorityColors[task.priority])}>
                         {task.priority.toUpperCase()}
                       </span>
@@ -834,9 +927,17 @@ export default function TasksPage() {
                                     onClick={() => handleTaskClick(task)}
                                     className={clsx(
                                       "flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors",
-                                      task.priority === "p1" && "border-r-4 border-red-500"
+                                      task.priority === "p1" && "border-r-4 border-red-500",
+                                      selectedIds.has(task.id) && "bg-brand-50/60 dark:bg-brand-900/30"
                                     )}
                                   >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIds.has(task.id)}
+                                      onChange={() => toggleSelect(task.id)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-brand-600 focus:ring-brand-500 flex-shrink-0 cursor-pointer"
+                                    />
                                     <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0", priorityColors[task.priority])}>
                                       {task.priority.toUpperCase()}
                                     </span>
@@ -899,31 +1000,127 @@ export default function TasksPage() {
               <CheckCircle2 size={32} className="mx-auto mb-3 opacity-30" />
               <p className="text-sm">אין משימות שהושלמו</p>
             </div>
+          ) : (() => {
+            // Group completed tasks by week
+            const sorted = [...completedTasks].sort((a, b) =>
+              new Date(b.completed_at || b.updated_at).getTime() - new Date(a.completed_at || a.updated_at).getTime()
+            );
+            const groups: { label: string; tasks: Task[] }[] = [];
+            const now = new Date();
+            const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - now.getDay());
+            thisWeekStart.setHours(0,0,0,0);
+            const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+
+            const thisWeek: Task[] = [], lastWeek: Task[] = [], older: Task[] = [];
+            sorted.forEach(t => {
+              const d = new Date(t.completed_at || t.updated_at);
+              if (d >= thisWeekStart) thisWeek.push(t);
+              else if (d >= lastWeekStart) lastWeek.push(t);
+              else older.push(t);
+            });
+            if (thisWeek.length > 0) groups.push({ label: "השבוע", tasks: thisWeek });
+            if (lastWeek.length > 0) groups.push({ label: "שבוע שעבר", tasks: lastWeek });
+            if (older.length > 0) groups.push({ label: "קודם", tasks: older });
+
+            return groups.map(group => (
+              <div key={group.label}>
+                <div className="flex items-center gap-2 py-2">
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                  <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2">{group.label}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">{group.tasks.length}</span>
+                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                  {group.tasks.map((task, i) => (
+                    <div
+                      key={task.id}
+                      onClick={() => handleTaskClick(task)}
+                      className={clsx(
+                        "flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors",
+                        i < group.tasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/50"
+                      )}
+                    >
+                      <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 line-through truncate block">
+                          {task.title}
+                        </span>
+                        {task.description && (
+                          <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate block mt-0.5">
+                            {task.description.slice(0, 80)}
+                          </span>
+                        )}
+                      </div>
+                      <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0", categoryColors[task.category])}>
+                        {categoryLabels[task.category]}
+                      </span>
+                      <span className="text-xs flex-shrink-0">{ownerIcons[task.owner]}</span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">
+                        {task.completed_at
+                          ? new Date(task.completed_at).toLocaleDateString("he-IL")
+                          : new Date(task.updated_at).toLocaleDateString("he-IL")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      )}
+
+      {/* ── ARCHIVED VIEW ── */}
+      {viewMode === "archived" && (
+        <div className="space-y-2">
+          {archivedLoading ? (
+            <div className="flex items-center justify-center py-12 text-gray-400 dark:text-gray-500 gap-2">
+              <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-red-500 rounded-full animate-spin" />
+              טוען ארכיון...
+            </div>
+          ) : archivedTasks.length === 0 ? (
+            <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+              <Archive size={32} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">הארכיון ריק</p>
+              <p className="text-xs mt-1 opacity-70">משימות שנמחקו עם סיבה יופיעו כאן</p>
+            </div>
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-              {completedTasks
-                .sort((a, b) => new Date(b.completed_at || b.updated_at).getTime() - new Date(a.completed_at || a.updated_at).getTime())
+              {archivedTasks
+                .sort((a, b) => new Date(b.archived_at || b.updated_at).getTime() - new Date(a.archived_at || a.updated_at).getTime())
                 .map((task, i) => (
                   <div
                     key={task.id}
-                    onClick={() => handleTaskClick(task)}
                     className={clsx(
-                      "flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors",
-                      i < completedTasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/50"
+                      "flex items-center gap-3 px-4 py-3",
+                      i < archivedTasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/50"
                     )}
                   >
-                    <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
-                    <span className="flex-1 text-sm text-gray-500 dark:text-gray-400 line-through truncate">
-                      {task.title}
-                    </span>
-                    <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium", categoryColors[task.category])}>
+                    <Archive size={14} className="text-red-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm text-gray-500 dark:text-gray-400 line-through truncate block">
+                        {task.title}
+                      </span>
+                      {task.archive_reason && (
+                        <span className="text-[10px] text-red-400 dark:text-red-500 block mt-0.5">
+                          סיבה: {task.archive_reason}
+                        </span>
+                      )}
+                    </div>
+                    <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0", categoryColors[task.category])}>
                       {categoryLabels[task.category]}
                     </span>
                     <span className="text-[10px] text-gray-400 dark:text-gray-500 flex-shrink-0">
-                      {task.completed_at
-                        ? new Date(task.completed_at).toLocaleDateString("he-IL")
-                        : new Date(task.updated_at).toLocaleDateString("he-IL")}
+                      {task.archived_at
+                        ? new Date(task.archived_at).toLocaleDateString("he-IL")
+                        : "—"}
                     </span>
+                    <button
+                      onClick={() => handleRestore(task.id)}
+                      title="שחזר מארכיון"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex-shrink-0"
+                    >
+                      <RotateCcw size={13} />
+                    </button>
                   </div>
                 ))}
             </div>
@@ -934,6 +1131,15 @@ export default function TasksPage() {
       <TaskAddModal open={showAddModal} onClose={() => setShowAddModal(false)} onSave={handleAddTask} />
       <TaskEditModal task={editingTask} onClose={() => setEditingTask(null)} onSave={handleEditTask} onDelete={handleDeleteTask} />
       <TaskImportModal open={showImportModal} onClose={() => setShowImportModal(false)} onImport={() => { mutateTasks(); setBacklogLoaded(false); mutateBacklog(); }} />
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        onChangePriority={handleBulkPriority}
+        onChangeStatus={handleBulkStatus}
+        onDelete={handleBulkDelete}
+        onClear={clearSelection}
+      />
     </div>
   );
 }

@@ -30,7 +30,14 @@ export async function POST(request: NextRequest) {
         role: "user",
         content: `You are a task triage assistant. Given a brain dump in Hebrew or English and a list of tasks, return a JSON array of updates.
 
-Layer values: quick_win (≤5 min action), low_priority (defer to Saturday review), project (ongoing work, high importance), deleted (remove entirely).
+Layer values:
+- needle_mover: Revenue/growth/product tasks that move the business forward significantly
+- project: Ongoing important work — infrastructure, AI systems, tools
+- quick_win: BUSINESS tasks that take ≤5 minutes AND move the needle. NOT personal errands!
+- wishlist: Things to buy or nice-to-have purchases
+- nice_to_have: Can be deferred indefinitely, not urgent
+
+IMPORTANT: Personal errands (grocery shopping, glasses repair, cancellations, bills) should NOT be classified as quick_win. Those belong in a different category, not in layers.
 
 Brain dump:
 ${text}
@@ -39,7 +46,7 @@ Task list:
 ${taskList}
 
 Return ONLY valid JSON array, no explanation:
-[{"id": "...", "title": "...", "layer": "quick_win|low_priority|project|deleted"}, ...]
+[{"id": "...", "title": "...", "layer": "needle_mover|project|quick_win|wishlist|nice_to_have"}, ...]
 
 Only include tasks explicitly mentioned in the brain dump. If a task is not mentioned, do not include it.`,
       },

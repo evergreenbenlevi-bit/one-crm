@@ -179,6 +179,22 @@ export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDel
         </div>
       )}
 
+      {/* Hover Preview Popover */}
+      {(task.description || task.due_date) && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 delay-300 z-20">
+          <div className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg shadow-xl px-3 py-2 text-xs">
+            {task.description && (
+              <p className="text-gray-200 dark:text-gray-700 line-clamp-3 leading-relaxed mb-1">{task.description}</p>
+            )}
+            <div className="flex items-center gap-3 text-[10px] text-gray-400 dark:text-gray-500">
+              {task.due_date && <span>דדליין: {task.due_date}</span>}
+              {task.created_at && <span>נוצר: {new Date(task.created_at).toLocaleDateString("he-IL")}</span>}
+            </div>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-100" />
+          </div>
+        </div>
+      )}
+
       <div className="p-3">
         {/* Header: priority + owner */}
         <div className="flex items-center justify-between mb-2">

@@ -1,8 +1,8 @@
 export type TaskPriority = "p1" | "p2" | "p3";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "waiting_ben" | "done";
 export type TaskOwner = "claude" | "ben" | "both" | "avitar";
-export type TaskCategory = "one_tm" | "self" | "brand" | "temp" | "research" | "infrastructure" | "personal";
-export type TaskLayer = "needle_mover" | "project" | "quick_win" | "wishlist" | "nice_to_have" | "deleted";
+export type TaskCategory = "one_tm" | "self" | "brand" | "temp" | "research" | "infrastructure" | "personal" | "errands";
+export type TaskLayer = "needle_mover" | "project" | "quick_win" | "wishlist" | "nice_to_have";
 
 export type RecurPattern = "daily" | `weekly:${number}` | `monthly:${number}`;
 
@@ -28,8 +28,11 @@ export interface Task {
   workstream?: string | null;
   // Sprint week (BIG3 cycle, format: "2026-W13")
   sprint_week?: string | null;
-  // Triage layer (3-tier system)
+  // Triage layer
   layer?: TaskLayer | null;
+  // Archive
+  archived_at?: string | null;
+  archive_reason?: string | null;
   // Recurring
   is_recurring?: boolean;
   recur_pattern?: string | null;
@@ -88,12 +91,13 @@ export const ownerIcons: Record<TaskOwner, string> = {
 
 export const categoryLabels: Record<TaskCategory, string> = {
   one_tm: "ONE™",
-  self: "מציאת העצמי",
+  self: "מי אני במדיה",
   brand: "פרופיל עסקי",
   temp: "זמני",
   research: "מחקר / חד-פעמי",
   infrastructure: "תשתית",
   personal: "אישי",
+  errands: "סידורים",
 };
 
 export const categoryColors: Record<TaskCategory, string> = {
@@ -104,12 +108,13 @@ export const categoryColors: Record<TaskCategory, string> = {
   research: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
   infrastructure: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   personal: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  errands: "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300",
 };
 
 export const TASK_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
 
-// Categories visible in CRM UI — self/temp are personal (live in KANBAN.md)
-export const CRM_CATEGORIES: TaskCategory[] = ["one_tm", "brand", "research"];
+// Categories visible in CRM UI
+export const CRM_CATEGORIES: TaskCategory[] = ["one_tm", "brand", "research", "self", "errands", "infrastructure", "personal"];
 
 export const SUGGESTED_TAGS = [
   // פילרים

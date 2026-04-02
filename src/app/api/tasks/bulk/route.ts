@@ -7,7 +7,7 @@ import type { TaskPriority, TaskStatus, TaskOwner, TaskCategory } from "@/lib/ty
 const VALID_PRIORITIES: TaskPriority[] = ["p1", "p2", "p3"];
 const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
 const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
-const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research"];
+const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research", "infrastructure", "personal", "errands"];
 
 interface RawTask {
   title?: unknown;
