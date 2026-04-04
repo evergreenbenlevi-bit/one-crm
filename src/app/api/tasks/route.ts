@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Prefer EU regions (Frankfurt/Stockholm) — closer to Israel than default US East
 export const preferredRegion = ["fra1", "arn1", "cdg1"];
 import { isLocalMode, getAllTasks, createTask, updateTask, deleteTask } from "@/lib/tasks-store";
-import type { TaskStatus, TaskPriority, TaskOwner, TaskCategory, TaskImpact, TaskSize } from "@/lib/types/tasks";
+import type { TaskStatus, TaskPriority, TaskOwner, TaskCategory, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
 
@@ -14,6 +14,7 @@ const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
 const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research", "infrastructure", "personal", "errands"];
 const VALID_IMPACTS: TaskImpact[] = ["needle_mover", "important", "nice"];
 const VALID_SIZES: TaskSize[] = ["quick", "medium", "big"];
+const VALID_ESTIMATED_MINUTES: EstimatedMinutes[] = [5, 15, 30, 45, 60, 90, 120];
 
 // ── Validation helpers ──
 function validateTaskFields(body: Record<string, unknown>, requireTitle = false): string | null {
@@ -40,6 +41,9 @@ function validateTaskFields(body: Record<string, unknown>, requireTitle = false)
   }
   if (body.size !== undefined && body.size !== null && !VALID_SIZES.includes(body.size as TaskSize)) {
     return `size must be one of: ${VALID_SIZES.join(", ")}`;
+  }
+  if (body.estimated_minutes !== undefined && body.estimated_minutes !== null && !VALID_ESTIMATED_MINUTES.includes(body.estimated_minutes as EstimatedMinutes)) {
+    return `estimated_minutes must be one of: ${VALID_ESTIMATED_MINUTES.join(", ")}`;
   }
   if (body.due_date !== undefined && body.due_date !== null) {
     if (typeof body.due_date !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(body.due_date)) {
@@ -139,6 +143,7 @@ export async function POST(request: NextRequest) {
     recur_pattern: body.is_recurring && body.recur_pattern ? String(body.recur_pattern) : null,
     impact: body.impact || "important",
     size: body.size || "medium",
+    estimated_minutes: typeof body.estimated_minutes === "number" ? body.estimated_minutes : null,
   };
 
   if (isLocalMode) {
@@ -192,6 +197,9 @@ export async function PATCH(request: NextRequest) {
   if (rawUpdates.size !== undefined) {
     updates.size = VALID_SIZES.includes(rawUpdates.size as TaskSize) ? rawUpdates.size : null;
   }
+  if (rawUpdates.estimated_minutes !== undefined) {
+    updates.estimated_minutes = VALID_ESTIMATED_MINUTES.includes(rawUpdates.estimated_minutes as EstimatedMinutes) ? rawUpdates.estimated_minutes : null;
+  }
   if (rawUpdates.is_recurring !== undefined) updates.is_recurring = Boolean(rawUpdates.is_recurring);
   if (rawUpdates.recur_pattern !== undefined) updates.recur_pattern = rawUpdates.is_recurring && rawUpdates.recur_pattern ? String(rawUpdates.recur_pattern) : null;
 
@@ -211,7 +219,7 @@ export async function PATCH(request: NextRequest) {
 
   // Auto-log changes to task_activity
   if (currentTask) {
-    const trackedFields = ["status", "priority", "category", "layer", "owner", "due_date", "title", "effort", "impact", "size"];
+    const trackedFields = ["status", "priority", "category", "layer", "owner", "due_date", "title", "effort", "impact", "size", "estimated_minutes"];
     const activities: { task_id: string; activity_type: string; actor: string; content?: string; field_name?: string; old_value?: string; new_value?: string }[] = [];
 
     for (const field of trackedFields) {

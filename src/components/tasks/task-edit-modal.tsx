@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { X, Trash2, FileText, MessageSquare } from "lucide-react";
 import { clsx } from "clsx";
-import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskEffort } from "@/lib/types/tasks";
-import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, effortLabels, EFFORT_OPTIONS } from "@/lib/types/tasks";
+import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskEffort, TaskImpact, TaskSize } from "@/lib/types/tasks";
+import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, effortLabels, EFFORT_OPTIONS, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS } from "@/lib/types/tasks";
 import { TagInput } from "./tag-input";
 import { TaskActivityTimeline } from "./task-activity-timeline";
 
@@ -28,6 +28,8 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   const [dueDate, setDueDate] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [effort, setEffort] = useState<TaskEffort | "">("");
+  const [impact, setImpact] = useState<TaskImpact>("important");
+  const [size, setSize] = useState<TaskSize>("medium");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurPattern, setRecurPattern] = useState("weekly:0");
 
@@ -42,6 +44,8 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
       setDueDate(task.due_date || "");
       setTags(task.tags || []);
       setEffort(task.effort || "");
+      setImpact(task.impact || "important");
+      setSize(task.size || "medium");
       setIsRecurring(task.is_recurring || false);
       setRecurPattern(task.recur_pattern || "weekly:0");
       setActiveTab("details");
@@ -53,7 +57,7 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave({ ...task!, title: title.trim(), description: description.trim() || null, priority, status, owner, category, due_date: dueDate || null, tags, effort: (effort || null) as TaskEffort | null, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, recur_next_at: task!.recur_next_at });
+    onSave({ ...task!, title: title.trim(), description: description.trim() || null, priority, status, owner, category, due_date: dueDate || null, tags, effort: (effort || null) as TaskEffort | null, impact, size, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, recur_next_at: task!.recur_next_at });
     onClose();
   }
 
@@ -161,16 +165,21 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className={labelClass}>דדליין</label>
                     <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldClass} />
                   </div>
                   <div>
-                    <label className={labelClass}>מאמץ</label>
-                    <select value={effort} onChange={(e) => setEffort(e.target.value as TaskEffort)} className={fieldClass}>
-                      <option value="">ללא</option>
-                      {EFFORT_OPTIONS.map(e => <option key={e} value={e}>{effortLabels[e]}</option>)}
+                    <label className={labelClass}>השפעה</label>
+                    <select value={impact} onChange={(e) => setImpact(e.target.value as TaskImpact)} className={fieldClass}>
+                      {IMPACT_OPTIONS.map(i => <option key={i} value={i}>{impactLabels[i]}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>גודל</label>
+                    <select value={size} onChange={(e) => setSize(e.target.value as TaskSize)} className={fieldClass}>
+                      {SIZE_OPTIONS.map(s => <option key={s} value={s}>{sizeLabels[s]}</option>)}
                     </select>
                   </div>
                 </div>

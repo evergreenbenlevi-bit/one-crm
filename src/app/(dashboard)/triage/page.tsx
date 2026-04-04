@@ -1,19 +1,22 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, type FormEvent } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import type { Task, TaskCategory, TaskPriority, TaskOwner, TaskStatus, TaskImpact, TaskSize } from "@/lib/types/tasks";
+import type { Task, TaskCategory, TaskPriority, TaskOwner, TaskStatus, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
 import {
   categoryLabels, categoryColors, priorityLabels, priorityColors,
   ownerLabels, ownerIcons, statusLabels, CRM_CATEGORIES, TASK_STATUSES,
   impactLabels, impactColors, IMPACT_OPTIONS,
   sizeLabels, sizeColors, SIZE_OPTIONS,
+  DURATION_OPTIONS, durationLabels,
 } from "@/lib/types/tasks";
+import { shouldFlagForBreakdown } from "@/lib/task-utils";
+import { suggestTimeSlots, energyLabel } from "@/lib/energy-config";
 import {
   Bot, Hand, Trash2, Check, CheckCheck, SkipForward, ChevronUp,
   Calendar, Pencil, Filter, FileDown,
-  Keyboard, Sparkles,
+  Keyboard, Sparkles, MessageSquare, Mic, MicOff, Send, Loader2,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { AnimatePresence, motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
@@ -142,6 +145,7 @@ function TriageCard({
   onNext,
   onImpactChange,
   onSizeChange,
+  onDurationChange,
   direction,
 }: {
   task: Task;
@@ -152,6 +156,7 @@ function TriageCard({
   onNext: () => void;
   onImpactChange: (impact: TaskImpact) => Promise<void>;
   onSizeChange: (size: TaskSize) => Promise<void>;
+  onDurationChange: (minutes: EstimatedMinutes) => Promise<void>;
   direction: number;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -168,6 +173,9 @@ function TriageCard({
   const [size, setSize] = useState<TaskSize>(task.size || "medium");
   const [description, setDescription] = useState(task.description || "");
   const [title, setTitle] = useState(task.title);
+  const [estimatedMinutes, setEstimatedMinutes] = useState<EstimatedMinutes | null>(task.estimated_minutes || null);
+  const [manualDuration, setManualDuration] = useState(false);
+  const [manualImpact, setManualImpact] = useState(false);
 
   // Swipe
   const x = useMotionValue(0);
@@ -196,6 +204,9 @@ function TriageCard({
     setSize(task.size || "medium");
     setDescription(task.description || "");
     setTitle(task.title);
+    setEstimatedMinutes(task.estimated_minutes || null);
+    setManualDuration(false);
+    setManualImpact(false);
   }, [task.id]);
 
   const isOverdue = task.due_date && new Date(task.due_date) < new Date();
@@ -244,6 +255,7 @@ function TriageCard({
         status,
         impact,
         size,
+        estimated_minutes: estimatedMinutes,
         due_date: dueDate || null,
       } as Partial<Task>);
     } finally {
@@ -283,7 +295,7 @@ function TriageCard({
   };
 
   const impactShortLabels: Record<TaskImpact, string> = {
-    needle_mover: "🔴 מזיז",
+    needle_mover: "🔴 קריטי",
     important: "🟡 חשוב",
     nice: "⚪ נחמד",
   };
@@ -485,10 +497,16 @@ function TriageCard({
                   </div>
                 </div>
                 <div className="flex gap-2 mb-3">
-                  {["היום", "מחר", "ראשון"].map((label, i) => {
+                  {["היום", "מחר", "השבוע", "ראשון"].map((label, i) => {
                     const d = new Date();
                     if (i === 1) d.setDate(d.getDate() + 1);
-                    if (i === 2) { d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7)); }
+                    if (i === 2) {
+                      // Next available weekday this week (or Monday if Fri-Sun)
+                      const day = d.getDay();
+                      if (day >= 5 || day === 0) { d.setDate(d.getDate() + ((8 - day) % 7)); } // Monday
+                      else { d.setDate(d.getDate() + 1); } // Tomorrow (weekday)
+                    }
+                    if (i === 3) { d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7)); }
                     const val = d.toISOString().split("T")[0];
                     return (
                       <button
@@ -506,6 +524,37 @@ function TriageCard({
                     );
                   })}
                 </div>
+                {/* Energy-based time suggestion */}
+                {dueDate && estimatedMinutes && (() => {
+                  const slots = suggestTimeSlots(
+                    { impact: task.impact, category: task.category, estimated_minutes: estimatedMinutes },
+                    new Date(dueDate)
+                  );
+                  const topSlot = slots[0];
+                  if (!topSlot) return null;
+                  return (
+                    <div className="mb-3">
+                      <p className="text-[10px] text-white/25 mb-1.5 font-medium">מומלץ:</p>
+                      <div className="flex gap-1.5">
+                        {slots.map((slot, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setDueTime(slot.start)}
+                            className={clsx(
+                              "flex-1 py-2 px-2 rounded-xl text-[11px] font-semibold border transition-all text-center",
+                              dueTime === slot.start
+                                ? "bg-brand-500/20 border-brand-500/30 text-brand-300"
+                                : "border-white/[0.08] text-white/40 hover:border-white/20"
+                            )}
+                          >
+                            <span className="block">{slot.start}</span>
+                            <span className="block text-[9px] opacity-60 mt-0.5">{energyLabel(slot.energyLevel)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowDatePicker(false)}
@@ -526,7 +575,7 @@ function TriageCard({
           )}
         </AnimatePresence>
 
-        {/* Impact + Size segmented controls */}
+        {/* Impact + Duration controls */}
         {!expanded && !showDatePicker && (
           <div className="px-6 pb-5 pt-2 space-y-3">
             <div>
@@ -534,21 +583,134 @@ function TriageCard({
               <SegmentedControl
                 options={IMPACT_OPTIONS}
                 value={task.impact}
-                onChange={onImpactChange}
+                onChange={(val) => { setManualImpact(true); onImpactChange(val); }}
                 labels={impactShortLabels}
                 colors={impactSegmentColors}
               />
             </div>
             <div>
-              <p className="text-[10px] text-white/25 mb-1.5 text-center font-medium tracking-wider uppercase">גודל</p>
-              <SegmentedControl
-                options={SIZE_OPTIONS}
-                value={task.size}
-                onChange={onSizeChange}
-                labels={sizeShortLabels}
-                colors={sizeSegmentColors}
-              />
+              <p className="text-[10px] text-white/25 mb-1.5 text-center font-medium tracking-wider uppercase">משך זמן</p>
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                {DURATION_OPTIONS.map((mins) => {
+                  const isActive = estimatedMinutes === mins;
+                  return (
+                    <button
+                      key={mins}
+                      onClick={() => {
+                        setEstimatedMinutes(mins);
+                        setManualDuration(true);
+                        onDurationChange(mins);
+                      }}
+                      className={clsx(
+                        "px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-[0.97]",
+                        isActive
+                          ? "bg-brand-500/20 text-brand-300 ring-1 ring-brand-500/30 shadow-lg"
+                          : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+                      )}
+                    >
+                      {durationLabels[mins]}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Breakdown warning for 120+ min tasks */}
+              {shouldFlagForBreakdown(estimatedMinutes) && (
+                <div className="mt-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] text-center font-medium">
+                  ⚠️ משימה ארוכה — כדאי לפרק לתת-משימות
+                </div>
+              )}
+              {/* AUTO/RESET — clear manual overrides */}
+              {(manualDuration || manualImpact) && (
+                <button
+                  onClick={() => {
+                    setManualDuration(false);
+                    setManualImpact(false);
+                    setEstimatedMinutes(task.estimated_minutes || null);
+                    setImpact(task.impact || "important");
+                  }}
+                  className="mt-2 w-full py-1.5 rounded-xl text-[10px] font-bold text-white/30 hover:text-white/50 hover:bg-white/[0.04] transition-all flex items-center justify-center gap-1"
+                >
+                  <Sparkles size={10} />
+                  AUTO — אפס לאוטומטי
+                </button>
+              )}
             </div>
+          </div>
+        )}
+
+        {/* Quick Text Input — NLP-powered free text */}
+        {!expanded && !showDatePicker && (
+          <div className="px-6 pb-3 pt-0">
+            <QuickTextInput
+              task={task}
+              manualFields={[...(manualDuration ? ["estimated_minutes"] : []), ...(manualImpact ? ["impact"] : [])]}
+              onFieldsParsed={async (parsed) => {
+                const updates: Partial<Task> = {};
+                if (parsed.due_date) { setDueDate(parsed.due_date); updates.due_date = parsed.due_date; }
+                if (parsed.estimated_minutes && !manualDuration) { setEstimatedMinutes(parsed.estimated_minutes); updates.estimated_minutes = parsed.estimated_minutes; }
+                if (parsed.impact && !manualImpact) { setImpact(parsed.impact); updates.impact = parsed.impact; }
+                if (parsed.size) { setSize(parsed.size); updates.size = parsed.size; }
+                if (parsed.owner) { setOwner(parsed.owner); updates.owner = parsed.owner; }
+                if (parsed.category) { setCategory(parsed.category as TaskCategory); updates.category = parsed.category as TaskCategory; }
+                if (Object.keys(updates).length > 0) {
+                  await onUpdate(updates);
+                }
+                // Auto-create calendar event if NLP detected calendar intent
+                if (parsed.calendar_event && parsed.due_date) {
+                  try {
+                    const calRes = await fetch("/api/triage/calendar-create", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        task_id: task.id,
+                        title: task.title,
+                        date: parsed.due_date,
+                        start_time: parsed.due_time || undefined,
+                        duration_minutes: parsed.estimated_minutes || 30,
+                        travel_minutes: parsed.travel_minutes || undefined,
+                        invite_person: parsed.invite_person || undefined,
+                        invite_confirmed: false, // Never auto-send invites from UI
+                        impact: parsed.impact || task.impact,
+                        category: parsed.category || task.category,
+                      }),
+                    });
+                    const calData = await calRes.json();
+                    // If invite needs approval, show confirmation dialog
+                    if (calData.needs_invite_approval && calData.attendee_resolved) {
+                      const { name, email } = calData.attendee_resolved;
+                      const confirmed = window.confirm(
+                        `שלח זימון ליומן?\n\n` +
+                        `👤 ${name} (${email})\n` +
+                        `📅 ${parsed.due_date} ${parsed.due_time || ""}\n` +
+                        `⏱ ${parsed.estimated_minutes || 30} דק׳\n\n` +
+                        `האירוע יופיע ביומן של שניכם.`
+                      );
+                      if (confirmed) {
+                        // Re-create with invite confirmed
+                        await fetch("/api/triage/calendar-create", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            task_id: task.id,
+                            title: task.title,
+                            date: parsed.due_date,
+                            start_time: parsed.due_time || undefined,
+                            duration_minutes: parsed.estimated_minutes || 30,
+                            travel_minutes: parsed.travel_minutes || undefined,
+                            invite_person: parsed.invite_person,
+                            invite_confirmed: true,
+                            impact: parsed.impact || task.impact,
+                            category: parsed.category || task.category,
+                          }),
+                        });
+                      }
+                    }
+                  } catch {
+                    // Calendar creation is best-effort, don't block triage flow
+                  }
+                }
+              }}
+            />
           </div>
         )}
 
@@ -560,6 +722,257 @@ function TriageCard({
         )}
       </div>
     </motion.div>
+  );
+}
+
+// ─── Quick Text Input (NLP-powered) ─────────────────────────────────────────
+interface NLPParsedFields {
+  due_date?: string | null;
+  due_time?: string | null;
+  estimated_minutes?: EstimatedMinutes | null;
+  owner?: TaskOwner | null;
+  impact?: TaskImpact | null;
+  size?: TaskSize | null;
+  category?: TaskCategory | null;
+  summary?: string;
+  // Calendar integration fields
+  calendar_event?: boolean | null;
+  invite_person?: string | null;
+  travel_minutes?: number | null;
+}
+
+function QuickTextInput({
+  task,
+  manualFields,
+  onFieldsParsed,
+}: {
+  task: Task;
+  manualFields?: string[];
+  onFieldsParsed: (parsed: NLPParsedFields) => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  // Reset when task changes
+  useEffect(() => {
+    setText("");
+    setFeedback(null);
+    setIsOpen(false);
+    setIsRecording(false);
+  }, [task.id]);
+
+  // T key shortcut to open/focus
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if (e.key === "t" || e.key === "T") {
+        if (e.key === "T" && !e.shiftKey) return; // Only capital T or t
+        e.preventDefault();
+        setIsOpen(true);
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  async function handleSubmit(e?: FormEvent) {
+    e?.preventDefault();
+    if (!text.trim() || loading) return;
+
+    setLoading(true);
+    setFeedback(null);
+    try {
+      const res = await fetch("/api/triage/nlp-parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: text.trim(),
+          task_title: task.title,
+          task_description: task.description,
+          manual_fields: manualFields,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Parse failed");
+
+      const data = await res.json();
+      const parsed = data.parsed as NLPParsedFields | undefined;
+      if (parsed) {
+        await onFieldsParsed(parsed);
+        let summary = parsed.summary || "עודכן";
+        if (parsed.calendar_event) summary = "📅 " + summary;
+        if (parsed.travel_minutes) summary += ` (+${parsed.travel_minutes}′ נסיעה)`;
+        if (parsed.invite_person) summary += ` 👤 ${parsed.invite_person}`;
+        setFeedback(summary);
+        setText("");
+        setTimeout(() => setFeedback(null), 4000);
+      }
+    } catch {
+      setFeedback("שגיאה בפענוח");
+      setTimeout(() => setFeedback(null), 3000);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleRecording() {
+    if (isRecording) {
+      // Stop recording
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    // Start recording
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+
+        setLoading(true);
+        try {
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "recording.webm");
+
+          const res = await fetch("/api/triage/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!res.ok) throw new Error("Transcription failed");
+
+          const { text: transcribed } = await res.json();
+          if (transcribed) {
+            setText(transcribed);
+            // Auto-submit after transcription
+            setLoading(false);
+            setTimeout(() => {
+              inputRef.current?.form?.requestSubmit();
+            }, 100);
+            return;
+          }
+        } catch {
+          setFeedback("שגיאה בתמלול");
+          setTimeout(() => setFeedback(null), 3000);
+        }
+        setLoading(false);
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setIsOpen(true);
+    } catch {
+      setFeedback("אין גישה למיקרופון");
+      setTimeout(() => setFeedback(null), 3000);
+    }
+  }
+
+  if (!isOpen) {
+    return (
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => {
+            setIsOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 50);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] text-white/30 hover:text-white/50 hover:bg-white/[0.04] transition-all"
+        >
+          <MessageSquare size={12} />
+          <span>כתוב משהו...</span>
+          <span className="text-[9px] font-mono opacity-40 ml-1">T</span>
+        </button>
+        <button
+          onClick={toggleRecording}
+          className="p-1.5 rounded-xl text-white/30 hover:text-white/50 hover:bg-white/[0.04] transition-all"
+          title="הקלט"
+        >
+          <Mic size={13} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={toggleRecording}
+          className={clsx(
+            "p-2 rounded-xl transition-all shrink-0",
+            isRecording
+              ? "bg-red-500/20 text-red-400 animate-pulse ring-1 ring-red-500/30"
+              : "text-white/30 hover:text-white/50 hover:bg-white/[0.04]"
+          )}
+          title={isRecording ? "עצור הקלטה" : "הקלט"}
+        >
+          {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
+        </button>
+        <input
+          ref={inputRef}
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={isRecording ? "מקליט..." : "מחר 30 דקות, דחוף..."}
+          disabled={loading || isRecording}
+          dir="auto"
+          className={clsx(
+            "flex-1 bg-white/[0.04] rounded-xl px-3 py-2 text-sm text-white/90",
+            "placeholder:text-white/20 outline-none border border-white/[0.06]",
+            "focus:border-brand-400/30 focus:bg-white/[0.06] transition-all",
+            "disabled:opacity-40"
+          )}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setText("");
+              setIsOpen(false);
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+        />
+        <button
+          type="submit"
+          disabled={!text.trim() || loading}
+          className={clsx(
+            "p-2 rounded-xl transition-all shrink-0",
+            text.trim() && !loading
+              ? "bg-brand-500/15 text-brand-400 hover:bg-brand-500/25"
+              : "text-white/20"
+          )}
+        >
+          {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+        </button>
+      </form>
+      {feedback && (
+        <motion.p
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className={clsx(
+            "text-[11px] text-center font-medium",
+            feedback.includes("שגיאה") ? "text-red-400" : "text-emerald-400"
+          )}
+        >
+          {feedback}
+        </motion.p>
+      )}
+    </div>
   );
 }
 
@@ -711,7 +1124,7 @@ export default function TriagePage() {
   const now = new Date();
 
   const filtered = openTasks.filter(t => {
-    if (filter === "untriaged" && t.effort) return false;
+    if (filter === "untriaged" && t.estimated_minutes) return false;
     if (filter === "overdue" && (!t.due_date || new Date(t.due_date) >= now)) return false;
     if (filter === "no_owner" && t.owner) return false;
     if (filter === "ben" && t.owner !== "ben") return false;
@@ -740,6 +1153,13 @@ export default function TriagePage() {
     }
   }
 
+  function goBack() {
+    if (currentIndex > 0) {
+      setDirection(-1);
+      setCurrentIndex(i => i - 1);
+    }
+  }
+
   const handleAction = useCallback(async (action: QuickAction, extra?: Record<string, unknown>) => {
     if (!current) return;
 
@@ -757,14 +1177,7 @@ export default function TriagePage() {
       return;
     }
 
-    if (action === "confirm") {
-      // Task is already triaged correctly — just advance
-      setStats(s => ({ ...s, done: s.done + 1 }));
-      setDirection(1);
-      advance(1);
-      return;
-    }
-
+    // Immediate actions — no batch needed
     if (action === "done") {
       await fetch("/api/tasks", {
         method: "PATCH",
@@ -777,35 +1190,24 @@ export default function TriagePage() {
       return;
     }
 
-    if (action === "claude") {
-      await fetch("/api/tasks", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: current.id, owner: "claude", status: "todo" }),
-      });
-      setStats(s => ({ ...s, done: s.done + 1 }));
-      setDirection(1);
-      await mutate();
-      return;
-    }
+    // Queued actions — save Ben's decision, batch processes later
+    const triagePayload: Record<string, unknown> = {
+      id: current.id,
+      triage_action: action,
+      triaged_at: new Date().toISOString(),
+    };
+    if (extra?.due_date) triagePayload.due_date = extra.due_date;
+    if (extra?.due_time) triagePayload.triage_notes = `due_time:${extra.due_time}`;
 
-    if (action === "ben") {
-      const updates: Record<string, unknown> = {
-        id: current.id,
-        owner: "ben",
-        status: "todo",
-      };
-      if (extra?.due_date) updates.due_date = extra.due_date;
-      await fetch("/api/tasks", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      setStats(s => ({ ...s, done: s.done + 1 }));
-      setDirection(1);
-      await mutate();
-      return;
-    }
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(triagePayload),
+    });
+    setStats(s => ({ ...s, done: s.done + 1 }));
+    setDirection(1);
+    await mutate();
+    return;
   }, [current, mutate]);
 
   const handleUpdate = useCallback(async (updates: Partial<Task>) => {
@@ -840,6 +1242,16 @@ export default function TriagePage() {
     mutate();
   }, [current, mutate]);
 
+  const handleDurationChange = useCallback(async (estimated_minutes: EstimatedMinutes) => {
+    if (!current) return;
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: current.id, estimated_minutes }),
+    });
+    mutate();
+  }, [current, mutate]);
+
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -861,6 +1273,9 @@ export default function TriagePage() {
           break;
         case "?":
           setShowShortcuts(s => !s);
+          break;
+        case "Backspace":
+          goBack();
           break;
       }
     }
@@ -898,6 +1313,16 @@ export default function TriagePage() {
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Back button */}
+            {currentIndex > 0 && (
+              <button
+                onClick={goBack}
+                className="p-2 rounded-xl text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all"
+                title="חזרה אחורה"
+              >
+                <ChevronUp size={18} className="rotate-90" />
+              </button>
+            )}
             <button
               onClick={() => {
                 // Export HTML report
@@ -1038,6 +1463,7 @@ export default function TriagePage() {
               onNext={() => advance(1)}
               onImpactChange={handleImpactChange}
               onSizeChange={handleSizeChange}
+              onDurationChange={handleDurationChange}
               direction={direction}
             />
           ) : null}

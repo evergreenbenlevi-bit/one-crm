@@ -44,6 +44,7 @@ export default function ProjectDetailPage() {
   const columns = useMemo(() => {
     const cols: Record<TaskStatus, Task[]> = {
       backlog: [], todo: [], in_progress: [], waiting_ben: [], done: [],
+      inbox: [], up_next: [], scheduled: [], waiting: [], someday: [], archived: [],
     };
     subtasks.forEach(t => { if (cols[t.status]) cols[t.status].push(t); });
     return cols;

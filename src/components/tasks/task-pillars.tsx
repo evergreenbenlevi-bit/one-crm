@@ -28,6 +28,12 @@ const NEXT_STATUS: Record<Task["status"], Task["status"] | null> = {
   in_progress: "done",
   waiting_ben: "in_progress",
   done:        null,
+  inbox:       "up_next",
+  up_next:     "in_progress",
+  scheduled:   "in_progress",
+  waiting:     "in_progress",
+  someday:     null,
+  archived:    null,
 };
 
 export function TaskPillars({ tasks, onEdit, onStatusChange }: TaskPillarsProps) {

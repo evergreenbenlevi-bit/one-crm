@@ -6,6 +6,8 @@ export type TaskLayer = "needle_mover" | "project" | "quick_win" | "wishlist" | 
 export type TaskEffort = "quick" | "small" | "medium" | "large";
 export type TaskImpact = "needle_mover" | "important" | "nice";
 export type TaskSize = "quick" | "medium" | "big";
+/** Precise duration in minutes — replaces vague size concept for scheduling */
+export type EstimatedMinutes = 5 | 15 | 30 | 45 | 60 | 90 | 120;
 
 export type RecurPattern = "daily" | `weekly:${number}` | `monthly:${number}`;
 
@@ -39,6 +41,8 @@ export interface Task {
   impact?: TaskImpact | null;
   // Size (new triage axis)
   size?: TaskSize | null;
+  // Estimated duration in minutes (precise scheduling)
+  estimated_minutes?: EstimatedMinutes | null;
   // Archive
   archived_at?: string | null;
   archive_reason?: string | null;
@@ -46,6 +50,10 @@ export interface Task {
   is_recurring?: boolean;
   recur_pattern?: string | null;
   recur_next_at?: string | null;
+  // Triage pending flow
+  triage_action?: string | null;
+  triage_notes?: string | null;
+  triaged_at?: string | null;
 }
 
 export const statusLabels: Record<TaskStatus, string> = {
@@ -186,6 +194,29 @@ export const EFFORT_OPTIONS: TaskEffort[] = ["quick", "small", "medium", "large"
 
 // Categories visible in CRM UI
 export const CRM_CATEGORIES: TaskCategory[] = ["one_tm", "brand", "research", "self", "errands", "infrastructure", "personal"];
+
+// Duration options for estimated_minutes
+export const DURATION_OPTIONS: EstimatedMinutes[] = [5, 15, 30, 45, 60, 90, 120];
+
+export const durationLabels: Record<EstimatedMinutes, string> = {
+  5: "5 דק׳",
+  15: "15 דק׳",
+  30: "30 דק׳",
+  45: "45 דק׳",
+  60: "שעה",
+  90: "שעה וחצי",
+  120: "שעתיים",
+};
+
+export const durationColors: Record<EstimatedMinutes, string> = {
+  5: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  15: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  30: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  45: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+  60: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  90: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
+  120: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+};
 
 export const SUGGESTED_TAGS = [
   // פילרים

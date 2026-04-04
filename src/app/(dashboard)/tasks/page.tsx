@@ -25,6 +25,12 @@ const STATUS_BADGE: Record<TaskStatus, string> = {
   todo:        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   backlog:     "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
   done:        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  inbox:       "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300",
+  up_next:     "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
+  scheduled:   "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+  waiting:     "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300",
+  someday:     "bg-stone-100 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300",
+  archived:    "bg-neutral-100 text-neutral-500 dark:bg-neutral-900/30 dark:text-neutral-400",
 };
 
 function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask: (t: Task) => void }) {
@@ -140,6 +146,7 @@ const QUEUE_TABS: { id: QueueMode; label: string; icon: string }[] = [
 
 const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
   backlog: "todo", todo: "in_progress", in_progress: "done", waiting_ben: "in_progress", done: null,
+  inbox: "up_next", up_next: "in_progress", scheduled: "in_progress", waiting: "in_progress", someday: null, archived: null,
 };
 
 export default function TasksPage() {
@@ -275,7 +282,7 @@ export default function TasksPage() {
       if (filterPriority !== "all" && t.priority !== filterPriority) return false;
       return t.status === "in_progress" || t.status === "waiting_ben" || (t.status === "todo" && t.priority === "p1");
     });
-    const statusOrder: Record<TaskStatus, number> = { in_progress: 0, waiting_ben: 1, todo: 2, backlog: 3, done: 4 };
+    const statusOrder: Record<TaskStatus, number> = { in_progress: 0, waiting_ben: 1, todo: 2, up_next: 3, scheduled: 4, backlog: 5, inbox: 6, waiting: 7, done: 8, someday: 9, archived: 10 };
     const priorityOrder = { p1: 0, p2: 1, p3: 2 };
     active.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || priorityOrder[a.priority] - priorityOrder[b.priority]);
     return active.slice(0, FOCUS_LIMIT);
