@@ -3,11 +3,13 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import type { Task, TaskLayer, TaskCategory, TaskPriority, TaskOwner, TaskStatus, TaskEffort } from "@/lib/types/tasks";
+import type { Task, TaskLayer, TaskCategory, TaskPriority, TaskOwner, TaskStatus, TaskEffort, TaskImpact, TaskSize } from "@/lib/types/tasks";
 import {
   categoryLabels, categoryColors, priorityLabels, priorityColors,
   ownerLabels, ownerIcons, statusLabels, CRM_CATEGORIES, TASK_STATUSES,
   effortLabels, effortColors, EFFORT_OPTIONS,
+  impactLabels, impactColors, IMPACT_OPTIONS,
+  sizeLabels, sizeColors, SIZE_OPTIONS,
 } from "@/lib/types/tasks";
 import {
   Bot, Hand, Trash2, Check, SkipForward, ChevronDown, ChevronUp,
@@ -15,6 +17,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
+import { ActiveSessions } from "@/components/tasks/active-sessions";
 
 // ─── Quick action types ──────────────────────────────────────────────────────
 type QuickAction = "claude" | "ben" | "done" | "delete" | "skip";
@@ -40,6 +43,8 @@ function TriageCard({
   onUpdate,
   onNext,
   onEffortChange,
+  onImpactChange,
+  onSizeChange,
 }: {
   task: Task;
   index: number;
@@ -48,6 +53,8 @@ function TriageCard({
   onUpdate: (updates: Partial<Task>) => Promise<void>;
   onNext: () => void;
   onEffortChange: (effort: TaskEffort) => Promise<void>;
+  onImpactChange: (impact: TaskImpact) => Promise<void>;
+  onSizeChange: (size: TaskSize) => Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -58,6 +65,8 @@ function TriageCard({
   const [owner, setOwner] = useState<TaskOwner>(task.owner);
   const [category, setCategory] = useState<TaskCategory>(task.category);
   const [status, setStatus] = useState<TaskStatus>(task.status);
+  const [impact, setImpact] = useState<TaskImpact>(task.impact || "important");
+  const [size, setSize] = useState<TaskSize>(task.size || "medium");
   const [description, setDescription] = useState(task.description || "");
   const [title, setTitle] = useState(task.title);
   const dateRef = useRef<HTMLInputElement>(null);
@@ -73,6 +82,8 @@ function TriageCard({
     setOwner(task.owner);
     setCategory(task.category);
     setStatus(task.status);
+    setImpact(task.impact || "important");
+    setSize(task.size || "medium");
     setDescription(task.description || "");
     setTitle(task.title);
   }, [task.id]);
@@ -116,8 +127,10 @@ function TriageCard({
         owner,
         category,
         status,
+        impact,
+        size,
         due_date: dueDate || null,
-      });
+      } as Partial<Task>);
     } finally {
       setSaving(false);
       setExpanded(false);
@@ -131,7 +144,7 @@ function TriageCard({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -30, scale: 0.97 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="w-full max-w-md mx-auto"
+      className="w-full max-w-xl mx-auto"
     >
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
         {/* Card header — counter */}
@@ -139,11 +152,18 @@ function TriageCard({
           <span className="text-[11px] font-mono text-gray-400 dark:text-gray-500">
             {index + 1} / {total}
           </span>
-          {isOverdue && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-semibold">
-              באיחור
-            </span>
-          )}
+          <div className="flex gap-1.5">
+            {task.status === "in_progress" && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 font-semibold animate-pulse">
+                בביצוע
+              </span>
+            )}
+            {isOverdue && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 font-semibold">
+                באיחור
+              </span>
+            )}
+          </div>
           <button
             onClick={() => setExpanded(!expanded)}
             className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -153,17 +173,17 @@ function TriageCard({
         </div>
 
         {/* Main content */}
-        <div className="px-5 py-3">
+        <div className="px-6 py-4">
           {/* Title */}
           {expanded ? (
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-lg font-bold text-gray-900 dark:text-gray-100 bg-transparent border-b border-gray-200 dark:border-gray-600 pb-1 mb-2 outline-none focus:border-brand-500 text-right"
+              className="w-full text-xl font-bold text-gray-900 dark:text-gray-100 bg-transparent border-b border-gray-200 dark:border-gray-600 pb-1 mb-2 outline-none focus:border-brand-500 text-right"
               dir="auto"
             />
           ) : (
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug text-right" dir="auto">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-snug text-right" dir="auto">
               {task.title}
             </h2>
           )}
@@ -174,18 +194,18 @@ function TriageCard({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 mt-2 resize-none outline-none focus:ring-1 focus:ring-brand-400"
+              className="w-full text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 mt-2 resize-none outline-none focus:ring-1 focus:ring-brand-400"
               placeholder="פרטים..."
               dir="auto"
             />
           ) : task.description ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5 line-clamp-2 text-right" dir="auto">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-4 text-right leading-relaxed" dir="auto">
               {task.description}
             </p>
           ) : null}
 
           {/* Badges */}
-          <div className="flex flex-wrap gap-1.5 mt-3 justify-end">
+          <div className="flex flex-wrap gap-2 mt-4 justify-end">
             {expanded ? (
               <>
                 <select
@@ -216,6 +236,20 @@ function TriageCard({
                 >
                   {TASK_STATUSES.map(s => <option key={s} value={s}>{statusLabels[s]}</option>)}
                 </select>
+                <select
+                  value={impact}
+                  onChange={(e) => setImpact(e.target.value as TaskImpact)}
+                  className="text-xs px-2 py-1 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+                >
+                  {IMPACT_OPTIONS.map(i => <option key={i} value={i}>{impactLabels[i]}</option>)}
+                </select>
+                <select
+                  value={size}
+                  onChange={(e) => setSize(e.target.value as TaskSize)}
+                  className="text-xs px-2 py-1 rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+                >
+                  {SIZE_OPTIONS.map(s => <option key={s} value={s}>{sizeLabels[s]}</option>)}
+                </select>
               </>
             ) : (
               <>
@@ -236,9 +270,14 @@ function TriageCard({
                     📅 {new Date(task.due_date).toLocaleDateString("he-IL")}
                   </span>
                 )}
-                {task.effort && (
-                  <span className={clsx("text-[11px] px-2.5 py-1 rounded-full font-medium", effortColors[task.effort])}>
-                    {effortLabels[task.effort]}
+                {task.impact && (
+                  <span className={clsx("text-[11px] px-2.5 py-1 rounded-full font-semibold", impactColors[task.impact])}>
+                    {impactLabels[task.impact]}
+                  </span>
+                )}
+                {task.size && (
+                  <span className={clsx("text-[11px] px-2.5 py-1 rounded-full font-medium", sizeColors[task.size])}>
+                    {sizeLabels[task.size]}
                   </span>
                 )}
               </>
@@ -355,36 +394,60 @@ function TriageCard({
           )}
         </AnimatePresence>
 
-        {/* Effort selection */}
+        {/* Impact + Size quick selection */}
         {!expanded && !showDatePicker && (
-          <div className="px-4 pb-2 pt-0">
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 text-center">כמה זמן ייקח?</p>
-            <div className="grid grid-cols-4 gap-1.5">
-              {EFFORT_OPTIONS.map(eff => {
-                const isActive = task.effort === eff;
-                return (
-                  <button
-                    key={eff}
-                    onClick={() => onEffortChange(eff)}
-                    className={clsx(
-                      "py-2 rounded-lg text-[10px] font-bold border transition-all active:scale-95",
-                      isActive
-                        ? clsx(effortColors[eff], "border-current shadow-sm")
-                        : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-gray-400"
-                    )}
-                  >
-                    {effortLabels[eff].split(" ")[0]}
-                  </button>
-                );
-              })}
+          <div className="px-6 pb-3 pt-1 space-y-3">
+            <div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2 text-center font-medium">כמה חשוב?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {IMPACT_OPTIONS.map(imp => {
+                  const isActive = task.impact === imp;
+                  return (
+                    <button
+                      key={imp}
+                      onClick={() => onImpactChange(imp)}
+                      className={clsx(
+                        "py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95",
+                        isActive
+                          ? clsx(impactColors[imp], "border-current shadow-md")
+                          : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-gray-400"
+                      )}
+                    >
+                      {impactLabels[imp]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-2 text-center font-medium">כמה זמן?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {SIZE_OPTIONS.map(sz => {
+                  const isActive = task.size === sz;
+                  return (
+                    <button
+                      key={sz}
+                      onClick={() => onSizeChange(sz)}
+                      className={clsx(
+                        "py-2.5 rounded-xl text-xs font-bold border-2 transition-all active:scale-95",
+                        isActive
+                          ? clsx(sizeColors[sz], "border-current shadow-md")
+                          : "border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-gray-400"
+                      )}
+                    >
+                      {sizeLabels[sz]}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
 
         {/* Quick action buttons */}
         {!expanded && !showDatePicker && (
-          <div className="px-4 pb-4 pt-1">
-            <div className="grid grid-cols-5 gap-1.5">
+          <div className="px-6 pb-5 pt-2">
+            <div className="grid grid-cols-5 gap-2">
               <button
                 onClick={() => handleQuickAction("claude")}
                 disabled={saving}
@@ -502,8 +565,8 @@ export default function TriagePage() {
     if (action === "delete") {
       await fetch(`/api/tasks?id=${current.id}`, { method: "DELETE" });
       setStats(s => ({ ...s, deleted: s.deleted + 1 }));
-      mutate();
-      advance();
+      await mutate();
+      // Don't advance — mutate removes the item, so current index now points to next
       return;
     }
 
@@ -514,8 +577,7 @@ export default function TriagePage() {
         body: JSON.stringify({ id: current.id, status: "done" }),
       });
       setStats(s => ({ ...s, done: s.done + 1 }));
-      mutate();
-      advance();
+      await mutate();
       return;
     }
 
@@ -526,8 +588,7 @@ export default function TriagePage() {
         body: JSON.stringify({ id: current.id, owner: "claude", status: "todo" }),
       });
       setStats(s => ({ ...s, done: s.done + 1 }));
-      mutate();
-      advance();
+      await mutate();
       return;
     }
 
@@ -544,8 +605,7 @@ export default function TriagePage() {
         body: JSON.stringify(updates),
       });
       setStats(s => ({ ...s, done: s.done + 1 }));
-      mutate();
-      advance();
+      await mutate();
       return;
     }
   }, [current, mutate]);
@@ -558,7 +618,7 @@ export default function TriagePage() {
       body: JSON.stringify({ id: current.id, ...updates }),
     });
     setStats(s => ({ ...s, done: s.done + 1 }));
-    mutate();
+    await mutate();
     advance();
   }, [current, mutate]);
 
@@ -568,6 +628,26 @@ export default function TriagePage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: current.id, effort }),
+    });
+    mutate();
+  }, [current, mutate]);
+
+  const handleImpactChange = useCallback(async (impact: TaskImpact) => {
+    if (!current) return;
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: current.id, impact }),
+    });
+    mutate();
+  }, [current, mutate]);
+
+  const handleSizeChange = useCallback(async (size: TaskSize) => {
+    if (!current) return;
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: current.id, size }),
     });
     mutate();
   }, [current, mutate]);
@@ -584,8 +664,9 @@ export default function TriagePage() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
       {/* Header */}
-      <div className="px-4 pt-4 pb-2 md:px-8 md:pt-6 max-w-xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-3">
+      <div className="px-4 pt-4 pb-2 md:px-8 md:pt-6 max-w-2xl mx-auto w-full">
+        <ActiveSessions />
+        <div className="flex items-center justify-between mb-3 mt-2">
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">טריאז׳</h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -746,6 +827,8 @@ export default function TriagePage() {
               onUpdate={handleUpdate}
               onNext={advance}
               onEffortChange={handleEffortChange}
+              onImpactChange={handleImpactChange}
+              onSizeChange={handleSizeChange}
             />
           ) : null}
         </AnimatePresence>
