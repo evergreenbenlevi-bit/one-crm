@@ -26,7 +26,7 @@
 | `/news` | `(dashboard)/news/` | AI-curated news feed | news components |
 | `/settings` | `(dashboard)/settings/` | App settings | settings components |
 | `/dump` | `(dashboard)/dump/page.tsx` | Brain Dump — free-text thought dump, Claude classifies to task/idea/reminder/note, routes to CRM or Vault | textarea, results list, history |
-| `/course-builder` | `(dashboard)/course-builder/page.tsx` | ONE™ Course Builder — all 77 modules across 10 levels. Inline edit, checklist per module, source tags (tom/modified/original/removed), status tracking, add/delete/hide modules, filters. For Ben + Avitar course production. | `CourseBuilderPage`, `ModuleRow` |
+| `/course-builder` | `(dashboard)/course-builder/page.tsx` | ONE™ Course Builder — 77 modules across 10 levels. **Side-by-side ScriptEditor**: Tom's transcript (left) + ONE™ script editor (right) with auto-save, word counts, Claude Copywriter generation via `/api/course/generate-script`. Inline edit, checklist per module, source tags (tom/modified/original/removed), status tracking, add/delete/hide modules, filters. Script progress stats in header. | `CourseBuilderPage`, `ModuleRow`, `ScriptEditor` |
 | `/more` | `(dashboard)/more/` | Mobile overflow nav (links to hidden pages) | nav list |
 | `/login` | `app/login/` | Auth page | login form |
 

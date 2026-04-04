@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   GripVertical, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight,
-  Check, X, Edit3, Save, Film, FileText, Image, Upload, BookOpen, BookMarked, MessageSquare
+  Check, X, Edit3, Save, Film, FileText, Image, Upload, BookOpen, BookMarked, MessageSquare,
+  Columns, ChevronUp, Wand2, Copy, CheckCircle2
 } from "lucide-react";
 
 // ─── Types ───
@@ -81,6 +82,7 @@ export default function CourseBuilderPage() {
   const [loading, setLoading] = useState(true);
   const [expandedLevels, setExpandedLevels] = useState<Set<string>>(new Set());
   const [editingModule, setEditingModule] = useState<string | null>(null);
+  const [scriptEditorModule, setScriptEditorModule] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showHidden, setShowHidden] = useState(false);
@@ -150,9 +152,12 @@ export default function CourseBuilderPage() {
 
   // ─── Stats ───
   const totalModules = modules.filter(m => m.visible && m.source !== "removed").length;
+  const withScript = modules.filter(m => m.visible && m.source !== "removed" && m.script).length;
+  const scriptReady = modules.filter(m => m.script_ready).length;
   const readyToFilm = modules.filter(m => m.script_ready && m.playbook_ready).length;
   const filmedCount = modules.filter(m => m.filmed).length;
   const liveCount = modules.filter(m => m.status === "live").length;
+  const withTom = modules.filter(m => m.tom_transcript).length;
 
   const toggleLevel = (id: string) => {
     setExpandedLevels(prev => {
@@ -177,7 +182,7 @@ export default function CourseBuilderPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ONE™ Course Builder</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {totalModules} מודולים פעילים · {readyToFilm} מוכנים לצילום · {filmedCount} צולמו · {liveCount} באוויר
+            {totalModules} מודולים · {withTom} עם תמלול טום · {withScript} עם סקריפט · {scriptReady} מוכנים · {readyToFilm} לצילום · {filmedCount} צולמו · {liveCount} באוויר
           </p>
         </div>
       </div>
@@ -292,16 +297,26 @@ export default function CourseBuilderPage() {
                   ) : (
                     <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
                       {levelModules.map(mod => (
-                        <ModuleRow
-                          key={mod.id}
-                          module={mod}
-                          isEditing={editingModule === mod.id}
-                          onStartEdit={() => setEditingModule(mod.id)}
-                          onStopEdit={() => setEditingModule(null)}
-                          onUpdate={updateModule}
-                          onDelete={deleteModule}
-                          levelHex={level.hex}
-                        />
+                        <div key={mod.id}>
+                          <ModuleRow
+                            module={mod}
+                            isEditing={editingModule === mod.id}
+                            isScriptEditorOpen={scriptEditorModule === mod.id}
+                            onStartEdit={() => setEditingModule(mod.id)}
+                            onStopEdit={() => setEditingModule(null)}
+                            onToggleScriptEditor={() => setScriptEditorModule(scriptEditorModule === mod.id ? null : mod.id)}
+                            onUpdate={updateModule}
+                            onDelete={deleteModule}
+                            levelHex={level.hex}
+                          />
+                          {scriptEditorModule === mod.id && (
+                            <ScriptEditor
+                              module={mod}
+                              onUpdate={updateModule}
+                              onClose={() => setScriptEditorModule(null)}
+                            />
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}
@@ -328,16 +343,20 @@ export default function CourseBuilderPage() {
 function ModuleRow({
   module: mod,
   isEditing,
+  isScriptEditorOpen,
   onStartEdit,
   onStopEdit,
+  onToggleScriptEditor,
   onUpdate,
   onDelete,
   levelHex,
 }: {
   module: CourseModule;
   isEditing: boolean;
+  isScriptEditorOpen: boolean;
   onStartEdit: () => void;
   onStopEdit: () => void;
+  onToggleScriptEditor: () => void;
   onUpdate: (id: string, updates: Partial<CourseModule>) => void;
   onDelete: (id: string) => void;
   levelHex: string;
@@ -347,8 +366,6 @@ function ModuleRow({
   const [editScript, setEditScript] = useState(mod.script || "");
   const [editBenefit, setEditBenefit] = useState(mod.client_benefit || "");
   const [editDecisionReason, setEditDecisionReason] = useState(mod.decision_reason || "");
-  const [showScript, setShowScript] = useState(false);
-  const [showTomTranscript, setShowTomTranscript] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const src = SOURCE_LABELS[mod.source];
@@ -466,52 +483,32 @@ function ModuleRow({
 
               {/* Action buttons row */}
               <div className="flex items-center gap-3 mt-1">
-                {mod.script && (
-                  <button
-                    onClick={() => setShowScript(!showScript)}
-                    className="text-[10px] text-brand-500 hover:text-brand-600 flex items-center gap-1"
-                  >
-                    <FileText size={12} />
-                    {showScript ? "הסתר script" : "הצג script"}
-                  </button>
+                <button
+                  onClick={onToggleScriptEditor}
+                  className={`text-[10px] px-2 py-0.5 rounded flex items-center gap-1 transition-colors ${
+                    isScriptEditorOpen
+                      ? "bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400"
+                      : "text-brand-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/20"
+                  }`}
+                >
+                  {isScriptEditorOpen ? <ChevronUp size={12} /> : <Columns size={12} />}
+                  {isScriptEditorOpen ? "סגור עורך" : "עורך סקריפט"}
+                  {mod.tom_transcript && !isScriptEditorOpen && (
+                    <span className="text-blue-400 mr-1">({mod.tom_file_paths?.length || 0} מקורות טום)</span>
+                  )}
+                </button>
+                {mod.script && !isScriptEditorOpen && (
+                  <span className="text-[10px] text-green-500 flex items-center gap-1">
+                    <CheckCircle2 size={10} />
+                    {mod.script.split(/\s+/).length} מילים
+                  </span>
                 )}
-                {mod.tom_transcript && (
-                  <button
-                    onClick={() => setShowTomTranscript(!showTomTranscript)}
-                    className="text-[10px] text-blue-500 hover:text-blue-600 flex items-center gap-1"
-                  >
-                    <BookMarked size={12} />
-                    {showTomTranscript ? "הסתר מה טום אומר" : `מה טום אומר (${mod.tom_file_paths?.length || 0} מקורות)`}
-                  </button>
+                {!mod.script && !isScriptEditorOpen && (
+                  <span className="text-[10px] text-gray-400">
+                    אין סקריפט
+                  </span>
                 )}
               </div>
-
-              {showScript && mod.script && (
-                <pre className="mt-1 p-2 bg-gray-50 dark:bg-gray-900 rounded text-[11px] whitespace-pre-wrap max-h-40 overflow-auto">
-                  {mod.script}
-                </pre>
-              )}
-
-              {/* Tom's transcript panel */}
-              {showTomTranscript && mod.tom_transcript && (
-                <div className="mt-2 border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
-                  <div className="bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 flex items-center justify-between">
-                    <span className="text-[11px] font-medium text-blue-700 dark:text-blue-300">
-                      📘 מה טום מלמד ({mod.tom_file_paths?.length || 0} שיעורים מקוריים)
-                    </span>
-                    {mod.tom_file_paths && mod.tom_file_paths.length > 0 && (
-                      <span className="text-[9px] text-blue-400">
-                        {mod.tom_file_paths.map(p => p.split("/").pop()?.replace(".md", "")).join(" · ")}
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-3 bg-white dark:bg-gray-900 max-h-96 overflow-auto">
-                    <pre className="text-[11px] whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">
-                      {mod.tom_transcript}
-                    </pre>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
@@ -600,6 +597,215 @@ function ModuleRow({
             {label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Script Editor (Side-by-Side) ───
+function ScriptEditor({
+  module: mod,
+  onUpdate,
+  onClose,
+}: {
+  module: CourseModule;
+  onUpdate: (id: string, updates: Partial<CourseModule>) => void;
+  onClose: () => void;
+}) {
+  const [script, setScript] = useState(mod.script || "");
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(mod.script ? new Date() : null);
+  const [generating, setGenerating] = useState(false);
+  const saveTimeoutRef = useCallback(() => {}, []);
+
+  // Auto-save with debounce
+  const debouncedSave = useCallback(
+    (value: string) => {
+      setSaving(true);
+      onUpdate(mod.id, { script: value || null });
+      setTimeout(() => {
+        setSaving(false);
+        setLastSaved(new Date());
+      }, 300);
+    },
+    [mod.id, onUpdate]
+  );
+
+  const handleScriptChange = (value: string) => {
+    setScript(value);
+  };
+
+  const handleSave = () => {
+    debouncedSave(script);
+  };
+
+  const handleMarkReady = () => {
+    onUpdate(mod.id, { script_ready: !mod.script_ready, script: script || null });
+    if (!mod.script_ready) setLastSaved(new Date());
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/course/generate-script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          moduleId: mod.id,
+          moduleName: mod.name,
+          moduleNumber: mod.number,
+          description: mod.description,
+          clientBenefit: mod.client_benefit,
+          tomTranscript: mod.tom_transcript,
+          source: mod.source,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScript(data.script);
+        onUpdate(mod.id, { script: data.script });
+        setLastSaved(new Date());
+      }
+    } catch {
+      // silent fail — user can retry
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const wordCount = script.trim() ? script.trim().split(/\s+/).length : 0;
+  const tomWordCount = mod.tom_transcript?.trim().split(/\s+/).length || 0;
+
+  return (
+    <div className="border-t border-brand-200 dark:border-brand-800 bg-gray-50 dark:bg-gray-900/50">
+      {/* Editor Header */}
+      <div className="px-4 py-2 bg-brand-50 dark:bg-brand-900/20 flex items-center justify-between border-b border-brand-100 dark:border-brand-800">
+        <div className="flex items-center gap-3">
+          <Columns size={16} className="text-brand-600 dark:text-brand-400" />
+          <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
+            {mod.number} — {mod.name}
+          </span>
+          {mod.source !== "original" && mod.tom_transcript && (
+            <span className="text-[10px] text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded">
+              {tomWordCount} מילים מטום
+            </span>
+          )}
+          {wordCount > 0 && (
+            <span className="text-[10px] text-green-600 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded">
+              {wordCount} מילים בסקריפט
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {saving && <span className="text-[10px] text-gray-400 animate-pulse">שומר...</span>}
+          {lastSaved && !saving && (
+            <span className="text-[10px] text-gray-400">
+              נשמר {lastSaved.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-brand-600 text-white rounded hover:bg-brand-700 transition-colors"
+          >
+            <Save size={12} />
+            שמור
+          </button>
+          <button
+            onClick={handleMarkReady}
+            className={`flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors ${
+              mod.script_ready
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600"
+            }`}
+          >
+            <CheckCircle2 size={12} />
+            {mod.script_ready ? "מוכן!" : "סמן מוכן"}
+          </button>
+          <button onClick={onClose} className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded">
+            <X size={14} className="text-gray-500" />
+          </button>
+        </div>
+      </div>
+
+      {/* Side-by-Side Panels */}
+      <div className="flex" style={{ height: "500px" }}>
+        {/* LEFT: Tom's Transcript */}
+        {mod.tom_transcript ? (
+          <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex flex-col">
+            <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 flex items-center justify-between shrink-0">
+              <span className="text-[11px] font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                <BookMarked size={13} />
+                מה טום מלמד ({mod.tom_file_paths?.length || 0} מקורות)
+              </span>
+              {mod.tom_file_paths && mod.tom_file_paths.length > 0 && (
+                <span className="text-[9px] text-blue-400">
+                  {mod.tom_file_paths.map(p => p.split("/").pop()?.replace(".md", "")).join(" · ")}
+                </span>
+              )}
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <pre className="text-[12px] whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed font-sans" dir="ltr">
+                {mod.tom_transcript}
+              </pre>
+            </div>
+          </div>
+        ) : (
+          <div className="w-1/2 border-l border-gray-200 dark:border-gray-700 flex items-center justify-center">
+            <div className="text-center text-gray-400">
+              <BookMarked size={32} className="mx-auto mb-2 opacity-30" />
+              <p className="text-sm">אין תמלול מטום</p>
+              <p className="text-[10px]">מודול מקורי — כתוב מאפס</p>
+            </div>
+          </div>
+        )}
+
+        {/* RIGHT: Script Editor */}
+        <div className="w-1/2 flex flex-col">
+          <div className="px-3 py-2 bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800 flex items-center justify-between shrink-0">
+            <span className="text-[11px] font-medium text-green-700 dark:text-green-300 flex items-center gap-1.5">
+              <FileText size={13} />
+              סקריפט ONE
+            </span>
+            <div className="flex items-center gap-2">
+              {mod.tom_transcript && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors disabled:opacity-50"
+                >
+                  <Wand2 size={11} className={generating ? "animate-spin" : ""} />
+                  {generating ? "כותב..." : "Claude Copywriter"}
+                </button>
+              )}
+              {mod.tom_transcript && script && (
+                <button
+                  onClick={() => { setScript(mod.tom_transcript || ""); }}
+                  className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                  title="החלף סקריפט בתמלול של טום"
+                >
+                  <Copy size={11} />
+                  העתק מטום
+                </button>
+              )}
+              {!script && mod.tom_transcript && (
+                <button
+                  onClick={() => { setScript(mod.tom_transcript || ""); }}
+                  className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                >
+                  <Copy size={11} />
+                  התחל מתמלול טום
+                </button>
+              )}
+            </div>
+          </div>
+          <textarea
+            value={script}
+            onChange={e => handleScriptChange(e.target.value)}
+            placeholder="כתוב את הסקריפט כאן...&#10;&#10;טיפ: לחץ &quot;Claude Copywriter&quot; ליצירת סקריפט אוטומטי מתמלול טום"
+            className="flex-1 p-4 text-[13px] leading-relaxed resize-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none font-sans"
+            dir="rtl"
+          />
+        </div>
       </div>
     </div>
   );
