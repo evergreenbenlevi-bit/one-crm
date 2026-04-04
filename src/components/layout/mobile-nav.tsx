@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal, CheckSquare, FolderKanban, Target, Brain
+  LayoutDashboard, Users, Briefcase, CalendarDays, MoreHorizontal, CheckSquare, FolderKanban, Target, Brain, GraduationCap
 } from "lucide-react";
 import type { UserRole } from "@/lib/rbac";
 
@@ -22,10 +22,14 @@ const teamNavItems = [
   { href: "/tasks", label: "משימות", icon: CheckSquare },
 ];
 
+const courseEditorNavItems = [
+  { href: "/course-builder", label: "סילבוס", icon: GraduationCap },
+];
+
 export function MobileNav({ role = "admin" }: { role?: UserRole }) {
   const pathname = usePathname();
 
-  const visibleItems = role === "admin" ? adminNavItems : teamNavItems;
+  const visibleItems = role === "course_editor" ? courseEditorNavItems : role === "admin" ? adminNavItems : teamNavItems;
 
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50">

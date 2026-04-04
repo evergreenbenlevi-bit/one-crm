@@ -27,32 +27,32 @@ const routePrefetchMap: Record<string, string> = {
 };
 
 const navItems = [
-  { href: "/", label: "דשבורד", icon: LayoutDashboard, adminOnly: false },
-  { href: "/projects", label: "פרויקטים", icon: FolderKanban, adminOnly: false },
-  { href: "/tasks", label: "משימות", icon: CheckSquare, adminOnly: false },
-  { href: "/triage", label: "Triage", icon: Layers, adminOnly: false },
-  { href: "/dump", label: "Brain Dump", icon: Brain, adminOnly: false },
-  { href: "/calendar", label: "לוח שנה", icon: Calendar, adminOnly: true },
-  { href: "/leads", label: "לידים", icon: Users, adminOnly: true },
-  { href: "/customers", label: "לקוחות", icon: Briefcase, adminOnly: true },
-  { href: "/financial", label: "פיננסי", icon: DollarSign, adminOnly: true },
-  { href: "/applications", label: "בקשות", icon: FileText, adminOnly: true },
-  { href: "/campaigns", label: "קמפיינים", icon: BarChart3, adminOnly: true },
-  { href: "/content", label: "תוכן", icon: TrendingUp, adminOnly: true },
-  { href: "/content/calendar", label: "לוח תוכן", icon: CalendarDays, adminOnly: true },
-  { href: "/news", label: "חדשות AI", icon: Newspaper, adminOnly: true },
-  { href: "/meetings", label: "פגישות", icon: Calendar, adminOnly: true },
-  { href: "/goals", label: "יעדים", icon: Target, adminOnly: true },
-  { href: "/course-builder", label: "Course Builder", icon: GraduationCap, adminOnly: true },
-  { href: "/research", label: "מחקרים", icon: FlaskConical, adminOnly: true },
-  { href: "/settings", label: "הגדרות", icon: Settings, adminOnly: true },
+  { href: "/", label: "דשבורד", icon: LayoutDashboard, roles: ["admin", "user"] },
+  { href: "/projects", label: "פרויקטים", icon: FolderKanban, roles: ["admin", "user"] },
+  { href: "/tasks", label: "משימות", icon: CheckSquare, roles: ["admin", "user"] },
+  { href: "/triage", label: "Triage", icon: Layers, roles: ["admin", "user"] },
+  { href: "/dump", label: "Brain Dump", icon: Brain, roles: ["admin", "user"] },
+  { href: "/calendar", label: "לוח שנה", icon: Calendar, roles: ["admin"] },
+  { href: "/leads", label: "לידים", icon: Users, roles: ["admin"] },
+  { href: "/customers", label: "לקוחות", icon: Briefcase, roles: ["admin"] },
+  { href: "/financial", label: "פיננסי", icon: DollarSign, roles: ["admin"] },
+  { href: "/applications", label: "בקשות", icon: FileText, roles: ["admin"] },
+  { href: "/campaigns", label: "קמפיינים", icon: BarChart3, roles: ["admin"] },
+  { href: "/content", label: "תוכן", icon: TrendingUp, roles: ["admin"] },
+  { href: "/content/calendar", label: "לוח תוכן", icon: CalendarDays, roles: ["admin"] },
+  { href: "/news", label: "חדשות AI", icon: Newspaper, roles: ["admin"] },
+  { href: "/meetings", label: "פגישות", icon: Calendar, roles: ["admin"] },
+  { href: "/goals", label: "יעדים", icon: Target, roles: ["admin"] },
+  { href: "/course-builder", label: "Course Builder", icon: GraduationCap, roles: ["admin", "course_editor"] },
+  { href: "/research", label: "מחקרים", icon: FlaskConical, roles: ["admin"] },
+  { href: "/settings", label: "הגדרות", icon: Settings, roles: ["admin"] },
 ];
 
 export function Sidebar({ role = "admin", userEmail }: { role?: UserRole; userEmail?: string | null }) {
   const pathname = usePathname();
 
   const visibleItems = navItems.filter(
-    (item) => !item.adminOnly || role === "admin"
+    (item) => item.roles.includes(role)
   );
 
   async function handleLogout() {

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type UserRole = "admin" | "user";
+export type UserRole = "admin" | "course_editor" | "user";
 
 // Routes only admin can access
 export const ADMIN_ONLY_ROUTES = ["/settings", "/goals", "/content", "/research"];
