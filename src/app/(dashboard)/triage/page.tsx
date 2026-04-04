@@ -156,6 +156,7 @@ function TriageCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState<"ben" | "date-only">("date-only");
   const [saving, setSaving] = useState(false);
   const [dueDate, setDueDate] = useState(task.due_date || "");
   const [dueTime, setDueTime] = useState("");
@@ -183,6 +184,7 @@ function TriageCard({
   useEffect(() => {
     setExpanded(false);
     setShowDatePicker(false);
+    setDatePickerMode("date-only");
     setSaving(false);
     setDueDate(task.due_date || "");
     setDueTime("");
@@ -204,6 +206,7 @@ function TriageCard({
     setSaving(true);
     try {
       if (action === "ben" && !showDatePicker) {
+        setDatePickerMode("ben");
         setShowDatePicker(true);
         setSaving(false);
         return;
@@ -214,10 +217,15 @@ function TriageCard({
     }
   }
 
-  async function handleBenConfirm() {
+  async function handleDateConfirm() {
     setSaving(true);
     try {
-      await onAction("ben", { due_date: dueDate, due_time: dueTime });
+      if (datePickerMode === "ben") {
+        await onAction("ben", { due_date: dueDate, due_time: dueTime });
+      } else {
+        // Date-only — just update the due_date without changing owner
+        await onUpdate({ due_date: dueDate || null } as Partial<Task>);
+      }
     } finally {
       setSaving(false);
       setShowDatePicker(false);
@@ -332,6 +340,16 @@ function TriageCard({
             <span className="text-[11px] font-mono text-white/30 tabular-nums">
               {index + 1}/{total}
             </span>
+            <button
+              onClick={() => { setShowDatePicker(d => !d); setExpanded(false); }}
+              className={clsx(
+                "p-1.5 rounded-lg transition-colors",
+                showDatePicker ? "bg-brand-500/15 text-brand-400" : "hover:bg-white/[0.06] text-white/40"
+              )}
+              title="תאריך"
+            >
+              <Calendar size={13} />
+            </button>
             <button
               onClick={() => setExpanded(!expanded)}
               className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
@@ -453,7 +471,9 @@ function TriageCard({
               className="overflow-hidden"
             >
               <div className="px-6 pb-5 pt-2 border-t border-white/[0.06]">
-                <p className="text-xs text-white/40 mb-3 text-right font-medium">מתי אתה עושה את זה?</p>
+                <p className="text-xs text-white/40 mb-3 text-right font-medium">
+                  {datePickerMode === "ben" ? "מתי אתה עושה את זה?" : "הגדר תאריך"}
+                </p>
                 <div className="flex gap-2 mb-3">
                   <div className="flex-1">
                     <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
@@ -494,7 +514,7 @@ function TriageCard({
                     ביטול
                   </button>
                   <button
-                    onClick={handleBenConfirm}
+                    onClick={handleDateConfirm}
                     disabled={saving}
                     className="flex-1 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold transition-all disabled:opacity-50 shadow-lg shadow-brand-600/20"
                   >
