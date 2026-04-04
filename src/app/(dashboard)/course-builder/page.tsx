@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   GripVertical, Plus, Trash2, Eye, EyeOff, ChevronDown, ChevronRight,
-  Check, X, Edit3, Save, Film, FileText, Image, Upload, BookOpen
+  Check, X, Edit3, Save, Film, FileText, Image, Upload, BookOpen, BookMarked, MessageSquare
 } from "lucide-react";
 
 // ─── Types ───
@@ -47,6 +47,10 @@ interface CourseModule {
   video_url: string | null;
   position: number;
   visible: boolean;
+  tom_transcript: string | null;
+  tom_file_paths: string[] | null;
+  tom_notes: string | null;
+  decision_reason: string | null;
 }
 
 type SourceFilter = "all" | "tom" | "tom_modified" | "original" | "removed";
@@ -342,7 +346,9 @@ function ModuleRow({
   const [editDescription, setEditDescription] = useState(mod.description || "");
   const [editScript, setEditScript] = useState(mod.script || "");
   const [editBenefit, setEditBenefit] = useState(mod.client_benefit || "");
+  const [editDecisionReason, setEditDecisionReason] = useState(mod.decision_reason || "");
   const [showScript, setShowScript] = useState(false);
+  const [showTomTranscript, setShowTomTranscript] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const src = SOURCE_LABELS[mod.source];
@@ -354,6 +360,7 @@ function ModuleRow({
       description: editDescription || null,
       script: editScript || null,
       client_benefit: editBenefit || null,
+      decision_reason: editDecisionReason || null,
     });
     onStopEdit();
   };
@@ -406,6 +413,13 @@ function ModuleRow({
                 rows={2}
               />
               <textarea
+                value={editDecisionReason}
+                onChange={e => setEditDecisionReason(e.target.value)}
+                placeholder="למה נכנס / לא נכנס / בשינוי..."
+                className="w-full px-2 py-1 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 border-amber-300"
+                rows={2}
+              />
+              <textarea
                 value={editScript}
                 onChange={e => setEditScript(e.target.value)}
                 placeholder="Script..."
@@ -442,19 +456,61 @@ function ModuleRow({
                 <p className="text-[10px] text-gray-400 mt-0.5">{mod.format}</p>
               )}
 
-              {/* Script preview toggle */}
-              {mod.script && (
-                <button
-                  onClick={() => setShowScript(!showScript)}
-                  className="text-[10px] text-brand-500 hover:text-brand-600 mt-1"
-                >
-                  {showScript ? "הסתר script" : "הצג script"}
-                </button>
+              {/* Decision reason */}
+              {mod.decision_reason && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                  <MessageSquare size={12} />
+                  {mod.decision_reason}
+                </p>
               )}
+
+              {/* Action buttons row */}
+              <div className="flex items-center gap-3 mt-1">
+                {mod.script && (
+                  <button
+                    onClick={() => setShowScript(!showScript)}
+                    className="text-[10px] text-brand-500 hover:text-brand-600 flex items-center gap-1"
+                  >
+                    <FileText size={12} />
+                    {showScript ? "הסתר script" : "הצג script"}
+                  </button>
+                )}
+                {mod.tom_transcript && (
+                  <button
+                    onClick={() => setShowTomTranscript(!showTomTranscript)}
+                    className="text-[10px] text-blue-500 hover:text-blue-600 flex items-center gap-1"
+                  >
+                    <BookMarked size={12} />
+                    {showTomTranscript ? "הסתר מה טום אומר" : `מה טום אומר (${mod.tom_file_paths?.length || 0} מקורות)`}
+                  </button>
+                )}
+              </div>
+
               {showScript && mod.script && (
                 <pre className="mt-1 p-2 bg-gray-50 dark:bg-gray-900 rounded text-[11px] whitespace-pre-wrap max-h-40 overflow-auto">
                   {mod.script}
                 </pre>
+              )}
+
+              {/* Tom's transcript panel */}
+              {showTomTranscript && mod.tom_transcript && (
+                <div className="mt-2 border border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
+                  <div className="bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 flex items-center justify-between">
+                    <span className="text-[11px] font-medium text-blue-700 dark:text-blue-300">
+                      📘 מה טום מלמד ({mod.tom_file_paths?.length || 0} שיעורים מקוריים)
+                    </span>
+                    {mod.tom_file_paths && mod.tom_file_paths.length > 0 && (
+                      <span className="text-[9px] text-blue-400">
+                        {mod.tom_file_paths.map(p => p.split("/").pop()?.replace(".md", "")).join(" · ")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-3 bg-white dark:bg-gray-900 max-h-96 overflow-auto">
+                    <pre className="text-[11px] whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {mod.tom_transcript}
+                    </pre>
+                  </div>
+                </div>
               )}
             </>
           )}
