@@ -518,7 +518,7 @@ export default function TriagePage() {
   const [showFilters, setShowFilters] = useState(false);
 
   // Filter tasks
-  const openTasks = tasks.filter(t => t.status !== "done");
+  const openTasks = tasks.filter(t => t.status !== "done" && t.status !== "archived" && t.status !== "someday");
   const now = new Date();
 
   const filtered = openTasks.filter(t => {
