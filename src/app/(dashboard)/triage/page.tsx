@@ -126,7 +126,7 @@ function SegmentedControl<T extends string>({
 const impactSegmentColors: Record<TaskImpact, { active: string; ring: string }> = {
   needle_mover: { active: "bg-red-500/20 text-red-300 ring-1 ring-red-500/30", ring: "ring-red-500" },
   important: { active: "bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30", ring: "ring-amber-500" },
-  nice: { active: "bg-white/10 text-white/70 ring-1 ring-white/20", ring: "ring-white/40" },
+  nice: { active: "bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/25", ring: "ring-sky-500/40" },
 };
 
 const sizeSegmentColors: Record<TaskSize, { active: string; ring: string }> = {
@@ -187,6 +187,18 @@ function TriageCard({
     function onToggle() { setExpanded(e => !e); }
     document.addEventListener("triage-toggle-expand", onToggle);
     return () => document.removeEventListener("triage-toggle-expand", onToggle);
+  }, []);
+
+  // Mobile "אני" button → open date picker inside card
+  useEffect(() => {
+    function onOpenDatePicker(e: Event) {
+      const mode = (e as CustomEvent).detail?.mode || "ben";
+      setDatePickerMode(mode);
+      setShowDatePicker(true);
+      setExpanded(false);
+    }
+    document.addEventListener("triage-open-datepicker", onOpenDatePicker);
+    return () => document.removeEventListener("triage-open-datepicker", onOpenDatePicker);
   }, []);
 
   useEffect(() => {
@@ -582,8 +594,8 @@ function TriageCard({
               <p className="text-[10px] text-white/25 mb-1.5 text-center font-medium tracking-wider uppercase">חשיבות</p>
               <SegmentedControl
                 options={IMPACT_OPTIONS}
-                value={task.impact}
-                onChange={(val) => { setManualImpact(true); onImpactChange(val); }}
+                value={impact}
+                onChange={(val) => { setImpact(val); setManualImpact(true); onImpactChange(val); }}
                 labels={impactShortLabels}
                 colors={impactSegmentColors}
               />
@@ -1111,13 +1123,14 @@ function CompletionScreen({ stats, onReset, onResetAll }: {
 // ─── Main Page ──────────────────────────────────────────────────────────────
 export default function TriagePage() {
   const { data: tasks = [], mutate } = useSWR<Task[]>("/api/tasks?limit=500", fetcher);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FilterMode>("all");
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "all">("all");
   const [stats, setStats] = useState({ done: 0, skipped: 0, deleted: 0 });
   const [showFilters, setShowFilters] = useState(false);
   const [direction, setDirection] = useState(1);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [historyStack, setHistoryStack] = useState<string[]>([]);
 
   // Filter tasks
   const openTasks = tasks.filter(t => t.status !== "done" && t.status !== "archived" && t.status !== "someday");
@@ -1142,26 +1155,40 @@ export default function TriagePage() {
     return (a.position ?? 0) - (b.position ?? 0);
   });
 
-  const current = sorted[currentIndex];
+  // ID-based tracking: filter out processed tasks, show first unprocessed
+  const unprocessed = sorted.filter(t => !processedIds.has(t.id));
+  const current = unprocessed[0] ?? null;
+  const currentIndex = current ? sorted.findIndex(t => t.id === current.id) : sorted.length;
 
-  function advance(dir = 1) {
+  const markProcessed = useCallback((taskId: string) => {
+    setProcessedIds(prev => new Set([...prev, taskId]));
+  }, []);
+
+  const advance = useCallback((dir = 1) => {
     setDirection(dir);
-    if (currentIndex < sorted.length - 1) {
-      setCurrentIndex(i => i + 1);
-    } else {
-      setCurrentIndex(sorted.length);
+    if (current) {
+      setHistoryStack(prev => [...prev, current.id]);
+      markProcessed(current.id);
     }
-  }
+  }, [current, markProcessed]);
 
-  function goBack() {
-    if (currentIndex > 0) {
-      setDirection(-1);
-      setCurrentIndex(i => i - 1);
-    }
-  }
+  const goBack = useCallback(() => {
+    setDirection(-1);
+    setHistoryStack(prev => {
+      if (prev.length === 0) return prev;
+      const lastId = prev[prev.length - 1];
+      setProcessedIds(ids => {
+        const next = new Set(ids);
+        next.delete(lastId);
+        return next;
+      });
+      return prev.slice(0, -1);
+    });
+  }, []);
 
   const handleAction = useCallback(async (action: QuickAction, extra?: Record<string, unknown>) => {
     if (!current) return;
+    const taskId = current.id;
 
     if (action === "skip") {
       setStats(s => ({ ...s, skipped: s.skipped + 1 }));
@@ -1170,19 +1197,20 @@ export default function TriagePage() {
     }
 
     if (action === "delete") {
-      await fetch(`/api/tasks?id=${current.id}`, { method: "DELETE" });
+      markProcessed(taskId);
+      await fetch(`/api/tasks?id=${taskId}`, { method: "DELETE" });
       setStats(s => ({ ...s, deleted: s.deleted + 1 }));
       setDirection(-1);
       await mutate();
       return;
     }
 
-    // Immediate actions — no batch needed
     if (action === "done") {
+      markProcessed(taskId);
       await fetch("/api/tasks", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: current.id, status: "done" }),
+        body: JSON.stringify({ id: taskId, status: "done" }),
       });
       setStats(s => ({ ...s, done: s.done + 1 }));
       setDirection(1);
@@ -1190,74 +1218,116 @@ export default function TriagePage() {
       return;
     }
 
-    // Queued actions — save Ben's decision, batch processes later
-    const triagePayload: Record<string, unknown> = {
-      id: current.id,
-      triage_action: action,
-      triaged_at: new Date().toISOString(),
-    };
-    if (extra?.due_date) triagePayload.due_date = extra.due_date;
-    if (extra?.due_time) triagePayload.triage_notes = `due_time:${extra.due_time}`;
+    // "claude" — assign to Claude + status up_next
+    if (action === "claude") {
+      markProcessed(taskId);
+      await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, owner: "claude", status: "up_next" }),
+      });
+      setStats(s => ({ ...s, done: s.done + 1 }));
+      setDirection(1);
+      await mutate();
+      return;
+    }
 
+    // "confirm" — mark triaged, status up_next
+    if (action === "confirm") {
+      markProcessed(taskId);
+      await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, status: "up_next" }),
+      });
+      setStats(s => ({ ...s, done: s.done + 1 }));
+      setDirection(1);
+      await mutate();
+      return;
+    }
+
+    // "ben" — assign to Ben with optional due date
+    const benPayload: Record<string, unknown> = {
+      id: taskId,
+      owner: "ben",
+      status: "up_next",
+    };
+    if (extra?.due_date) benPayload.due_date = extra.due_date;
+
+    markProcessed(taskId);
     await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(triagePayload),
+      body: JSON.stringify(benPayload),
     });
     setStats(s => ({ ...s, done: s.done + 1 }));
     setDirection(1);
     await mutate();
-    return;
-  }, [current, mutate]);
+  }, [current, mutate, advance, markProcessed]);
 
   const handleUpdate = useCallback(async (updates: Partial<Task>) => {
     if (!current) return;
+    const taskId = current.id;
     await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: current.id, ...updates }),
+      body: JSON.stringify({ id: taskId, ...updates }),
     });
     setStats(s => ({ ...s, done: s.done + 1 }));
+    markProcessed(taskId);
+    setDirection(1);
     await mutate();
-    advance(1);
-  }, [current, mutate]);
+  }, [current, mutate, markProcessed]);
 
+  // Inline field changes — optimistic update, no refetch, no advance
   const handleImpactChange = useCallback(async (impact: TaskImpact) => {
     if (!current) return;
+    const taskId = current.id;
+    // Optimistic local update — preserve sort order
+    mutate(
+      (prev) => prev?.map(t => t.id === taskId ? { ...t, impact } : t),
+      { revalidate: false }
+    );
     await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: current.id, impact }),
+      body: JSON.stringify({ id: taskId, impact }),
     });
-    mutate();
   }, [current, mutate]);
 
   const handleSizeChange = useCallback(async (size: TaskSize) => {
     if (!current) return;
+    const taskId = current.id;
+    mutate(
+      (prev) => prev?.map(t => t.id === taskId ? { ...t, size } : t),
+      { revalidate: false }
+    );
     await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: current.id, size }),
+      body: JSON.stringify({ id: taskId, size }),
     });
-    mutate();
   }, [current, mutate]);
 
   const handleDurationChange = useCallback(async (estimated_minutes: EstimatedMinutes) => {
     if (!current) return;
+    const taskId = current.id;
+    mutate(
+      (prev) => prev?.map(t => t.id === taskId ? { ...t, estimated_minutes } : t),
+      { revalidate: false }
+    );
     await fetch("/api/tasks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: current.id, estimated_minutes }),
+      body: JSON.stringify({ id: taskId, estimated_minutes }),
     });
-    mutate();
   }, [current, mutate]);
 
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-      const isComplete = !current || currentIndex >= sorted.length;
-      if (isComplete) return;
+      if (!current) return;
 
       switch (e.key) {
         case "1": handleAction("claude"); break;
@@ -1268,7 +1338,6 @@ export default function TriagePage() {
         case "6": handleAction("skip"); break;
         case "e":
         case "E":
-          // Toggle expand handled by card internally — dispatch custom event
           document.dispatchEvent(new CustomEvent("triage-toggle-expand"));
           break;
         case "?":
@@ -1281,16 +1350,18 @@ export default function TriagePage() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleAction, current, currentIndex, sorted.length]);
+  }, [handleAction, current, goBack]);
 
-  // Reset index when filter changes
+  // Reset when filter changes
   useEffect(() => {
-    setCurrentIndex(0);
+    setProcessedIds(new Set());
+    setHistoryStack([]);
     setStats({ done: 0, skipped: 0, deleted: 0 });
   }, [filter, categoryFilter]);
 
-  const isComplete = !current || currentIndex >= sorted.length;
-  const progress = sorted.length > 0 ? currentIndex / sorted.length : 0;
+  const isComplete = !current;
+  const totalForSession = processedIds.size + unprocessed.length;
+  const progress = totalForSession > 0 ? processedIds.size / totalForSession : 0;
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden">
@@ -1302,19 +1373,19 @@ export default function TriagePage() {
       <div className="relative z-10 px-4 pt-4 pb-2 md:px-8 md:pt-6 max-w-2xl mx-auto w-full">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <ProgressRing current={currentIndex} total={sorted.length} />
+            <ProgressRing current={processedIds.size} total={totalForSession} />
             <div>
               <h1 className="text-lg font-bold text-white tracking-tight">טריאז׳</h1>
               <p className="text-[11px] text-white/30 mt-0.5 tabular-nums">
                 {sorted.length} משימות
-                {currentIndex > 0 && <span className="text-white/20"> · {sorted.length - currentIndex} נותרו</span>}
+                {processedIds.size > 0 && <span className="text-white/20"> · {unprocessed.length} נותרו</span>}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
             {/* Back button */}
-            {currentIndex > 0 && (
+            {historyStack.length > 0 && (
               <button
                 onClick={goBack}
                 className="p-2 rounded-xl text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all"
@@ -1440,7 +1511,7 @@ export default function TriagePage() {
           </div>
         )}
 
-        <StatsStrip total={sorted.length - currentIndex} done={stats.done} skipped={stats.skipped} deleted={stats.deleted} />
+        <StatsStrip total={unprocessed.length} done={stats.done} skipped={stats.skipped} deleted={stats.deleted} />
       </div>
 
       {/* Card area */}
@@ -1449,15 +1520,15 @@ export default function TriagePage() {
           {isComplete ? (
             <CompletionScreen
               stats={stats}
-              onReset={() => { setCurrentIndex(0); setStats({ done: 0, skipped: 0, deleted: 0 }); }}
-              onResetAll={() => { setFilter("all"); setCategoryFilter("all"); setCurrentIndex(0); setStats({ done: 0, skipped: 0, deleted: 0 }); }}
+              onReset={() => { setProcessedIds(new Set()); setHistoryStack([]); setStats({ done: 0, skipped: 0, deleted: 0 }); }}
+              onResetAll={() => { setFilter("all"); setCategoryFilter("all"); setProcessedIds(new Set()); setHistoryStack([]); setStats({ done: 0, skipped: 0, deleted: 0 }); }}
             />
           ) : current ? (
             <TriageCard
               key={current.id}
               task={current}
-              index={currentIndex}
-              total={sorted.length}
+              index={processedIds.size}
+              total={totalForSession}
               onAction={handleAction}
               onUpdate={handleUpdate}
               onNext={() => advance(1)}
@@ -1476,8 +1547,8 @@ export default function TriagePage() {
           <ActionButtons onAction={(action) => {
             if (!current) return;
             if (action === "ben") {
-              // Trigger date picker inside card — we handle via direct action
-              handleAction(action);
+              // Trigger date picker inside card via custom event
+              document.dispatchEvent(new CustomEvent("triage-open-datepicker", { detail: { mode: "ben" } }));
               return;
             }
             handleAction(action);
