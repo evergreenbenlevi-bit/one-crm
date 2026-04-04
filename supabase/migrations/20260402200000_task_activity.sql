@@ -28,7 +28,11 @@ CREATE INDEX IF NOT EXISTS idx_task_activity_type ON task_activity(activity_type
 -- RLS policies
 ALTER TABLE task_activity ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access on task_activity"
-  ON task_activity FOR ALL
-  USING (true)
-  WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role full access on task_activity') THEN
+    CREATE POLICY "Service role full access on task_activity"
+      ON task_activity FOR ALL
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END $$;

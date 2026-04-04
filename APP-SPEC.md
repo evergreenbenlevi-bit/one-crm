@@ -1,6 +1,6 @@
 # ONE-CRM — App Specification
 
-> Version: 1.0 | Last updated: 2026-04-01
+> Version: 1.2 | Last updated: 2026-04-04
 > Stack: Next.js 14 App Router · Supabase (Frankfurt) · Vercel · Tailwind CSS · TypeScript
 
 ---
@@ -11,7 +11,7 @@
 |-----|------|---------|----------------|
 | `/` | `(dashboard)/page.tsx` | Main dashboard — overview, BIG3, stats | `Big3Today`, `StatCard` |
 | `/leads` | `(dashboard)/leads/` | Lead pipeline — kanban + table views | `LeadsKanban`, `LeadsTable`, `LeadDetail`, `LeadEditModal` |
-| `/triage` | `(dashboard)/triage/page.tsx` | Task triage — card-by-card decision UI (mobile+desktop). Quick actions: Claude/Ben/Done/Delete/Skip. Inline date picker for Ben tasks. Expand to edit all fields. Filters: untriaged/overdue/owner/category. | `TriageCard`, `StatsStrip`, filters, `AnimatePresence` |
+| `/triage` | `(dashboard)/triage/page.tsx` | Task triage — card-by-card decision UI (mobile+desktop). Quick actions: Claude/Ben/Done/Delete/Skip. Inline date picker with quick buttons (היום/מחר/השבוע/ראשון) + energy-based time suggestions. Duration picker (5-120 min) replaces size. Impact labels: קריטי/חשוב/נחמד. Breakdown warning for 120+ min. Calendar queue integration. Filters: untriaged/overdue/owner/category. | `TriageCard`, `StatsStrip`, filters, `AnimatePresence` |
 | `/tasks` | `(dashboard)/tasks/` | Task management — kanban board | `TaskKanban`, `TaskEditModal`, `TaskAddModal` |
 | `/customers` | `(dashboard)/customers/` | Customer profiles, payments, program tracking | `CustomerTabs`, `CustomerEditModal`, `Timeline` |
 | `/meetings` | `(dashboard)/meetings/` | Meeting scheduler + history | meetings components |
@@ -26,6 +26,7 @@
 | `/news` | `(dashboard)/news/` | AI-curated news feed | news components |
 | `/settings` | `(dashboard)/settings/` | App settings | settings components |
 | `/dump` | `(dashboard)/dump/page.tsx` | Brain Dump — free-text thought dump, Claude classifies to task/idea/reminder/note, routes to CRM or Vault | textarea, results list, history |
+| `/course-builder` | `(dashboard)/course-builder/page.tsx` | ONE™ Course Builder — all 77 modules across 10 levels. Inline edit, checklist per module, source tags (tom/modified/original/removed), status tracking, add/delete/hide modules, filters. For Ben + Avitar course production. | `CourseBuilderPage`, `ModuleRow` |
 | `/more` | `(dashboard)/more/` | Mobile overflow nav (links to hidden pages) | nav list |
 | `/login` | `app/login/` | Auth page | login form |
 
@@ -38,11 +39,14 @@
 id: string
 title: string
 description: string | null
-priority: "p1" | "p2" | "p3"
-status: "backlog" | "todo" | "in_progress" | "waiting_ben" | "done"
+priority: "p1" | "p2" | "p3"  // deprecated — use impact instead
+status: "inbox" | "up_next" | "scheduled" | "in_progress" | "waiting" | "waiting_ben" | "done" | "someday" | "archived" | "backlog" | "todo"
 owner: "claude" | "ben" | "both" | "avitar"
 category: "one_tm" | "self" | "brand" | "temp" | "research" | "infrastructure" | "personal"
-layer: "needle_mover" | "project" | "quick_win" | "wishlist" | "nice_to_have" | "deleted" | null
+impact: "needle_mover" | "important" | "nice"  // strategic importance (display: קריטי/חשוב/נחמד)
+size: "quick" | "medium" | "big"  // effort estimate (legacy — use estimated_minutes)
+estimated_minutes: 5 | 15 | 30 | 45 | 60 | 90 | 120 | null  // precise duration for scheduling
+layer: "needle_mover" | "project" | "quick_win" | "wishlist" | "nice_to_have" | "deleted" | null  // deprecated — use impact+size
 due_date: string | null  // YYYY-MM-DD
 tags: string[]
 depends_on: string | null  // task id
@@ -99,6 +103,25 @@ created_at: string
 updated_at: string
 ```
 
+### Calendar Queue
+```ts
+id: string                    // uuid
+task_id: string | null        // FK → tasks.id
+title: string                 // Event title
+date: string                  // YYYY-MM-DD
+start_time: string | null     // HH:MM (24h), null = auto-schedule by energy
+duration_minutes: number      // default 30
+status: "pending" | "created" | "failed" | "cancelled"
+calendar_event_id: string | null  // Google Calendar event ID once created
+error_message: string | null
+attendee_email: string | null     // Resolved email for invite
+travel_minutes: number | null     // Separate travel time
+is_travel_block: boolean          // true = this entry is a travel block
+event_type: "task" | "travel" | "meeting"
+created_at: string
+processed_at: string | null
+```
+
 ---
 
 ## API Routes
@@ -112,13 +135,18 @@ updated_at: string
 | DELETE | `/api/tasks?id=` | Delete task |
 | POST | `/api/tasks/bulk` | Bulk create/update tasks |
 | POST | `/api/tasks/[id]/complete` | Mark task done (handles recurring re-schedule) |
+| POST | `/api/tasks/schedule` | Schedule task: set date+duration+status, create calendar_queue entry |
 | GET/POST | `/api/tasks/[id]/reminders` | Manage task reminders |
 
 ### Triage
 | Method | Route | Purpose |
 |--------|-------|---------|
-| PATCH | `/api/triage` | Batch update task layers — body: `{ updates: [{id, layer}] }` |
+| PATCH | `/api/triage` | Batch update triage fields — body: `{ updates: [{id, layer?, impact?, size?, status?}] }` |
 | POST | `/api/triage/parse` | AI brain dump → layer assignments — body: `{ text, tasks }` |
+| POST | `/api/triage/nlp-parse` | NLP free-text → task fields (Haiku) — body: `{ text, task_title?, task_description? }` — returns `{ parsed: {due_date, due_time, estimated_minutes, impact, size, owner, category, summary, calendar_event, invite_person, travel_minutes} }` |
+| POST | `/api/triage/transcribe` | Audio → text via Whisper API — body: FormData with `audio` file — returns `{ text }` |
+| POST | `/api/triage/calendar-create` | Create calendar queue entries — body: `{ task_id, title, date, start_time?, duration_minutes?, travel_minutes?, invite_person?, impact?, category? }`. Handles: travel blocks (2 entries), attendee resolution, smart scheduling via energy windows. Returns `{ entries, suggested_slots?, attendee_resolved? }` |
+| POST | `/api/triage/suggest-slots` | Energy-optimal time slots — body: `{ date, duration_minutes?, impact?, category? }` — returns `{ slots: [{start, end, label, energyLevel}] }` |
 
 ### Leads
 | Method | Route | Purpose |
@@ -136,6 +164,14 @@ updated_at: string
 | GET | `/api/customers` | List customers |
 | POST | `/api/customers` | Create customer |
 | GET/PATCH/DELETE | `/api/customers/[id]` | Get / update / delete customer |
+
+### Sessions (Claude session sync)
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/sessions` | List sessions — filter by `?status=active\|stale\|closed` |
+| POST | `/api/sessions` | Check in — body: `{ session_name, task_id?, metadata? }`. Returns 409 on collision |
+| PATCH | `/api/sessions` | Heartbeat/update — body: `{ id, task_id?, metadata?, status? }` |
+| DELETE | `/api/sessions?id=` | Check out (close session) |
 
 ### Other
 | Method | Route | Purpose |
@@ -210,6 +246,31 @@ updated_at: string
 - `components/ui/tabs.tsx` — Reusable tab component
 - `components/ui/theme-toggle.tsx` — Dark/light mode toggle
 - `components/theme-provider.tsx` — next-themes provider
+
+---
+
+## Flexible Triage Input System
+
+Multiple input methods for triaging tasks — all converge to the same task fields:
+
+| Input Method | How | Endpoint |
+|---|---|---|
+| **Buttons** | Click impact/duration/owner in triage UI | Direct PATCH |
+| **Text** | Type free Hebrew in QuickTextInput on triage card | `/api/triage/nlp-parse` |
+| **Voice** | Record audio via mic button → Whisper → NLP parse | `/api/triage/transcribe` → `/api/triage/nlp-parse` |
+| **Telegram** | Send message to Ruti bot (@RutiBot) | Direct Supabase insert |
+
+**Evening Triage PDF** (21:00 daily):
+- Fetches all inbox/untriaged tasks → generates dark-mode PDF → sends to Telegram
+- Ben replies with numbered responses ("1. מחר 30 דק / 2. done") → Ruti bot updates CRM
+- LaunchAgent: `com.ben.claude.triage-summary`
+- Script: `~/.claude/scripts/triage-summary.sh`
+
+**Ruti Telegram Bot**:
+- Python daemon at `~/.config/telegram-bots/ruti/bot.py`
+- LaunchAgent: `com.ben.bot2.ruti`
+- Creates inbox tasks from messages with NLP pre-parse
+- Processes triage PDF responses
 
 ---
 

@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Briefcase, DollarSign,
   BarChart3, Calendar, Target, Settings, LogOut,
   FileText, TrendingUp, CheckSquare, FolderKanban, FlaskConical,
-  Newspaper, CalendarDays, Layers, Brain
+  Newspaper, CalendarDays, Layers, Brain, GraduationCap
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { GlobalSearch } from "@/components/layout/global-search";
@@ -43,6 +43,7 @@ const navItems = [
   { href: "/news", label: "חדשות AI", icon: Newspaper, adminOnly: true },
   { href: "/meetings", label: "פגישות", icon: Calendar, adminOnly: true },
   { href: "/goals", label: "יעדים", icon: Target, adminOnly: true },
+  { href: "/course-builder", label: "Course Builder", icon: GraduationCap, adminOnly: true },
   { href: "/research", label: "מחקרים", icon: FlaskConical, adminOnly: true },
   { href: "/settings", label: "הגדרות", icon: Settings, adminOnly: true },
 ];
