@@ -39,24 +39,24 @@ export function CostOverviewChart({ data }: Props) {
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={dailyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
           <XAxis
             dataKey="date"
-            stroke="#6b7280"
+            stroke="#64748B"
             fontSize={12}
             tickFormatter={(v: string) => v.slice(5)}
           />
           <YAxis
-            stroke="#6b7280"
+            stroke="#64748B"
             fontSize={12}
             tickFormatter={(v: number) => `$${v}`}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#1f2937",
-              border: "1px solid #374151",
+              backgroundColor: "#161B27",
+              border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: 12,
-              color: "#fff",
+              color: "#F1F5F9",
               fontSize: 13,
             }}
             formatter={(value) => [`$${Number(value || 0).toFixed(2)}`, "עלות"]}
@@ -65,10 +65,10 @@ export function CostOverviewChart({ data }: Props) {
           <Line
             type="monotone"
             dataKey="cost"
-            stroke="#3b82f6"
+            stroke="#00D4FF"
             strokeWidth={2}
-            dot={{ fill: "#3b82f6", r: 3 }}
-            activeDot={{ r: 5 }}
+            dot={{ fill: "#00D4FF", r: 3 }}
+            activeDot={{ r: 5, fill: "#00D4FF" }}
           />
         </LineChart>
       </ResponsiveContainer>

@@ -1,0 +1,166 @@
+/* NEXUS Design System — Agent Command Center V2 */
+
+:root {
+  --nexus-bg-base: #0D0F14;
+  --nexus-bg-card: #161B27;
+  --nexus-bg-elevated: #1E2433;
+  --nexus-border: rgba(255, 255, 255, 0.08);
+  --nexus-border-hover: rgba(255, 255, 255, 0.15);
+  --nexus-accent: #00D4FF;
+  --nexus-accent-glow: rgba(0, 212, 255, 0.15);
+  --nexus-accent-dim: rgba(0, 212, 255, 0.4);
+  --nexus-ok: #22C55E;
+  --nexus-ok-glow: rgba(34, 197, 94, 0.15);
+  --nexus-warn: #F59E0B;
+  --nexus-warn-glow: rgba(245, 158, 11, 0.15);
+  --nexus-err: #EF4444;
+  --nexus-err-glow: rgba(239, 68, 68, 0.15);
+  --nexus-idle: #4B5563;
+  --nexus-text-1: #F1F5F9;
+  --nexus-text-2: #94A3B8;
+  --nexus-text-3: #64748B;
+  --nexus-font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Glassmorphism card */
+.nexus-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--nexus-border);
+  border-radius: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.nexus-card:hover {
+  border-color: var(--nexus-border-hover);
+}
+
+.nexus-card-glow {
+  box-shadow: 0 0 20px var(--nexus-accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Animated dot grid background */
+.nexus-grid-bg {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Pulsing status dot */
+@keyframes nexus-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+
+.nexus-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.nexus-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  animation: nexus-pulse 2s ease-in-out infinite;
+}
+
+.nexus-dot-ok { background: var(--nexus-ok); }
+.nexus-dot-ok::after { background: var(--nexus-ok-glow); }
+
+.nexus-dot-warn { background: var(--nexus-warn); }
+.nexus-dot-warn::after { background: var(--nexus-warn-glow); }
+
+.nexus-dot-err { background: var(--nexus-err); }
+.nexus-dot-err::after { background: var(--nexus-err-glow); }
+
+.nexus-dot-idle { background: var(--nexus-idle); }
+.nexus-dot-idle::after { display: none; }
+
+/* Shimmer loading skeleton */
+@keyframes nexus-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.nexus-skeleton {
+  background: linear-gradient(90deg, var(--nexus-bg-card) 25%, var(--nexus-bg-elevated) 50%, var(--nexus-bg-card) 75%);
+  background-size: 200% 100%;
+  animation: nexus-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* Type badges */
+.nexus-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nexus-badge-team { background: rgba(168, 85, 247, 0.15); color: #C084FC; }
+.nexus-badge-agent { background: rgba(0, 212, 255, 0.15); color: #00D4FF; }
+.nexus-badge-bot { background: rgba(34, 197, 94, 0.15); color: #4ADE80; }
+.nexus-badge-skill { background: rgba(148, 163, 184, 0.15); color: #94A3B8; }
+.nexus-badge-cron { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
+.nexus-badge-advisor { background: rgba(236, 72, 153, 0.15); color: #F472B6; }
+
+/* Metric number */
+.nexus-metric-value {
+  font-family: var(--nexus-font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--nexus-text-1);
+}
+
+.nexus-metric-label {
+  font-size: 12px;
+  color: var(--nexus-text-2);
+  margin-top: 4px;
+}
+
+/* Scrollbar in nexus context */
+.nexus-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nexus-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Tab navigation */
+.nexus-tab {
+  position: relative;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--nexus-text-2);
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.nexus-tab:hover {
+  color: var(--nexus-text-1);
+}
+
+.nexus-tab-active {
+  color: var(--nexus-accent);
+}
+
+.nexus-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--nexus-accent);
+  border-radius: 1px;
+  box-shadow: 0 0 8px var(--nexus-accent-glow);
+}

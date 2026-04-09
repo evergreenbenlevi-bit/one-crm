@@ -2,15 +2,20 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { AgentStatsRow } from "@/components/agents/agent-stats-row";
-import { AgentHealthBadge } from "@/components/agents/agent-health-badge";
-import { RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { motion } from "framer-motion";
+import { RefreshCw, Bot, Heart, AlertTriangle, DollarSign, GitBranch } from "lucide-react";
+import { NexusMetric } from "@/components/agents/ui/nexus-metric";
+import { NexusCardSkeleton } from "@/components/agents/ui/nexus-skeleton";
+import { SystemPulse } from "@/components/agents/overview/system-pulse";
+import { AgentTree } from "@/components/agents/overview/agent-tree";
+import { ActivityFeed } from "@/components/agents/overview/activity-feed";
 import type { AgentRecord, HealthStatus } from "@/lib/types/agents";
+import Link from "next/link";
 
 export default function AgentsOverview() {
   const { data: agents, isLoading } = useSWR<AgentRecord[]>("/api/agents/registry", fetcher);
-  const { data: healthData } = useSWR<Array<{ agent_slug: string; status: HealthStatus }>>("/api/agents/health", fetcher);
+  const { data: healthData } = useSWR<Array<{ agent_slug: string; status: HealthStatus }>>("/api/agents/health", fetcher, { refreshInterval: 15000 });
   const [syncing, setSyncing] = useState(false);
 
   const healthMap: Record<string, string> = {};
@@ -21,9 +26,7 @@ export default function AgentsOverview() {
   async function handleSync() {
     setSyncing(true);
     try {
-      const res = await fetch("/api/agents/sync", { method: "POST" });
-      const data = await res.json();
-      alert(`סונכרן: ${data.agents_synced} agents, ${data.skills_synced} skills, ${data.crons_synced} crons`);
+      await fetch("/api/agents/sync", { method: "POST" });
       window.location.reload();
     } finally {
       setSyncing(false);
@@ -32,95 +35,125 @@ export default function AgentsOverview() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <NexusCardSkeleton key={i} />)}
+        </div>
       </div>
     );
   }
 
-  // Group by type for the grid
-  const byType = (agents || []).reduce<Record<string, AgentRecord[]>>((acc, a) => {
-    (acc[a.type] = acc[a.type] || []).push(a);
-    return acc;
-  }, {});
-
-  const typeOrder = ["team", "agent", "advisor", "bot", "cron", "skill"];
-  const typeNames: Record<string, string> = {
-    team: "צוות ראשי", agent: "אייג׳נטים", advisor: "יועצים",
-    bot: "בוטים", cron: "קרונים", skill: "סקילים"
-  };
+  const total = (agents || []).length;
+  const healthy = Object.values(healthMap).filter((s) => s === "healthy").length;
+  const degraded = Object.values(healthMap).filter((s) => s === "degraded").length;
+  const down = Object.values(healthMap).filter((s) => s === "down").length;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">מרכז שליטה</h1>
+        <div>
+          <motion.h1
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-2xl font-bold"
+            style={{ color: "var(--nexus-text-1)" }}
+          >
+            מרכז שליטה
+          </motion.h1>
+          <p className="text-sm mt-1" style={{ color: "var(--nexus-text-2)" }}>
+            NEXUS — Agent Command Center
+          </p>
+        </div>
         <button
           onClick={handleSync}
           disabled={syncing}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+          style={{
+            background: "var(--nexus-accent-glow)",
+            color: "var(--nexus-accent)",
+            border: "1px solid rgba(0,212,255,0.2)",
+          }}
         >
-          <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+          <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
           סנכרון
         </button>
       </div>
 
-      <AgentStatsRow
-        agents={agents || []}
-        healthMap={healthMap}
-        totalCostToday={0}
-      />
+      {/* Top metrics row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <NexusMetric value={total} label="סה״כ רכיבים" icon={<Bot size={20} />} accentColor="#00D4FF" />
+        <NexusMetric value={healthy} label="תקינים" icon={<Heart size={20} />} accentColor="#22C55E" />
+        <NexusMetric value={down} label="נפלו" icon={<AlertTriangle size={20} />} accentColor="#EF4444" />
+        <NexusMetric value="$0.00" label="עלות היום" icon={<DollarSign size={20} />} accentColor="#F59E0B" />
+      </div>
 
-      {typeOrder.map((type) => {
-        const items = byType[type];
-        if (!items?.length) return null;
+      {/* Bento grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Left: Agent tree */}
+        <div className="lg:col-span-3">
+          <AgentTree agents={agents || []} healthMap={healthMap} />
+        </div>
 
-        return (
-          <div key={type}>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-              {typeNames[type]} ({items.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {items.slice(0, type === "skill" || type === "cron" ? 6 : 20).map((agent) => (
-                <a
-                  key={agent.slug}
-                  href={`/agents/registry/${agent.slug}`}
-                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 hover:border-brand-300 dark:hover:border-brand-600 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm text-gray-900 dark:text-white">{agent.name}</span>
-                    <AgentHealthBadge status={(healthMap[agent.slug] as HealthStatus) || "unknown"} />
-                  </div>
-                  {agent.description && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
-                      {agent.description.slice(0, 100)}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    {agent.model && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                        {agent.model}
-                      </span>
-                    )}
-                    {agent.channel && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
-                        {agent.channel}
-                      </span>
-                    )}
-                  </div>
-                </a>
-              ))}
-              {items.length > (type === "skill" || type === "cron" ? 6 : 20) && (
-                <a
-                  href="/agents/registry"
-                  className="flex items-center justify-center bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 p-3 text-sm text-gray-500 hover:text-brand-600 transition-colors"
-                >
-                  +{items.length - (type === "skill" || type === "cron" ? 6 : 20)} נוספים
-                </a>
-              )}
+        {/* Center: System pulse + mini topology link */}
+        <div className="lg:col-span-6 space-y-4">
+          {/* System pulse card */}
+          <div className="nexus-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold" style={{ color: "var(--nexus-text-2)" }}>
+                בריאות מערכת
+              </h2>
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full"
+                style={{
+                  background: down > 0 ? "var(--nexus-err-glow)" : "var(--nexus-ok-glow)",
+                  color: down > 0 ? "var(--nexus-err)" : "var(--nexus-ok)",
+                  fontFamily: "var(--nexus-font-mono)",
+                }}
+              >
+                {down > 0 ? `${down} DOWN` : "ALL SYSTEMS GO"}
+              </span>
             </div>
+            <SystemPulse total={total} healthy={healthy} degraded={degraded} down={down} />
           </div>
-        );
-      })}
+
+          {/* Topology preview card */}
+          <Link href="/agents/topology">
+            <div className="nexus-card p-4 group cursor-pointer hover:nexus-card-glow transition-all">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: "var(--nexus-accent-glow)" }}
+                  >
+                    <GitBranch size={20} style={{ color: "var(--nexus-accent)" }} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: "var(--nexus-text-1)" }}>
+                      טופולוגיית מערכת
+                    </p>
+                    <p className="text-xs" style={{ color: "var(--nexus-text-3)" }}>
+                      <span style={{ fontFamily: "var(--nexus-font-mono)" }}>{total}</span> nodes ·{" "}
+                      גרף אינטראקטיבי
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className="text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ color: "var(--nexus-accent)" }}
+                >
+                  פתח →
+                </span>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Right: Activity feed */}
+        <div className="lg:col-span-3">
+          <ActivityFeed />
+        </div>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import {
   LayoutGrid, List, GitBranch, DollarSign, Clock, FileText, MessageSquare
 } from "lucide-react";
+import "./nexus-theme.css";
 
 const tabs = [
   { href: "/agents", label: "סקירה", icon: LayoutGrid, exact: true },
@@ -21,32 +22,51 @@ export default function AgentsLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen">
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-20">
-        <div className="flex items-center gap-1 px-4 overflow-x-auto scrollbar-hide">
+    <div
+      className="min-h-screen nexus-grid-bg"
+      style={{ background: "var(--nexus-bg-base)", color: "var(--nexus-text-1)" }}
+    >
+      {/* Navigation bar */}
+      <nav
+        className="sticky top-0 z-20 border-b backdrop-blur-md"
+        style={{
+          background: "rgba(13, 15, 20, 0.8)",
+          borderColor: "var(--nexus-border)",
+        }}
+      >
+        <div className="flex items-center gap-1 px-4 overflow-x-auto nexus-scroll scrollbar-hide">
+          {/* NEXUS brand mark */}
+          <span
+            className="text-xs font-bold tracking-widest mr-4 px-2 py-1 rounded"
+            style={{
+              color: "var(--nexus-accent)",
+              background: "var(--nexus-accent-glow)",
+              fontFamily: "var(--nexus-font-mono)",
+            }}
+          >
+            NEXUS
+          </span>
+
           {tabs.map((tab) => {
             const isActive = tab.exact
               ? pathname === tab.href
-              : pathname.startsWith(tab.href);
+              : pathname.startsWith(tab.href) && !(tab.exact === undefined && pathname === "/agents" && tab.href !== "/agents");
 
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
-                  isActive
-                    ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                )}
+                className={clsx("nexus-tab flex items-center gap-2", isActive && "nexus-tab-active")}
               >
-                <tab.icon size={16} />
+                <tab.icon size={14} />
                 {tab.label}
               </Link>
             );
           })}
         </div>
-      </div>
+      </nav>
+
+      {/* Content */}
       <div className="p-4 md:p-6">{children}</div>
     </div>
   );

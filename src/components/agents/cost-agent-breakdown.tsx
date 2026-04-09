@@ -50,25 +50,25 @@ export function CostAgentBreakdown({ data }: Props) {
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={agentData} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" horizontal={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
           <XAxis
             type="number"
-            stroke="#6b7280"
+            stroke="#64748B"
             fontSize={12}
             tickFormatter={(v: number) => `$${v}`}
           />
           <YAxis
             type="category"
             dataKey="slug"
-            stroke="#6b7280"
+            stroke="#64748B"
             fontSize={11}
             width={75}
             tickFormatter={(v: string) => v.length > 12 ? v.slice(0, 12) + "..." : v}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#1f2937",
-              border: "1px solid #374151",
+              backgroundColor: "#161B27",
+              border: "1px solid rgba(255,255,255,0.05)",
               borderRadius: 12,
               color: "#fff",
               fontSize: 13,
@@ -78,7 +78,7 @@ export function CostAgentBreakdown({ data }: Props) {
               return [`$${v.toFixed(2)}`, "עלות"];
             }}
           />
-          <Bar dataKey="cost" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={20} />
+          <Bar dataKey="cost" fill="#00D4FF" radius={[0, 6, 6, 0]} barSize={20} />
         </BarChart>
       </ResponsiveContainer>
     </div>

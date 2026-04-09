@@ -3,10 +3,17 @@
 import { use } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { AgentHealthBadge } from "@/components/agents/agent-health-badge";
+import { NexusStatusDot } from "@/components/agents/ui/nexus-status-dot";
+import { NexusBadge } from "@/components/agents/ui/nexus-badge";
 import { ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 import Link from "next/link";
-import type { AgentRecord, AgentHealthEvent, HealthStatus } from "@/lib/types/agents";
+import type { AgentRecord, AgentHealthEvent, AgentType, HealthStatus } from "@/lib/types/agents";
+
+const typeAccent: Record<AgentType, string> = {
+  team: "#C084FC", agent: "#00D4FF", bot: "#4ADE80",
+  skill: "#94A3B8", cron: "#FBBF24", advisor: "#F472B6",
+};
 
 export default function AgentDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -16,73 +23,144 @@ export default function AgentDetailPage({ params }: { params: Promise<{ slug: st
   if (!agent) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
+        <div
+          className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: "var(--nexus-accent)", borderTopColor: "transparent" }}
+        />
       </div>
     );
   }
 
+  const accent = typeAccent[agent.type as AgentType] || typeAccent.agent;
+  const currentStatus = (healthHistory?.[0]?.status as HealthStatus) || "unknown";
+
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center gap-2 text-sm text-gray-400">
-        <Link href="/agents/registry" className="hover:text-brand-600">רישום</Link>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-3xl"
+    >
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm" style={{ color: "var(--nexus-text-3)" }}>
+        <Link href="/agents/registry" style={{ color: "var(--nexus-accent)" }} className="hover:underline">
+          רישום
+        </Link>
         <ArrowRight size={14} className="rtl:rotate-180" />
-        <span className="text-gray-900 dark:text-white">{agent.name}</span>
+        <span style={{ color: "var(--nexus-text-1)" }}>{agent.name}</span>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
+      {/* Main card */}
+      <div className="nexus-card p-6">
         <div className="flex items-start justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">{agent.name}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">{agent.slug}</p>
+          <div className="flex items-center gap-4">
+            {/* Large avatar */}
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: `${accent}15` }}
+            >
+              <span
+                className="text-xl font-bold"
+                style={{ color: accent, fontFamily: "var(--nexus-font-mono)" }}
+              >
+                {agent.name.slice(0, 2).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold" style={{ color: "var(--nexus-text-1)" }}>{agent.name}</h1>
+              <p
+                className="text-xs mt-0.5"
+                style={{ color: "var(--nexus-text-3)", fontFamily: "var(--nexus-font-mono)" }}
+              >
+                {agent.slug}
+              </p>
+            </div>
           </div>
-          <AgentHealthBadge status={(healthHistory?.[0]?.status as HealthStatus) || "unknown"} />
+          <NexusStatusDot status={currentStatus} showLabel size="md" />
         </div>
 
         {agent.description && (
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{agent.description}</p>
+          <p className="text-sm mb-4" style={{ color: "var(--nexus-text-2)" }}>{agent.description}</p>
         )}
 
         <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-400">סוג</span>
-            <p className="font-medium text-gray-900 dark:text-white">{agent.type}</p>
-          </div>
-          <div>
-            <span className="text-gray-400">מודל</span>
-            <p className="font-medium text-gray-900 dark:text-white">{agent.model || "—"}</p>
-          </div>
-          <div>
-            <span className="text-gray-400">ערוץ</span>
-            <p className="font-medium text-gray-900 dark:text-white">{agent.channel || "—"}</p>
-          </div>
-          <div>
-            <span className="text-gray-400">אב</span>
-            <p className="font-medium text-gray-900 dark:text-white">
-              {agent.parent_slug ? (
-                <Link href={`/agents/registry/${agent.parent_slug}`} className="text-brand-600 hover:underline">
+          <InfoField label="סוג" value={<NexusBadge type={agent.type as AgentType} />} />
+          <InfoField
+            label="מודל"
+            value={
+              <span style={{ fontFamily: "var(--nexus-font-mono)", color: "var(--nexus-text-1)" }}>
+                {agent.model || "—"}
+              </span>
+            }
+          />
+          <InfoField label="ערוץ" value={agent.channel || "—"} />
+          <InfoField
+            label="אב"
+            value={
+              agent.parent_slug ? (
+                <Link href={`/agents/registry/${agent.parent_slug}`} style={{ color: "var(--nexus-accent)" }} className="hover:underline">
                   {agent.parent_slug}
                 </Link>
-              ) : "—"}
-            </p>
-          </div>
+              ) : "—"
+            }
+          />
           <div className="col-span-2">
-            <span className="text-gray-400">קובץ</span>
-            <p className="font-mono text-xs text-gray-600 dark:text-gray-400 truncate">{agent.file_path || "—"}</p>
+            <InfoField
+              label="קובץ"
+              value={
+                <span style={{ fontFamily: "var(--nexus-font-mono)", fontSize: "11px", color: "var(--nexus-text-3)" }}>
+                  {agent.file_path || "—"}
+                </span>
+              }
+            />
           </div>
         </div>
       </div>
 
+      {/* Health history */}
       {healthHistory && healthHistory.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">היסטוריית בריאות</h2>
-          <div className="space-y-2">
+        <div className="nexus-card p-6">
+          <h2 className="text-base font-semibold mb-4" style={{ color: "var(--nexus-text-1)" }}>
+            היסטוריית בריאות
+          </h2>
+
+          {/* Timeline */}
+          <div className="flex gap-1 mb-4 overflow-x-auto nexus-scroll pb-2">
             {healthHistory.map((h) => (
-              <div key={h.id} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-3">
-                  <AgentHealthBadge status={h.status} />
-                  {h.message && <span className="text-gray-500">{h.message}</span>}
+              <div
+                key={h.id}
+                className="w-2 h-8 rounded-sm shrink-0 transition-all hover:h-10"
+                style={{
+                  background:
+                    h.status === "healthy" ? "var(--nexus-ok)" :
+                    h.status === "degraded" ? "var(--nexus-warn)" :
+                    h.status === "down" ? "var(--nexus-err)" : "var(--nexus-idle)",
+                  opacity: 0.7,
+                }}
+                title={`${h.status} — ${new Date(h.checked_at).toLocaleString("he-IL")}`}
+              />
+            ))}
+          </div>
+
+          {/* List */}
+          <div className="space-y-1">
+            {healthHistory.slice(0, 10).map((h) => (
+              <div
+                key={h.id}
+                className="flex items-center justify-between py-2 border-b"
+                style={{ borderColor: "var(--nexus-border)" }}
+              >
+                <div className="flex items-center gap-2">
+                  <NexusStatusDot status={h.status} showLabel />
+                  {h.message && (
+                    <span className="text-xs" style={{ color: "var(--nexus-text-3)" }}>
+                      {h.message}
+                    </span>
+                  )}
                 </div>
-                <span className="text-xs text-gray-400">
+                <span
+                  className="text-[10px]"
+                  style={{ color: "var(--nexus-text-3)", fontFamily: "var(--nexus-font-mono)" }}
+                >
                   {new Date(h.checked_at).toLocaleString("he-IL")}
                 </span>
               </div>
@@ -90,6 +168,15 @@ export default function AgentDetailPage({ params }: { params: Promise<{ slug: st
           </div>
         </div>
       )}
+    </motion.div>
+  );
+}
+
+function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs mb-1" style={{ color: "var(--nexus-text-3)" }}>{label}</p>
+      <div style={{ color: "var(--nexus-text-1)" }}>{value}</div>
     </div>
   );
 }
