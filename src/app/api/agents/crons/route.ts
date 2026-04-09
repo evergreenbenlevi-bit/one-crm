@@ -26,7 +26,13 @@ export async function GET(request: NextRequest) {
     // launchctl may not be available in server context
   }
 
-  const files = await readdir(LAUNCH_AGENTS_DIR);
+  let files: string[];
+  try {
+    files = await readdir(LAUNCH_AGENTS_DIR);
+  } catch {
+    // Directory doesn't exist (e.g. running on Vercel)
+    return NextResponse.json([]);
+  }
   const plists = files.filter((f) => f.startsWith("com.ben.") && f.endsWith(".plist"));
 
   const crons = [];
