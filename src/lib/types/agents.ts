@@ -91,6 +91,34 @@ export interface CronInfo {
   working_directory?: string;
 }
 
+// Agent runs (execution traces)
+export type RunStatus = "running" | "success" | "error";
+
+export interface AgentRun {
+  id: string;
+  agent_slug: string;
+  trace_id: string;
+  parent_trace_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+  duration_ms: number | null;
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number;
+  status: RunStatus;
+  error_message: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface AgentToolCall {
+  id: string;
+  run_id: string;
+  tool_name: string;
+  success: boolean;
+  duration_ms: number | null;
+  called_at: string;
+}
+
 // Agent with latest health (joined query)
 export interface AgentWithHealth extends AgentRecord {
   latest_status?: HealthStatus;
