@@ -21,5 +21,11 @@ CREATE INDEX IF NOT EXISTS idx_receipts_date ON receipts(receipt_date);
 
 -- RLS
 ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated users full access" ON receipts FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Service role full access" ON receipts FOR ALL USING (auth.role() = 'service_role');
+DO $$ BEGIN
+  CREATE POLICY "Authenticated users full access" ON receipts FOR ALL USING (auth.role() = 'authenticated');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE POLICY "Service role full access" ON receipts FOR ALL USING (auth.role() = 'service_role');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
