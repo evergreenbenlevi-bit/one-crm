@@ -23,7 +23,11 @@ function NexusEdgeComponent({
   data,
 }: EdgeProps) {
   const relation = (data?.relation as EdgeRelation) || "dispatches";
+  const isToxic = !!(data?.toxic);
   const config = edgeConfig[relation] || edgeConfig.dispatches;
+  const strokeColor = isToxic ? "#EF4444" : config.color;
+  const glowOpacity = isToxic ? 0.2 : 0.08;
+  const strokeOpacity = isToxic ? 0.9 : 0.6;
 
   const [edgePath] = getBezierPath({
     sourceX,
@@ -40,9 +44,9 @@ function NexusEdgeComponent({
       <path
         d={edgePath}
         fill="none"
-        stroke={config.color}
-        strokeWidth={6}
-        strokeOpacity={0.08}
+        stroke={strokeColor}
+        strokeWidth={isToxic ? 10 : 6}
+        strokeOpacity={glowOpacity}
         strokeLinecap="round"
       />
 
@@ -51,17 +55,18 @@ function NexusEdgeComponent({
         id={id}
         d={edgePath}
         fill="none"
-        stroke={config.color}
-        strokeWidth={2}
-        strokeOpacity={0.6}
+        stroke={strokeColor}
+        strokeWidth={isToxic ? 3 : 2}
+        strokeOpacity={strokeOpacity}
         strokeDasharray={config.dash}
         strokeLinecap="round"
+        className="cursor-pointer"
       />
 
-      {/* Animated flow particles for dispatches */}
-      {relation === "dispatches" && (
-        <circle r="3" fill={config.color} opacity={0.8}>
-          <animateMotion dur="2s" repeatCount="indefinite" path={edgePath} />
+      {/* Animated flow particles */}
+      {(relation === "dispatches" || isToxic) && (
+        <circle r={isToxic ? 4 : 3} fill={strokeColor} opacity={0.8}>
+          <animateMotion dur={isToxic ? "1s" : "2s"} repeatCount="indefinite" path={edgePath} />
         </circle>
       )}
     </>

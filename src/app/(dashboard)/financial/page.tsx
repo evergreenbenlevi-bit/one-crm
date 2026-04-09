@@ -10,6 +10,7 @@ import { TrendsChartClient } from "@/components/financial/trends-chart-client";
 import { PeriodSelector } from "@/components/financial/period-selector";
 import { PartnerSettlement } from "@/components/financial/partner-settlement";
 import { ExpenseForm } from "@/components/financial/expense-form";
+import { FinancialTabs } from "@/components/financial/financial-tabs";
 
 function getDateRange(period: string): { startDate: string; endDate: string } {
   const now = new Date();
@@ -46,25 +47,8 @@ export default async function FinancialPage({ searchParams }: PageProps) {
     calculateSettlement(periodStartDate, periodEndDate),
   ]);
 
-  return (
+  const overviewContent = (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-brand-100 dark:bg-brand-900/30 rounded-xl flex items-center justify-center">
-            <Banknote size={20} className="text-brand-600 dark:text-brand-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold dark:text-gray-100">דוח פיננסי</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">סקירת הכנסות, הוצאות ורווחיות</p>
-          </div>
-        </div>
-
-        <Suspense fallback={null}>
-          <PeriodSelector />
-        </Suspense>
-      </div>
-
       {/* KPI Cards */}
       <KpiRow
         revenue={financialData.revenue.total}
@@ -100,12 +84,36 @@ export default async function FinancialPage({ searchParams }: PageProps) {
         oneVip={financialData.marketing.oneVip}
       />
 
-      {/* Trends Chart — client component with dynamic import (recharts) */}
+      {/* Trends Chart */}
       <TrendsChartClient
         transactions={trends.transactions}
         expenses={trends.expenses}
         campaigns={trends.campaigns}
       />
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-brand-100 dark:bg-brand-900/30 rounded-xl flex items-center justify-center">
+            <Banknote size={20} className="text-brand-600 dark:text-brand-400" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold dark:text-gray-100">דוח פיננסי</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">סקירת הכנסות, הוצאות ורווחיות</p>
+          </div>
+        </div>
+
+        <Suspense fallback={null}>
+          <PeriodSelector />
+        </Suspense>
+      </div>
+
+      {/* Tabs: Overview / Receipts / Personal */}
+      <FinancialTabs overviewContent={overviewContent} />
     </div>
   );
 }

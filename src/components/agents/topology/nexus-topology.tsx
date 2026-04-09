@@ -15,6 +15,7 @@ import dagre from "@dagrejs/dagre";
 import { NexusNode } from "./nexus-node";
 import { NexusEdge } from "./nexus-edge";
 import { AgentDetailPanel } from "./agent-detail-panel";
+import { TracePanel } from "./trace-panel";
 import type { TopologyData, TopologyNode as TNode, EdgeRelation, AgentType } from "@/lib/types/agents";
 
 import "@xyflow/react/dist/style.css";
@@ -96,6 +97,7 @@ const typeFilters: { type: AgentType; label: string; color: string }[] = [
 
 export function NexusTopology({ data }: { data: TopologyData }) {
   const [selectedAgent, setSelectedAgent] = useState<TNode | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<{ source: string; target: string; relation: EdgeRelation } | null>(null);
   const [hiddenTypes, setHiddenTypes] = useState<Set<AgentType>>(new Set());
 
   const filteredData = useMemo(() => {
@@ -107,20 +109,44 @@ export function NexusTopology({ data }: { data: TopologyData }) {
     };
   }, [data, hiddenTypes]);
 
-  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(
-    () => getLayoutedElements(filteredData),
-    [filteredData]
-  );
+  // Toxic path detection: find nodes that are "down" and highlight their edges
+  const toxicSlugs = useMemo(() => {
+    return new Set(data.nodes.filter((n) => n.status === "down").map((n) => n.id));
+  }, [data]);
+
+  const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => {
+    const result = getLayoutedElements(filteredData);
+    // Mark edges on toxic paths
+    for (const edge of result.edges) {
+      const isToxic = toxicSlugs.has(edge.source) || toxicSlugs.has(edge.target);
+      edge.data = { ...edge.data, toxic: isToxic };
+    }
+    return result;
+  }, [filteredData, toxicSlugs]);
   const [nodes, , onNodesChange] = useNodesState(layoutNodes);
   const [edges, , onEdgesChange] = useEdgesState(layoutEdges);
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
+      setSelectedEdge(null);
       const slug = node.id;
       const agent = data.nodes.find((n) => n.id === slug);
       if (agent) setSelectedAgent(agent);
     },
     [data]
+  );
+
+  const onEdgeClick = useCallback(
+    (_: React.MouseEvent, edge: Edge) => {
+      setSelectedAgent(null);
+      const edgeData = edge.data as { relation?: EdgeRelation };
+      setSelectedEdge({
+        source: edge.source,
+        target: edge.target,
+        relation: edgeData?.relation || "dispatches",
+      });
+    },
+    []
   );
 
   const toggleType = (type: AgentType) => {
@@ -182,6 +208,7 @@ export function NexusTopology({ data }: { data: TopologyData }) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -214,6 +241,9 @@ export function NexusTopology({ data }: { data: TopologyData }) {
 
       {/* Detail panel */}
       <AgentDetailPanel agent={selectedAgent} onClose={() => setSelectedAgent(null)} />
+
+      {/* Trace panel (edge click) */}
+      <TracePanel edge={selectedEdge} onClose={() => setSelectedEdge(null)} />
     </div>
   );
 }
