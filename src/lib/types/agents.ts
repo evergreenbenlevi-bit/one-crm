@@ -73,6 +73,7 @@ export interface TopologyEdge {
   source: string;
   target: string;
   relation: EdgeRelation;
+  volume?: number;
 }
 
 export interface TopologyData {

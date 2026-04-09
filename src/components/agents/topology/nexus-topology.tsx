@@ -71,7 +71,7 @@ function getLayoutedElements(data: TopologyData) {
     source: e.source,
     target: e.target,
     type: "nexus",
-    data: { relation: e.relation },
+    data: { relation: e.relation, volume: e.volume || 0 },
   }));
 
   return { nodes, edges };
@@ -119,7 +119,7 @@ export function NexusTopology({ data }: { data: TopologyData }) {
     // Mark edges on toxic paths
     for (const edge of result.edges) {
       const isToxic = toxicSlugs.has(edge.source) || toxicSlugs.has(edge.target);
-      edge.data = { ...edge.data, toxic: isToxic };
+      edge.data = { ...(edge.data || {}), toxic: isToxic };
     }
     return result;
   }, [filteredData, toxicSlugs]);

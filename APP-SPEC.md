@@ -22,9 +22,11 @@
 | `/research` | `(dashboard)/research/` | AI research tool | research components |
 | `/applications` | `(dashboard)/applications/` | Program applications queue | application components |
 | `/calendar` | `(dashboard)/calendar/` | Calendar view | calendar components |
-| `/financial` | `(dashboard)/financial/` | Revenue, expenses, P&L, partner settlement (Ben↔Avitar), expense entry form | `KpiRow`, `PartnerSettlement`, `ExpenseForm`, `ExpenseBreakdown`, `RevenueBreakdown`, `MarketingMetricsTable`, `TrendsChartClient` |
+| `/financial` | `(dashboard)/financial/` | Revenue, expenses, P&L, partner settlement (Ben↔Avitar), expense entry form. **Tabs:** סקירה כללית / קבלות / הוצאות אישיות | `FinancialTabs`, `KpiRow`, `PartnerSettlement`, `ExpenseForm`, `ExpenseBreakdown`, `RevenueBreakdown`, `MarketingMetricsTable`, `TrendsChartClient`, `ReceiptsTable`, `PersonalExpenses` |
 | `/news` | `(dashboard)/news/` | AI-curated news feed | news components |
 | `/settings` | `(dashboard)/settings/` | App settings | settings components |
+| `/settings/custom-fields` | `(dashboard)/settings/custom-fields/page.tsx` | Custom fields manager — add/edit/reorder dynamic fields for leads/expenses/tasks. Grouped by entity type, toggle active/inactive, up/down reorder | form, field list, toggle, reorder |
+| `/dashboard-builder` | `(dashboard)/dashboard-builder/page.tsx` | Dashboard builder MVP — add NumberWidget/BarChart/PieChart/TableWidget from data sources (leads, expenses, customers). Save/load dashboard configs. Grid layout | `NumberWidget`, `BarChartWidget`, `PieChartWidget`, `TableWidget` |
 | `/dump` | `(dashboard)/dump/page.tsx` | Brain Dump — free-text thought dump, Claude classifies to task/idea/reminder/note, routes to CRM or Vault | textarea, results list, history |
 | `/course-builder` | `(dashboard)/course-builder/page.tsx` | ONE™ Course Builder — 77 modules across 10 levels. **Side-by-side ScriptEditor**: Tom's transcript (left) + ONE™ script editor (right) with auto-save, word counts, Claude Copywriter generation via `/api/course/generate-script`. Inline edit, checklist per module, source tags (tom/modified/original/removed), status tracking, add/delete/hide modules, filters. Script progress stats in header. | `CourseBuilderPage`, `ModuleRow`, `ScriptEditor` |
 | `/more` | `(dashboard)/more/` | Mobile overflow nav (links to hidden pages) | nav list |
@@ -138,6 +140,21 @@ external_id: string | null
 created_at: string
 ```
 
+### Receipt
+```ts
+id: string
+expense_id: string | null       // FK → expenses.id
+source_email_id: string | null
+vendor: string
+amount: number
+receipt_date: string             // YYYY-MM-DD
+file_url: string | null
+sent_to_accountant: boolean      // default false
+sent_date: string | null         // timestamptz
+notes: string | null
+created_at: string
+```
+
 ### Partner Settlement
 ```ts
 id: string
@@ -154,6 +171,39 @@ notes: string | null
 created_at: string
 ```
 
+### Custom Field
+```ts
+id: string
+entity_type: "lead" | "expense" | "task"
+field_name: string
+field_label: string
+field_type: "text" | "number" | "select" | "date" | "boolean"
+options_json: string[] | null    // for select type
+sort_order: number
+is_active: boolean
+created_at: string
+```
+
+### Custom Field Value
+```ts
+id: string
+field_id: string               // FK → custom_fields.id
+entity_id: string              // FK → any entity (lead/expense/task)
+value: string | null
+created_at: string
+updated_at: string
+// unique constraint on (field_id, entity_id)
+```
+
+### Dashboard
+```ts
+id: string
+name: string
+config: { widgets: WidgetConfig[] }  // jsonb
+created_at: string
+updated_at: string
+```
+
 ---
 
 ## API Routes
@@ -165,6 +215,13 @@ created_at: string
 | `POST` | `/api/expenses` | Create expense |
 | `PATCH` | `/api/expenses?id=` | Update expense |
 | `DELETE` | `/api/expenses?id=` | Delete expense |
+
+### Receipts
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/receipts?from=&to=&sent=true\|false` | List receipts with filters |
+| `POST` | `/api/receipts` | Create receipt |
+| `PATCH` | `/api/receipts?id=` | Update receipt (e.g. mark sent to accountant) |
 
 ### Settlements
 | Method | Path | Purpose |
@@ -219,6 +276,24 @@ created_at: string
 | POST | `/api/sessions` | Check in — body: `{ session_name, task_id?, metadata? }`. Returns 409 on collision |
 | PATCH | `/api/sessions` | Heartbeat/update — body: `{ id, task_id?, metadata?, status? }` |
 | DELETE | `/api/sessions?id=` | Check out (close session) |
+
+### Custom Fields
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/custom-fields?entity_type=` | List custom fields (filter by entity_type) |
+| POST | `/api/custom-fields` | Create custom field |
+| PATCH | `/api/custom-fields/[id]` | Update custom field |
+| DELETE | `/api/custom-fields/[id]` | Delete custom field |
+| GET | `/api/custom-field-values?entity_id=` | Get values for entity |
+| POST | `/api/custom-field-values` | Upsert custom field value |
+
+### Dashboards
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/dashboards` | List saved dashboards |
+| POST | `/api/dashboards` | Create dashboard |
+| PATCH | `/api/dashboards?id=` | Update dashboard config |
+| DELETE | `/api/dashboards?id=` | Delete dashboard |
 
 ### Other
 | Method | Route | Purpose |
@@ -286,6 +361,9 @@ created_at: string
 ### AI
 - `components/ai-chat.tsx` — Floating AI chat button + chat window
 - `components/ai-chat-client.tsx` — Client wrapper (dynamic import, SSR=false)
+
+### Shared
+- `components/shared/custom-fields-renderer.tsx` — Dynamic custom fields form. Takes entityType + entityId, fetches fields + values, renders text/number/select/date/boolean inputs with auto-save on blur/change
 
 ### UI
 - `components/ui/stat-card.tsx` — KPI stat card

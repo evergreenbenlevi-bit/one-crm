@@ -34,7 +34,7 @@ export default function AgentsLayout({ children }: { children: React.ReactNode }
           borderColor: "var(--nexus-border)",
         }}
       >
-        <div className="flex items-center gap-1 px-4 overflow-x-auto nexus-scroll scrollbar-hide">
+        <div className="flex items-center px-4 overflow-x-auto nexus-scroll scrollbar-hide">
           {/* NEXUS brand mark */}
           <span
             className="text-xs font-bold tracking-widest mr-4 px-2 py-1 rounded"

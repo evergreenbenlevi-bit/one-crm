@@ -49,9 +49,11 @@ export default function AgentsOverview() {
   }
 
   const total = (agents || []).length;
+  const healthEntries = Object.keys(healthMap).length;
   const healthy = Object.values(healthMap).filter((s) => s === "healthy").length;
   const degraded = Object.values(healthMap).filter((s) => s === "degraded").length;
   const down = Object.values(healthMap).filter((s) => s === "down").length;
+  const unknown = total - healthEntries;
 
   return (
     <div className="space-y-6">
@@ -88,8 +90,8 @@ export default function AgentsOverview() {
       {/* Top metrics row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <NexusMetric value={total} label="סה״כ רכיבים" icon={<Bot size={20} />} accentColor="#00D4FF" />
-        <NexusMetric value={healthy} label="תקינים" icon={<Heart size={20} />} accentColor="#22C55E" />
-        <NexusMetric value={down} label="נפלו" icon={<AlertTriangle size={20} />} accentColor="#EF4444" />
+        <NexusMetric value={healthEntries > 0 ? healthy : "—"} label={healthEntries > 0 ? "תקינים" : "טרם נסרקו"} icon={<Heart size={20} />} accentColor="#22C55E" />
+        <NexusMetric value={healthEntries > 0 ? down : "—"} label={healthEntries > 0 ? "נפלו" : "אין נתונים"} icon={<AlertTriangle size={20} />} accentColor="#EF4444" />
         <NexusMetric value="$0.00" label="עלות היום" icon={<DollarSign size={20} />} accentColor="#F59E0B" />
       </div>
 
@@ -111,12 +113,12 @@ export default function AgentsOverview() {
               <span
                 className="text-[10px] px-2 py-0.5 rounded-full"
                 style={{
-                  background: down > 0 ? "var(--nexus-err-glow)" : "var(--nexus-ok-glow)",
-                  color: down > 0 ? "var(--nexus-err)" : "var(--nexus-ok)",
+                  background: healthEntries === 0 ? "var(--nexus-warn-glow)" : down > 0 ? "var(--nexus-err-glow)" : "var(--nexus-ok-glow)",
+                  color: healthEntries === 0 ? "var(--nexus-warn)" : down > 0 ? "var(--nexus-err)" : "var(--nexus-ok)",
                   fontFamily: "var(--nexus-font-mono)",
                 }}
               >
-                {down > 0 ? `${down} DOWN` : "ALL SYSTEMS GO"}
+                {healthEntries === 0 ? "NO DATA" : down > 0 ? `${down} DOWN` : "ALL SYSTEMS GO"}
               </span>
             </div>
             <SystemPulse total={total} healthy={healthy} degraded={degraded} down={down} />

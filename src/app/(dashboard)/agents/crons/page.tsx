@@ -6,18 +6,9 @@ import { CronTable } from "@/components/agents/cron-table";
 import type { CronInfo } from "@/lib/types/agents";
 
 export default function CronsPage() {
-  const { data, isLoading, error, mutate } = useSWR<CronInfo[]>("/api/agents/crons", fetcher, {
+  const { data, isLoading, error } = useSWR<CronInfo[]>("/api/agents/crons", fetcher, {
     refreshInterval: 30000,
   });
-
-  const handleToggle = async (label: string, action: "load" | "unload") => {
-    await fetch(`/api/agents/crons/${label}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action }),
-    });
-    mutate();
-  };
 
   if (isLoading) {
     return (
@@ -42,9 +33,9 @@ export default function CronsPage() {
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold" style={{ color: "var(--nexus-text-1)" }}>ניהול קרונים</h2>
-        <p className="text-sm" style={{ color: "var(--nexus-text-3)" }}>LaunchAgents — הפעלה וכיבוי</p>
+        <p className="text-sm" style={{ color: "var(--nexus-text-3)" }}>LaunchAgents — סטטוס ותזמון</p>
       </div>
-      <CronTable crons={data || []} onToggle={handleToggle} />
+      <CronTable crons={data || []} onToggle={async () => {}} />
     </div>
   );
 }

@@ -24,6 +24,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { LeadEditModal } from "./lead-edit-modal";
+import { CustomFieldsRenderer } from "@/components/shared/custom-fields-renderer";
 import type { Lead, FunnelEvent, Note, Customer, FunnelEventType, ProgramType } from "@/lib/types/database";
 
 // ──────────────────────────────────────────
@@ -464,6 +465,9 @@ export function LeadDetail({ lead }: LeadDetailProps) {
               })}
             </div>
           </div>
+
+          {/* ── Custom fields ── */}
+          <CustomFieldsRenderer entityType="lead" entityId={lead.id} />
 
           {/* ── Notes section ── */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">

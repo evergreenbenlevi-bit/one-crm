@@ -341,5 +341,65 @@ async function discoverEdges(): Promise<RawEdge[]> {
     // agents dir missing
   }
 
+  // Source 6: Agent .md files referencing skills via /skill-name or Skill("skill-name")
+  try {
+    const files = await readdir(AGENTS_DIR);
+    const mdFiles = files.filter((f) => f.endsWith(".md") && !f.startsWith("_") && f !== "REGISTRY.md");
+    const skillDirs = new Set(
+      (await readdir(SKILLS_DIR).catch(() => [] as string[]))
+    );
+
+    for (const file of mdFiles) {
+      try {
+        const content = await readFile(join(AGENTS_DIR, file), "utf-8");
+        const agentSlug = file.replace(/\.md$/, "");
+
+        // Match /skill-name or Skill("skill-name") patterns
+        const skillRefs = content.matchAll(/(?:\/|Skill\s*\(\s*["'])([a-z][\w-]*)["')\s]/g);
+        for (const m of skillRefs) {
+          const skillName = m[1];
+          if (skillDirs.has(skillName)) {
+            addEdge({ source: agentSlug, target: `skill-${skillName}`, relation: "uses_skill" });
+          }
+        }
+      } catch {
+        // Skip
+      }
+    }
+  } catch {
+    // dirs missing
+  }
+
+  // Source 7: Cron scripts that reference agent slugs by name (broader matching)
+  try {
+    const files = await readdir(AGENTS_DIR);
+    const agentSlugs = new Set(
+      files.filter((f) => f.endsWith(".md") && !f.startsWith("_") && f !== "REGISTRY.md")
+        .map((f) => f.replace(/\.md$/, ""))
+    );
+
+    const cronFiles = await readdir(LAUNCH_AGENTS_DIR).catch(() => [] as string[]);
+    const plists = cronFiles.filter((f) => f.startsWith("com.ben.") && f.endsWith(".plist"));
+
+    for (const file of plists) {
+      try {
+        const content = await readFile(join(LAUNCH_AGENTS_DIR, file), "utf-8");
+        const cronSlug = `cron-${file.replace(/^com\.ben\./, "").replace(/\.plist$/, "")}`;
+
+        // Check if plist references any known agent slug in its strings
+        for (const slug of agentSlugs) {
+          if (slug.length < 4) continue;
+          if (content.includes(slug) && slug !== cronSlug.replace("cron-", "")) {
+            addEdge({ source: cronSlug, target: slug, relation: "triggers_cron" });
+          }
+        }
+      } catch {
+        // Skip
+      }
+    }
+  } catch {
+    // No launch agents dir
+  }
+
   return Array.from(edgeMap.values());
 }

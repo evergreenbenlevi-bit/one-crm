@@ -24,10 +24,14 @@ function NexusEdgeComponent({
 }: EdgeProps) {
   const relation = (data?.relation as EdgeRelation) || "dispatches";
   const isToxic = !!(data?.toxic);
+  const volume = (data?.volume as number) || 0;
   const config = edgeConfig[relation] || edgeConfig.dispatches;
   const strokeColor = isToxic ? "#EF4444" : config.color;
   const glowOpacity = isToxic ? 0.2 : 0.08;
   const strokeOpacity = isToxic ? 0.9 : 0.6;
+  // Scale stroke width by volume: 1.5 base, up to 4 for high-volume edges
+  const baseWidth = isToxic ? 3 : Math.min(1.5 + volume * 0.05, 4);
+  const glowWidth = isToxic ? 10 : Math.min(4 + volume * 0.1, 12);
 
   const [edgePath] = getBezierPath({
     sourceX,
@@ -45,7 +49,7 @@ function NexusEdgeComponent({
         d={edgePath}
         fill="none"
         stroke={strokeColor}
-        strokeWidth={isToxic ? 10 : 6}
+        strokeWidth={glowWidth}
         strokeOpacity={glowOpacity}
         strokeLinecap="round"
       />
@@ -56,7 +60,7 @@ function NexusEdgeComponent({
         d={edgePath}
         fill="none"
         stroke={strokeColor}
-        strokeWidth={isToxic ? 3 : 2}
+        strokeWidth={baseWidth}
         strokeOpacity={strokeOpacity}
         strokeDasharray={config.dash}
         strokeLinecap="round"
