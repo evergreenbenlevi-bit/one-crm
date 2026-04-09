@@ -21,6 +21,11 @@ export async function GET(request: NextRequest) {
 
   if (registryRes.error) return NextResponse.json({ error: registryRes.error.message }, { status: 500 });
 
+  const partialErrors = [edgesRes, healthRes, costsRes, runsRes]
+    .filter((r) => r.error)
+    .map((r) => r.error!.message);
+  if (partialErrors.length > 0) console.warn("[topology] partial query errors:", partialErrors);
+
   // Build health map (latest per agent)
   const healthMap = new Map<string, string>();
   for (const h of healthRes.data || []) {

@@ -78,10 +78,14 @@ export async function PATCH(request: NextRequest) {
 
   const body = await request.json();
 
+  // Whitelist allowed fields
+  const allowed = ["vendor", "amount", "receipt_date", "file_url", "sent_to_accountant", "sent_date", "notes", "expense_id", "source_email_id"];
+  const sanitized = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
+
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("receipts")
-    .update(body)
+    .update(sanitized)
     .eq("id", id)
     .select()
     .single();
