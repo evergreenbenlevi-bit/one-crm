@@ -2,15 +2,21 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { useCallback } from "react";
 import { NexusStatusDot } from "../ui/nexus-status-dot";
+import { useAgentRealtime } from "@/hooks/use-agent-realtime";
 import type { AgentHealthEvent, HealthStatus } from "@/lib/types/agents";
 
 export function ActivityFeed() {
-  const { data: logs } = useSWR<AgentHealthEvent[]>(
+  const { data: logs, mutate } = useSWR<AgentHealthEvent[]>(
     "/api/agents/logs?limit=30",
     fetcher,
-    { refreshInterval: 15000 }
+    { refreshInterval: 60000 }
   );
+
+  // Realtime: instant updates when new health events arrive
+  const onNewEvent = useCallback(() => { mutate(); }, [mutate]);
+  useAgentRealtime({ table: "agent_health_events", onInsert: onNewEvent });
 
   return (
     <div className="nexus-card p-0 overflow-hidden" style={{ maxHeight: "calc(100vh - 340px)" }}>

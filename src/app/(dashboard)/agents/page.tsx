@@ -2,9 +2,10 @@
 
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { RefreshCw, Bot, Heart, AlertTriangle, DollarSign, GitBranch } from "lucide-react";
+import { useAgentRealtime } from "@/hooks/use-agent-realtime";
 import { NexusMetric } from "@/components/agents/ui/nexus-metric";
 import { NexusCardSkeleton } from "@/components/agents/ui/nexus-skeleton";
 import { SystemPulse } from "@/components/agents/overview/system-pulse";
@@ -15,8 +16,12 @@ import Link from "next/link";
 
 export default function AgentsOverview() {
   const { data: agents, isLoading } = useSWR<AgentRecord[]>("/api/agents/registry", fetcher);
-  const { data: healthData } = useSWR<Array<{ agent_slug: string; status: HealthStatus }>>("/api/agents/health", fetcher, { refreshInterval: 15000 });
+  const { data: healthData, mutate: mutateHealth } = useSWR<Array<{ agent_slug: string; status: HealthStatus }>>("/api/agents/health", fetcher, { refreshInterval: 60000 });
   const [syncing, setSyncing] = useState(false);
+
+  // Realtime: auto-refresh health when new events arrive (replaces 15s polling)
+  const onHealthEvent = useCallback(() => { mutateHealth(); }, [mutateHealth]);
+  useAgentRealtime({ table: "agent_health_events", onInsert: onHealthEvent });
 
   const healthMap: Record<string, string> = {};
   for (const h of healthData || []) {
