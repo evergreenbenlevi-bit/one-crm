@@ -22,7 +22,7 @@
 | `/research` | `(dashboard)/research/` | AI research tool | research components |
 | `/applications` | `(dashboard)/applications/` | Program applications queue | application components |
 | `/calendar` | `(dashboard)/calendar/` | Calendar view | calendar components |
-| `/financial` | `(dashboard)/financial/` | Revenue, transactions, expenses | financial components |
+| `/financial` | `(dashboard)/financial/` | Revenue, expenses, P&L, partner settlement (Ben↔Avitar), expense entry form | `KpiRow`, `PartnerSettlement`, `ExpenseForm`, `ExpenseBreakdown`, `RevenueBreakdown`, `MarketingMetricsTable`, `TrendsChartClient` |
 | `/news` | `(dashboard)/news/` | AI-curated news feed | news components |
 | `/settings` | `(dashboard)/settings/` | App settings | settings components |
 | `/dump` | `(dashboard)/dump/page.tsx` | Brain Dump — free-text thought dump, Claude classifies to task/idea/reminder/note, routes to CRM or Vault | textarea, results list, history |
@@ -122,9 +122,56 @@ created_at: string
 processed_at: string | null
 ```
 
+### Expense
+```ts
+id: string
+category: "meta_ads" | "ai_tools" | "editing_design" | "software" | "content_creation" | "coaching_tools" | "education" | "skool" | "other"
+amount: number
+date: string                    // YYYY-MM-DD
+description: string | null
+paid_by: "ben" | "avitar" | "shared"  // who paid
+split_ratio: number             // 0-1, default 0.5 (Ben's share)
+receipt_url: string | null
+is_recurring: boolean
+notes: string | null
+external_id: string | null
+created_at: string
+```
+
+### Partner Settlement
+```ts
+id: string
+period_start: string            // YYYY-MM-DD
+period_end: string              // YYYY-MM-DD
+ben_total: number               // total Ben paid
+avitar_total: number            // total Avitar paid
+ben_share: number               // Ben's calculated share
+avitar_share: number            // Avitar's calculated share
+settlement_amount: number       // positive = Avitar owes Ben
+status: "pending" | "settled" | "disputed"
+settled_at: string | null
+notes: string | null
+created_at: string
+```
+
 ---
 
 ## API Routes
+
+### Expenses
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/expenses?from=&to=&paid_by=` | List expenses with filters |
+| `POST` | `/api/expenses` | Create expense |
+| `PATCH` | `/api/expenses?id=` | Update expense |
+| `DELETE` | `/api/expenses?id=` | Delete expense |
+
+### Settlements
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/settlements` | Settlement history |
+| `POST` | `/api/settlements` | Create settlement for period |
+| `PATCH` | `/api/settlements?id=` | Mark settlement as settled |
 
 ### Tasks
 | Method | Route | Purpose |

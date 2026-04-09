@@ -1,12 +1,15 @@
 import { Suspense } from "react";
 import { Banknote } from "lucide-react";
 import { getFinancialData, getRevenueTrends } from "@/lib/queries/financial";
+import { calculateSettlement } from "@/lib/queries/settlement";
 import { KpiRow } from "@/components/financial/kpi-row";
 import { RevenueBreakdown } from "@/components/financial/revenue-breakdown";
 import { ExpenseBreakdown } from "@/components/financial/expense-breakdown";
 import { MarketingMetricsTable } from "@/components/financial/marketing-metrics-table";
 import { TrendsChartClient } from "@/components/financial/trends-chart-client";
 import { PeriodSelector } from "@/components/financial/period-selector";
+import { PartnerSettlement } from "@/components/financial/partner-settlement";
+import { ExpenseForm } from "@/components/financial/expense-form";
 
 function getDateRange(period: string): { startDate: string; endDate: string } {
   const now = new Date();
@@ -34,9 +37,13 @@ export default async function FinancialPage({ searchParams }: PageProps) {
   const period = params.period || "month";
   const { startDate, endDate } = getDateRange(period);
 
-  const [financialData, trends] = await Promise.all([
+  const periodStartDate = startDate.split("T")[0];
+  const periodEndDate = endDate.split("T")[0];
+
+  const [financialData, trends, settlement] = await Promise.all([
     getFinancialData(startDate, endDate),
     getRevenueTrends(period === "year" ? 12 : period === "quarter" ? 3 : 6),
+    calculateSettlement(periodStartDate, periodEndDate),
   ]);
 
   return (
@@ -65,6 +72,18 @@ export default async function FinancialPage({ searchParams }: PageProps) {
         profit={financialData.profit}
         roi={financialData.roi}
       />
+
+      {/* Partner Settlement */}
+      <PartnerSettlement
+        benPaid={settlement.benPaid}
+        avitarPaid={settlement.avitarPaid}
+        settlementAmount={settlement.settlementAmount}
+        periodStart={periodStartDate}
+        periodEnd={periodEndDate}
+      />
+
+      {/* Add Expense */}
+      <ExpenseForm />
 
       {/* Breakdowns - side by side on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

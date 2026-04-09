@@ -9,7 +9,10 @@ export type MeetingStatus = "scheduled" | "completed" | "cancelled" | "no_show";
 export type FileType = "contract" | "meeting_summary" | "transcript" | "other";
 export type GoalType = "revenue" | "customers" | "custom";
 export type FunnelEventType = "registered" | "consumed_content" | "engaged" | "applied" | "qualified" | "purchased" | "viewed_content" | "engaged_dm" | "visited_offer_doc" | "started_onboarding" | "completed_program" | "onboarding" | "active_client" | "completed" | "lost";
-export type ExpenseCategory = "meta_ads" | "ai_tools" | "editing_design" | "software" | "other";
+export type ExpenseCategory = "meta_ads" | "ai_tools" | "editing_design" | "software" | "content_creation" | "coaching_tools" | "education" | "skool" | "other" | "haircut" | "fuel" | "car_wash" | "groceries" | "personal_other";
+export type ExpenseType = "business" | "personal";
+export type Partner = "ben" | "avitar" | "shared";
+export type SettlementStatus = "pending" | "settled" | "disputed";
 
 export interface Lead {
   id: string;
@@ -163,6 +166,44 @@ export interface Expense {
   amount: number;
   date: string;
   description: string | null;
+  paid_by: Partner;
+  split_ratio: number;
+  receipt_url: string | null;
+  is_recurring: boolean;
+  notes: string | null;
   external_id: string | null;
+  created_at: string;
+}
+
+export interface PartnerSettlement {
+  id: string;
+  period_start: string;
+  period_end: string;
+  ben_total: number;
+  avitar_total: number;
+  ben_share: number;
+  avitar_share: number;
+  settlement_amount: number;
+  status: SettlementStatus;
+  settled_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface FinancialSnapshot {
+  id: string;
+  period: string;
+  type: "monthly" | "quarterly";
+  revenue_total: number;
+  revenue_one_core: number;
+  revenue_one_vip: number;
+  expenses_total: number;
+  expenses_by_category: Record<string, number>;
+  profit: number;
+  roi: number;
+  meta_spend: number;
+  ben_paid: number;
+  avitar_paid: number;
+  notes: string | null;
   created_at: string;
 }

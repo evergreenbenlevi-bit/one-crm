@@ -429,10 +429,18 @@ function TriageCard({
               placeholder="פרטים..."
               dir="auto"
             />
-          ) : task.description ? (
-            <p className="text-sm text-white/40 mt-2 line-clamp-3 text-right leading-relaxed" dir="auto">
-              {task.description}
-            </p>
+          ) : description ? (
+            <div className="mt-2 text-right" dir="auto">
+              <p className={clsx(
+                "text-sm text-white/40 leading-relaxed whitespace-pre-line",
+                !expanded && "line-clamp-4"
+              )}>
+                {description.split("---")[0].trim()}
+              </p>
+              {description.includes("---") && (
+                <p className="text-[10px] text-white/20 mt-1">+ תיאור קודם</p>
+              )}
+            </div>
           ) : null}
 
           {/* Tags */}
@@ -664,6 +672,15 @@ function TriageCard({
                 if (parsed.size) { setSize(parsed.size); updates.size = parsed.size; }
                 if (parsed.owner) { setOwner(parsed.owner); updates.owner = parsed.owner; }
                 if (parsed.category) { setCategory(parsed.category as TaskCategory); updates.category = parsed.category as TaskCategory; }
+                // Brain dump mode: save organized description
+                if (parsed.clean_description) {
+                  const existing = task.description || "";
+                  const newDesc = existing
+                    ? `${parsed.clean_description}\n---\n${existing}`
+                    : parsed.clean_description;
+                  setDescription(newDesc);
+                  updates.description = newDesc;
+                }
                 if (Object.keys(updates).length > 0) {
                   await onUpdate(updates);
                 }
@@ -747,6 +764,7 @@ interface NLPParsedFields {
   size?: TaskSize | null;
   category?: TaskCategory | null;
   summary?: string;
+  clean_description?: string | null;
   // Calendar integration fields
   calendar_event?: boolean | null;
   invite_person?: string | null;
@@ -767,7 +785,7 @@ function QuickTextInput({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
@@ -818,16 +836,28 @@ function QuickTextInput({
       const parsed = data.parsed as NLPParsedFields | undefined;
       if (parsed) {
         await onFieldsParsed(parsed);
-        let summary = parsed.summary || "עודכן";
-        if (parsed.calendar_event) summary = "📅 " + summary;
-        if (parsed.travel_minutes) summary += ` (+${parsed.travel_minutes}′ נסיעה)`;
-        if (parsed.invite_person) summary += ` 👤 ${parsed.invite_person}`;
+        // Build rich feedback showing what was extracted
+        const parts: string[] = [];
+        if (parsed.due_date) parts.push(`📅 ${parsed.due_date}`);
+        if (parsed.due_time) parts.push(`🕐 ${parsed.due_time}`);
+        if (parsed.estimated_minutes) parts.push(`⏱ ${parsed.estimated_minutes}′`);
+        if (parsed.impact) parts.push(parsed.impact === "needle_mover" ? "🔴" : parsed.impact === "important" ? "🟡" : "⚪");
+        if (parsed.owner) parts.push(`👤 ${parsed.owner}`);
+        if (parsed.calendar_event) parts.push("📆 יומן");
+        if (parsed.travel_minutes) parts.push(`🚗 ${parsed.travel_minutes}′`);
+        if (parsed.invite_person) parts.push(`✉️ ${parsed.invite_person}`);
+        if (parsed.clean_description) parts.push("📝 תיאור נשמר");
+        const summary = parts.length > 0
+          ? parts.join(" + ") + (parsed.summary ? ` — ${parsed.summary}` : "")
+          : parsed.summary || "עודכן";
         setFeedback(summary);
         setText("");
-        setTimeout(() => setFeedback(null), 4000);
+        // Reset textarea height
+        if (inputRef.current) inputRef.current.style.height = "auto";
+        setTimeout(() => setFeedback(null), 5000);
       }
     } catch {
-      setFeedback("שגיאה בפענוח");
+      setFeedback("שגיאה בפענוח — נסה שוב");
       setTimeout(() => setFeedback(null), 3000);
     } finally {
       setLoading(false);
@@ -936,25 +966,35 @@ function QuickTextInput({
         >
           {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
         </button>
-        <input
+        <textarea
           ref={inputRef}
-          type="text"
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={isRecording ? "מקליט..." : "מחר 30 דקות, דחוף..."}
+          onChange={(e) => {
+            setText(e.target.value);
+            // Auto-expand: reset height then set to scrollHeight
+            e.target.style.height = "auto";
+            e.target.style.height = Math.min(e.target.scrollHeight, 150) + "px";
+          }}
+          placeholder={isRecording ? "מקליט..." : "מחר 30 דקות, דחוף... (או brain dump חופשי)"}
           disabled={loading || isRecording}
           dir="auto"
+          rows={1}
           className={clsx(
             "flex-1 bg-white/[0.04] rounded-xl px-3 py-2 text-sm text-white/90",
             "placeholder:text-white/20 outline-none border border-white/[0.06]",
             "focus:border-brand-400/30 focus:bg-white/[0.06] transition-all",
-            "disabled:opacity-40"
+            "disabled:opacity-40 resize-none overflow-hidden"
           )}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setText("");
               setIsOpen(false);
-              (e.target as HTMLInputElement).blur();
+              (e.target as HTMLTextAreaElement).blur();
+            }
+            // Enter without Shift submits
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSubmit();
             }
           }}
         />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   BarChart,
   Bar,
@@ -15,6 +16,10 @@ const categoryLabels: Record<string, string> = {
   ai_tools: "כלי AI",
   editing_design: "עריכה ועיצוב",
   software: "תוכנות",
+  content_creation: "יצירת תוכן",
+  coaching_tools: "כלי ליווי",
+  education: "לימודים",
+  skool: "Skool",
   other: "אחר",
 };
 

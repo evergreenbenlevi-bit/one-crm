@@ -6,6 +6,8 @@ export const preferredRegion = ["fra1", "arn1", "cdg1"];
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const BRAIN_DUMP_THRESHOLD = 120;
+
 interface NLPResult {
   due_date?: string | null;
   due_time?: string | null;
@@ -15,6 +17,7 @@ interface NLPResult {
   size?: "quick" | "medium" | "big" | null;
   category?: string | null;
   summary?: string;
+  clean_description?: string | null;
   // Calendar integration fields
   calendar_event?: boolean | null;
   invite_person?: string | null;
@@ -50,9 +53,16 @@ export async function POST(request: NextRequest) {
   // If user already set duration/impact manually, tell NLP not to override
   const manualFields = body.manual_fields as string[] | undefined;
 
+  const isBrainDump = text.length > BRAIN_DUMP_THRESHOLD;
+  const model = isBrainDump ? "claude-sonnet-4-20250514" : "claude-haiku-4-5-20251001";
+
+  const brainDumpInstruction = isBrainDump
+    ? `\n\nBRAIN DUMP MODE: The input is a long free-form note. Do your best to extract any scheduling fields you can find. Additionally, return a "clean_description" field: rewrite the input as an organized, clear Hebrew description (up to 200 words). Structure it with bullet points if multiple items are mentioned. This is NOT the summary — summary stays short (max 15 words). clean_description is the full organized version of what the user wrote.`
+    : "";
+
   const message = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 512,
+    model,
+    max_tokens: isBrainDump ? 1024 : 512,
     messages: [
       {
         role: "user",
@@ -61,7 +71,7 @@ ${taskContext}
 
 Input: "${text}"
 
-Extract ONLY fields that are EXPLICITLY mentioned in the text. Do NOT guess or infer fields that aren't clearly stated.${manualFields?.length ? `\n\nIMPORTANT: The user already manually set these fields: ${manualFields.join(", ")}. Do NOT return values for these fields — set them to null.` : ""}
+Extract ONLY fields that are EXPLICITLY mentioned in the text. Do NOT guess or infer fields that aren't clearly stated.${manualFields?.length ? `\n\nIMPORTANT: The user already manually set these fields: ${manualFields.join(", ")}. Do NOT return values for these fields — set them to null.` : ""}${brainDumpInstruction}
 
 Fields to look for:
 
@@ -105,7 +115,7 @@ Fields to look for:
 - category: one of "one_tm","brand","research","self","personal","errands","infrastructure". Parse from context.
 
 - summary: Very short Hebrew summary of what you understood (max 15 words).
-
+${isBrainDump ? '\n- clean_description: Organized Hebrew rewrite of the full input (up to 200 words). Use bullet points if multiple items.' : ''}
 - calendar_event: true if this task should be a calendar event (has specific time/date with a meeting, appointment, or time-blocked work). false/null for simple tasks.
 
 - invite_person: Name of person to invite to the calendar event. Parse:
@@ -121,21 +131,46 @@ Fields to look for:
   When travel is mentioned, estimated_minutes should be the WORK time only, not including travel.
 
 Return ONLY valid JSON object, no explanation:
-{"due_date":null,"due_time":null,"estimated_minutes":null,"owner":null,"impact":null,"size":null,"category":null,"summary":"...","calendar_event":null,"invite_person":null,"travel_minutes":null}
+{"due_date":null,"due_time":null,"estimated_minutes":null,"owner":null,"impact":null,"size":null,"category":null,"summary":"..."${isBrainDump ? ',"clean_description":"..."' : ''},"calendar_event":null,"invite_person":null,"travel_minutes":null}
 
-Omit fields you can't determine (set to null). Always include summary.`,
+Omit fields you can't determine (set to null). Always include summary.${isBrainDump ? ' Always include clean_description.' : ''}`,
       },
     ],
   });
 
   const content = message.content[0];
   if (content.type !== "text") {
-    return NextResponse.json({ error: "Unexpected response" }, { status: 500 });
+    // Fallback: never lose input
+    return NextResponse.json({
+      parsed: {
+        summary: text.slice(0, 60) + (text.length > 60 ? "..." : ""),
+        clean_description: isBrainDump ? text : null,
+      },
+    });
   }
 
   try {
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return NextResponse.json({ parsed: { summary: "לא הצלחתי לפענח" } });
+    // Layer 1: Standard JSON regex extraction
+    let jsonMatch = content.text.match(/\{[\s\S]*\}/);
+
+    // Layer 2: Relaxed JSON fix (trailing commas, unescaped newlines)
+    if (!jsonMatch) {
+      const cleaned = content.text
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*]/g, "]")
+        .replace(/\n/g, " ");
+      jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    }
+
+    // Layer 3: If all parsing fails, return raw text as description (never lose input)
+    if (!jsonMatch) {
+      return NextResponse.json({
+        parsed: {
+          summary: text.slice(0, 60) + (text.length > 60 ? "..." : ""),
+          clean_description: isBrainDump ? text : null,
+        },
+      });
+    }
 
     const parsed: NLPResult = JSON.parse(jsonMatch[0]);
 
@@ -180,6 +215,11 @@ Omit fields you can't determine (set to null). Always include summary.`,
     }
 
     // Validate calendar fields
+    if (parsed.calendar_event && typeof parsed.calendar_event !== "boolean") {
+      // Sonnet sometimes returns a string instead of boolean — coerce truthy values
+      parsed.calendar_event = parsed.calendar_event === true || parsed.calendar_event === "true" ? true : null;
+    }
+
     if (parsed.travel_minutes && (typeof parsed.travel_minutes !== "number" || parsed.travel_minutes < 0 || parsed.travel_minutes > 180)) {
       parsed.travel_minutes = null;
     }
@@ -191,6 +231,12 @@ Omit fields you can't determine (set to null). Always include summary.`,
 
     return NextResponse.json({ parsed });
   } catch {
-    return NextResponse.json({ error: "Parse error", raw: content.text }, { status: 500 });
+    // Final fallback: even JSON.parse failure doesn't lose input
+    return NextResponse.json({
+      parsed: {
+        summary: text.slice(0, 60) + (text.length > 60 ? "..." : ""),
+        clean_description: isBrainDump ? text : null,
+      },
+    });
   }
 }

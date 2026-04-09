@@ -7,7 +7,7 @@ export const getFinancialData = unstable_cache(
 
     const [transactionsRes, expensesRes, campaignsRes, leadsRes] = await Promise.all([
       supabase.from("transactions").select("amount, date, program, status").gte("date", startDate).lte("date", endDate).eq("status", "completed"),
-      supabase.from("expenses").select("amount, date, category").gte("date", startDate.split("T")[0]).lte("date", endDate.split("T")[0]),
+      supabase.from("expenses").select("amount, date, category, paid_by, split_ratio").gte("date", startDate.split("T")[0]).lte("date", endDate.split("T")[0]),
       supabase.from("campaigns").select("daily_spend, date").gte("date", startDate.split("T")[0]).lte("date", endDate.split("T")[0]),
       supabase.from("leads").select("*", { count: "exact", head: true }).gte("created_at", startDate).lte("created_at", endDate),
     ]);
@@ -30,13 +30,20 @@ export const getFinancialData = unstable_cache(
     const totalPurchases = oneCoreLeads + oneVipLeads;
 
     const expensesByCategory: Record<string, number> = { meta_ads: metaSpend };
+    let benPaid = 0;
+    let avitarPaid = 0;
     expenses.forEach(e => {
       expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + Number(e.amount);
+      const amount = Number(e.amount);
+      if (e.paid_by === "ben") benPaid += amount;
+      else if (e.paid_by === "avitar") avitarPaid += amount;
+      else { benPaid += amount * 0.5; avitarPaid += amount * 0.5; }
     });
 
     return {
       revenue: { total: totalRevenue, oneCore: oneCoreRevenue, oneVip: oneVipRevenue },
       costs: { total: totalCost, byCategory: expensesByCategory },
+      partners: { benPaid: Math.round(benPaid * 100) / 100, avitarPaid: Math.round(avitarPaid * 100) / 100 },
       profit: totalRevenue - totalCost,
       roi: totalCost > 0 ? Math.round(((totalRevenue - totalCost) / totalCost) * 100) : 0,
       marketing: {
