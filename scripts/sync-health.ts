@@ -124,8 +124,7 @@ export async function runHealthSync(): Promise<HealthSyncResult> {
     .eq("is_active", true);
 
   if (error || !agents) {
-    console.error("Failed to fetch agents:", error?.message);
-    process.exit(1);
+    throw new Error(`Failed to fetch agents: ${error?.message}`);
   }
 
   console.log(`Running health checks for ${agents.length} agents...`);
@@ -159,8 +158,7 @@ export async function runHealthSync(): Promise<HealthSyncResult> {
   );
 
   if (insertError) {
-    console.error("Failed to insert health events:", insertError.message);
-    process.exit(1);
+    throw new Error(`Failed to insert health events: ${insertError.message}`);
   }
 
   const healthy = events.filter((e) => e.status === "healthy").length;
