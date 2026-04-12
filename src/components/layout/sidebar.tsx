@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Briefcase, DollarSign,
   BarChart3, Calendar, Target, Settings, LogOut,
   FileText, TrendingUp, CheckSquare, FolderKanban, FlaskConical,
-  Newspaper, CalendarDays, Layers, Brain, GraduationCap, Bot
+  Newspaper, CalendarDays, Layers, Brain, GraduationCap, Bot, Telescope, Dumbbell
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { GlobalSearch } from "@/components/layout/global-search";
@@ -20,7 +20,6 @@ const routePrefetchMap: Record<string, string> = {
   "/leads": "/api/leads",
   "/customers": "/api/customers",
   "/financial": "/api/financial",
-  "/meetings": "/api/meetings",
   "/content": "/api/content-ideas?type=all",
   "/news": "/api/news?topic=AI",
   "/research": "/api/research",
@@ -41,11 +40,12 @@ const navItems = [
   { href: "/content", label: "תוכן", icon: TrendingUp, roles: ["admin"] },
   { href: "/content/calendar", label: "לוח תוכן", icon: CalendarDays, roles: ["admin"] },
   { href: "/news", label: "חדשות AI", icon: Newspaper, roles: ["admin"] },
-  { href: "/meetings", label: "פגישות", icon: Calendar, roles: ["admin"] },
   { href: "/goals", label: "יעדים", icon: Target, roles: ["admin"] },
+  { href: "/fitness", label: "כושר", icon: Dumbbell, roles: ["admin"] },
   { href: "/course-builder", label: "Course Builder", icon: GraduationCap, roles: ["admin", "course_editor"] },
   { href: "/agents", label: "מרכז שליטה", icon: Bot, roles: ["admin"] },
   { href: "/research", label: "מחקרים", icon: FlaskConical, roles: ["admin"] },
+  { href: "/creator-intel", label: "Creator Intel", icon: Telescope, roles: ["admin"] },
   { href: "/settings", label: "הגדרות", icon: Settings, roles: ["admin"] },
 ];
 
