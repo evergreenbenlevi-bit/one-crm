@@ -109,8 +109,8 @@ export default async function FinancialPage({ searchParams }: PageProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-brand-100 dark:bg-brand-900/30 rounded-xl flex items-center justify-center">
-            <Banknote size={20} className="text-brand-600 dark:text-brand-400" />
+          <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
+            <Banknote size={20} className="text-gray-600 dark:text-gray-400" />
           </div>
           <div>
             <h1 className="text-xl font-bold dark:text-gray-100">דוח פיננסי</h1>

@@ -43,9 +43,9 @@ const DOMAIN_LABELS: Record<string, string> = {
 };
 
 const STATUS_DOT: Record<string, { color: string; label: string }> = {
-  full: { color: "bg-emerald-400", label: "ניתוח מלא" },
-  partial: { color: "bg-amber-400", label: "חלקי" },
-  none: { color: "bg-gray-400 dark:bg-gray-600", label: "טרם התחיל" },
+  full: { color: "bg-white ring-white", label: "ניתוח מלא" },
+  partial: { color: "bg-gray-400 dark:bg-gray-400", label: "חלקי" },
+  none: { color: "bg-gray-600 dark:bg-gray-600", label: "טרם התחיל" },
 };
 
 function formatNum(n: number | null): string {

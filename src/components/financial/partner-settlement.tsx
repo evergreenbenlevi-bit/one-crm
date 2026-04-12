@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Users, CheckCircle2, ArrowLeftRight } from "lucide-react";
 
+const VAT_RATE = 1.18;
+
 interface PartnerSettlementProps {
   benPaid: number;
   avitarPaid: number;
@@ -13,6 +15,10 @@ interface PartnerSettlementProps {
 
 function fmt(n: number) {
   return `₪${Math.abs(n).toLocaleString("he-IL")}`;
+}
+
+function fmtExVat(n: number) {
+  return `₪${Math.abs(n / VAT_RATE).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`;
 }
 
 export function PartnerSettlement({
@@ -49,8 +55,8 @@ export function PartnerSettlement({
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
-            <Users size={16} className="text-indigo-600 dark:text-indigo-400" />
+          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+            <Users size={16} className="text-gray-600 dark:text-gray-400" />
           </div>
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">חשבון שותפים</h3>
         </div>
@@ -58,45 +64,64 @@ export function PartnerSettlement({
           <button
             onClick={handleSettle}
             disabled={settling}
-            className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            className="text-xs px-3 py-1.5 bg-gray-800 dark:bg-gray-600 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-500 disabled:opacity-50 transition-colors"
           >
             {settling ? "..." : "סגור תקופה"}
           </button>
         )}
         {settled && (
-          <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+          <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
             <CheckCircle2 size={14} /> נסגר
           </span>
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        {/* Ben paid */}
-        <div className="text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">בן שילם</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt(benPaid)}</p>
-        </div>
-
-        {/* Avitar paid */}
-        <div className="text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">אביתר שילם</p>
-          <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{fmt(avitarPaid)}</p>
-        </div>
-
-        {/* Settlement */}
-        <div className="text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">הפרש</p>
-          {absAmount === 0 ? (
-            <p className="text-lg font-bold text-green-600 dark:text-green-400">מאוזן</p>
-          ) : (
-            <div>
-              <p className="text-lg font-bold text-orange-600 dark:text-orange-400">{fmt(absAmount)}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1 mt-0.5">
-                {owesPerson} <ArrowLeftRight size={10} /> {owedPerson}
-              </p>
+      {/* Partner amounts — gross + net ex-VAT side by side */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Ben */}
+        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">בן שילם</p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">כולל מע"מ</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{fmt(benPaid)}</span>
             </div>
-          )}
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">נטו (ללא מע"מ)</span>
+              <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{fmtExVat(benPaid)}</span>
+            </div>
+          </div>
         </div>
+
+        {/* Avitar */}
+        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">אביתר שילם</p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">כולל מע"מ</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{fmt(avitarPaid)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-gray-400 dark:text-gray-500">נטו (ללא מע"מ)</span>
+              <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{fmtExVat(avitarPaid)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Settlement row */}
+      <div className="border-t border-gray-100 dark:border-gray-700 pt-3 flex items-center justify-between">
+        <span className="text-xs text-gray-500 dark:text-gray-400">הפרש להתחשבנות</span>
+        {absAmount === 0 ? (
+          <span className="text-sm font-bold text-gray-700 dark:text-gray-300">מאוזן</span>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{fmt(absAmount)}</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+              {owesPerson} <ArrowLeftRight size={10} /> {owedPerson}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

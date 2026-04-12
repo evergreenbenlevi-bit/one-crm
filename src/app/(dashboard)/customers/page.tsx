@@ -14,9 +14,9 @@ const statusLabels: Record<string, string> = {
 };
 
 const statusColors: Record<string, string> = {
-  active: "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400",
-  completed: "bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300",
-  churned: "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400",
+  active: "border border-gray-300 dark:border-gray-500 text-gray-700 dark:text-gray-300",
+  completed: "border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400",
+  churned: "border border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500",
 };
 
 const productLabels: Record<string, string> = {
@@ -122,7 +122,7 @@ export default function CustomersPage() {
               className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow flex items-center justify-between"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center text-brand-600 dark:text-brand-400 font-bold text-sm">
+                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400 font-bold text-sm">
                   {customer.name.charAt(0)}
                 </div>
                 <div>
@@ -136,7 +136,7 @@ export default function CustomersPage() {
               <div className="flex items-center gap-3">
                 <div className="flex gap-1">
                   {(customer.products_purchased?.length ? customer.products_purchased : customer.program ? [customer.program] : []).map((p: string) => (
-                    <span key={p} className="text-xs bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-full">
+                    <span key={p} className="text-xs border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
                       {productLabels[p] || p}
                     </span>
                   ))}
