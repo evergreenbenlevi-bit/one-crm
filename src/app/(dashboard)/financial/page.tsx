@@ -11,6 +11,7 @@ import { PeriodSelector } from "@/components/financial/period-selector";
 import { PartnerSettlement } from "@/components/financial/partner-settlement";
 import { ExpenseForm } from "@/components/financial/expense-form";
 import { FinancialTabs } from "@/components/financial/financial-tabs";
+import { ApiCostsWidget } from "@/components/financial/api-costs-widget";
 
 function getDateRange(period: string): { startDate: string; endDate: string } {
   const now = new Date();
@@ -90,6 +91,9 @@ export default async function FinancialPage({ searchParams }: PageProps) {
         expenses={trends.expenses}
         campaigns={trends.campaigns}
       />
+
+      {/* API & Infrastructure Costs */}
+      <ApiCostsWidget />
     </div>
   );
 
