@@ -36,6 +36,8 @@ export interface Lead {
   updated_at: string;
 }
 
+export type UpsellStatus = "none" | "candidate" | "offered" | "accepted" | "declined";
+
 export interface Customer {
   id: string;
   lead_id: string | null;
@@ -53,6 +55,15 @@ export interface Customer {
   program_end_date: string | null;
   current_month: number;
   status: CustomerStatus;
+  // Retention fields (Phase D1)
+  satisfaction_rating: number | null;
+  nps_score: number | null;
+  course_completion_pct: number | null;
+  webinar_attended: boolean | null;
+  upsell_status: UpsellStatus | null;
+  installment_count: number | null;
+  installment_number: number | null;
+  next_installment_date: string | null;
   created_at: string;
   updated_at: string;
 }

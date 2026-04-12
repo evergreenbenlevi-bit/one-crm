@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Briefcase, DollarSign,
   BarChart3, Calendar, Target, Settings, LogOut,
   FileText, TrendingUp, CheckSquare, FolderKanban, FlaskConical,
-  Newspaper, CalendarDays, Layers, Brain, GraduationCap, Bot, Telescope, Dumbbell
+  Newspaper, CalendarDays, Layers, Brain, GraduationCap, Bot, Telescope, Dumbbell, Phone
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { GlobalSearch } from "@/components/layout/global-search";
@@ -34,6 +34,7 @@ const navItems = [
   { href: "/calendar", label: "לוח שנה", icon: Calendar, roles: ["admin"] },
   { href: "/leads", label: "לידים", icon: Users, roles: ["admin"] },
   { href: "/customers", label: "לקוחות", icon: Briefcase, roles: ["admin"] },
+  { href: "/service", label: "שירות לקוחות", icon: Phone, roles: ["admin"] },
   { href: "/financial", label: "פיננסי", icon: DollarSign, roles: ["admin"] },
   { href: "/applications", label: "בקשות", icon: FileText, roles: ["admin"] },
   { href: "/campaigns", label: "קמפיינים", icon: BarChart3, roles: ["admin"] },

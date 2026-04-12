@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Tabs } from "@/components/ui/tabs";
 import type { Customer, Transaction, Meeting, FileRecord, Note, FunnelEvent } from "@/lib/types/database";
 import { FileText, ClipboardList, MessageSquare, CreditCard } from "lucide-react";
+import { InstallmentSchedule } from "@/components/customers/installment-schedule";
 
 interface CustomerWithRelations extends Customer {
   transactions: Transaction[];
@@ -16,6 +17,7 @@ interface CustomerWithRelations extends Customer {
 const tabs = [
   { key: "overview", label: "סקירה" },
   { key: "financial", label: "כספי" },
+  { key: "installments", label: "תשלומים" },
   { key: "files", label: "קבצים" },
   { key: "questionnaire", label: "שאלון" },
   { key: "notes", label: "הערות" },
@@ -30,6 +32,7 @@ export function CustomerTabs({ customer }: { customer: CustomerWithRelations }) 
 
       {activeTab === "overview" && <OverviewTab customer={customer} />}
       {activeTab === "financial" && <FinancialTab customer={customer} />}
+      {activeTab === "installments" && <InstallmentSchedule customer={customer} />}
       {activeTab === "files" && <FilesTab files={customer.files} />}
       {activeTab === "questionnaire" && <QuestionnaireTab events={customer.events} />}
       {activeTab === "notes" && <NotesTab notes={customer.notes} customerId={customer.id} />}
