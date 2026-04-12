@@ -12,6 +12,7 @@ import { PartnerSettlement } from "@/components/financial/partner-settlement";
 import { ExpenseForm } from "@/components/financial/expense-form";
 import { FinancialTabs } from "@/components/financial/financial-tabs";
 import { ApiCostsWidget } from "@/components/financial/api-costs-widget";
+import { TaxBreakdown } from "@/components/financial/tax-breakdown";
 
 function getDateRange(period: string): { startDate: string; endDate: string } {
   const now = new Date();
@@ -65,6 +66,12 @@ export default async function FinancialPage({ searchParams }: PageProps) {
         settlementAmount={settlement.settlementAmount}
         periodStart={periodStartDate}
         periodEnd={periodEndDate}
+      />
+
+      {/* Tax breakdown — VAT + income tax P&L */}
+      <TaxBreakdown
+        grossRevenue={financialData.revenue.total}
+        totalExpenses={financialData.costs.total}
       />
 
       {/* Add Expense */}

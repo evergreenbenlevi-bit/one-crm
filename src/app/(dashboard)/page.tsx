@@ -4,6 +4,7 @@ import { RevenueSection } from "@/components/dashboard/revenue-section";
 import { LeadsSection } from "@/components/dashboard/leads-section";
 import { ActionItems } from "@/components/dashboard/action-items";
 import { TeamDashboard } from "@/components/dashboard/team-dashboard";
+import { KpiStrip } from "@/components/dashboard/kpi-strip";
 import {
   getDashboardData,
   getTopAds,
@@ -61,6 +62,8 @@ export default async function DashboardPage() {
       </div>
 
       <RevenueSection revenue={data.revenue} chartData={chartData} />
+
+      <KpiStrip />
 
       <LeadsSection
         leadsCount={data.leads.count}
