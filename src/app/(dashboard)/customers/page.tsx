@@ -5,6 +5,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import { Users, Phone, Mail, Search, Plus } from "lucide-react";
 import { CustomerAddModal } from "@/components/customers/customer-add-modal";
+import { RetentionWidget } from "@/components/customers/retention-widget";
 
 const statusLabels: Record<string, string> = {
   active: "פעיל",
@@ -63,6 +64,7 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6">
+      <RetentionWidget />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold dark:text-gray-100">לקוחות</h1>
