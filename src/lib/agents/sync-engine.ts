@@ -158,10 +158,27 @@ export async function runSync(): Promise<SyncResult> {
     const { data: allAgents } = await supabase.from("agent_registry").select("slug");
     const knownSlugs = new Set((allAgents || []).map((a) => a.slug));
 
+    // Resolve a raw slug to a known registry slug, trying common variants
+    const resolveSlug = (raw: string): string | null => {
+      if (knownSlugs.has(raw)) return raw;
+      // Try with skill- prefix
+      if (knownSlugs.has(`skill-${raw}`)) return `skill-${raw}`;
+      // Try -er → -ing suffix (e.g. "hook-writer" → "hook-writing")
+      const normalized = raw.replace(/-(?:writer|builder|creator|generator|analyzer|researcher|runner|maker|sender)$/, (m) =>
+        m.replace("writer","writing").replace("builder","building").replace("creator","creating")
+         .replace("generator","generating").replace("analyzer","analyzing").replace("researcher","researching")
+         .replace("runner","running").replace("maker","making").replace("sender","sending")
+      );
+      if (normalized !== raw && knownSlugs.has(`skill-${normalized}`)) return `skill-${normalized}`;
+      return null;
+    };
+
     for (const edge of edges) {
-      if (knownSlugs.has(edge.source) && knownSlugs.has(edge.target)) {
+      const source = resolveSlug(edge.source);
+      const target = resolveSlug(edge.target);
+      if (source && target) {
         await supabase.from("agent_edges").upsert(
-          { source_slug: edge.source, target_slug: edge.target, relation: edge.relation },
+          { source_slug: source, target_slug: target, relation: edge.relation },
           { onConflict: "source_slug,target_slug,relation" }
         );
         result.edges_synced++;

@@ -98,7 +98,7 @@ const typeFilters: { type: AgentType; label: string; color: string }[] = [
 export function NexusTopology({ data }: { data: TopologyData }) {
   const [selectedAgent, setSelectedAgent] = useState<TNode | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<{ source: string; target: string; relation: EdgeRelation } | null>(null);
-  const [hiddenTypes, setHiddenTypes] = useState<Set<AgentType>>(new Set());
+  const [hiddenTypes, setHiddenTypes] = useState<Set<AgentType>>(new Set<AgentType>(["skill", "cron"]));
 
   const filteredData = useMemo(() => {
     if (hiddenTypes.size === 0) return data;

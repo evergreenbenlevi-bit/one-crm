@@ -10,6 +10,7 @@ for (const line of envContent.split("\n")) {
 }
 
 import { runSync } from "../src/lib/agents/sync-engine";
+import { runHealthSync } from "./sync-health";
 
 async function main() {
   console.log("Starting local sync...");
@@ -23,6 +24,11 @@ async function main() {
     console.log(`\n  Errors (${result.errors.length}):`);
     result.errors.forEach((e) => console.log(`    - ${e}`));
   }
+
+  // Also run health sync after registry/edge sync
+  console.log("\nRunning health sync...");
+  const health = await runHealthSync();
+  console.log(`  Healthy: ${health.healthy} | Down: ${health.down} | Degraded: ${health.degraded}`);
 }
 
 main().catch(console.error);
