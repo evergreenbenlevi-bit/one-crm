@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Zap } from "lucide-react";
+import { Users, Zap, Youtube } from "lucide-react";
 import MyCreatorsView from "./my-creators/MyCreatorsView";
 import ViralView from "./viral/ViralView";
+import BenPerformanceSection from "./BenPerformanceSection";
 
 const TABS = [
   { key: "my", label: "My Creators", icon: Users },
   { key: "viral", label: "Global Viral", icon: Zap },
+  { key: "ben", label: "ביצועי בן", icon: Youtube },
 ];
 
 export default function CreatorIntelPage() {
@@ -49,6 +51,7 @@ export default function CreatorIntelPage() {
       {/* Tab content */}
       {tab === "my" && <MyCreatorsView />}
       {tab === "viral" && <ViralView />}
+      {tab === "ben" && <BenPerformanceSection />}
     </div>
   );
 }
