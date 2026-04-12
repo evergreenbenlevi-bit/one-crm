@@ -20,6 +20,7 @@ export interface Creator {
   last_synced_at: string | null;
   example_posts: ExamplePost[] | null;
   vault_path: string | null;
+  pattern_notes: string | null;
   active: boolean;
 }
 

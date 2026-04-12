@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest) {
   const {
     id, display_name, niche, profile_url, notes, active,
     format_type, domain, thumbnail_url, youtube_channel_id,
-    instagram_username, example_posts, vault_path, analysis_status,
+    instagram_username, example_posts, vault_path, analysis_status, pattern_notes,
   } = body;
 
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest) {
     Object.entries({
       display_name, niche, profile_url, notes, active,
       format_type, domain, thumbnail_url, youtube_channel_id,
-      instagram_username, example_posts, vault_path, analysis_status,
+      instagram_username, example_posts, vault_path, analysis_status, pattern_notes,
     }).filter(([, v]) => v !== undefined)
   );
 
