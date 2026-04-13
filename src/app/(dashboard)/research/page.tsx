@@ -26,11 +26,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
-  waiting_ben: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-  implementing: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  done: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-  cancelled: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
+  pending: "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-800",
+  waiting_ben: "bg-gray-600 text-white dark:bg-gray-400 dark:text-gray-900",
+  implementing: "bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100",
+  done: "border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500",
+  cancelled: "border border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -78,7 +78,7 @@ export default function ResearchPage() {
   return (
     <div className="p-6 max-w-7xl mx-auto" dir="rtl">
       <div className="flex items-center gap-3 mb-6">
-        <FlaskConical className="h-6 w-6 text-indigo-500" />
+        <FlaskConical className="h-6 w-6 text-gray-500 dark:text-gray-400" />
         <h1 className="text-2xl font-bold">מחקרים</h1>
         <span className="text-sm text-gray-500 mr-2">admin only</span>
       </div>
@@ -86,10 +86,10 @@ export default function ResearchPage() {
       {/* Summary */}
       <div className="grid grid-cols-4 gap-3 mb-6">
         {[
-          { key: "pending", label: "ממתינים", color: "text-yellow-600" },
-          { key: "waiting_ben", label: "ממתין לבן", color: "text-orange-600" },
-          { key: "implementing", label: "בתהליך", color: "text-blue-600" },
-          { key: "done", label: "יושם", color: "text-green-600" },
+          { key: "pending", label: "ממתינים", color: "text-gray-900 dark:text-gray-100" },
+          { key: "waiting_ben", label: "ממתין לבן", color: "text-gray-700 dark:text-gray-300" },
+          { key: "implementing", label: "בתהליך", color: "text-gray-500 dark:text-gray-400" },
+          { key: "done", label: "יושם", color: "text-gray-400 dark:text-gray-500" },
         ].map(({ key, label, color }) => (
           <div key={key} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
             <div className={clsx("text-2xl font-bold", color)}>{counts[key] ?? 0}</div>
@@ -108,7 +108,7 @@ export default function ResearchPage() {
               className={clsx(
                 "px-3 py-1 rounded-full text-sm transition-colors",
                 statusFilter === s
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
                   : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
               )}
             >

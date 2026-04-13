@@ -20,17 +20,17 @@ import { useEffect } from "react";
 
 // ─── Sub-tasks panel ──────────────────────────────────────────────────────────
 const STATUS_BADGE: Record<TaskStatus, string> = {
-  in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-  waiting_ben: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  todo:        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  backlog:     "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
-  done:        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-  inbox:       "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300",
-  up_next:     "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300",
-  scheduled:   "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-  waiting:     "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300",
-  someday:     "bg-stone-100 text-stone-700 dark:bg-stone-900/30 dark:text-stone-300",
-  archived:    "bg-neutral-100 text-neutral-500 dark:bg-neutral-900/30 dark:text-neutral-400",
+  in_progress: "bg-gray-900 text-white dark:bg-white dark:text-gray-900",
+  waiting_ben: "bg-gray-700 text-white dark:bg-gray-300 dark:text-gray-800",
+  up_next:     "bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100",
+  scheduled:   "border border-gray-300 dark:border-gray-500 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
+  todo:        "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+  backlog:     "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-500",
+  inbox:       "border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400",
+  waiting:     "border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500",
+  done:        "border border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600",
+  someday:     "bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-600",
+  archived:    "bg-gray-50 text-gray-300 dark:bg-gray-800 dark:text-gray-700",
 };
 
 function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask: (t: Task) => void }) {
@@ -999,7 +999,7 @@ export default function TasksPage() {
         <div className="space-y-2">
           {completedLoading ? (
             <div className="flex items-center justify-center py-12 text-gray-400 dark:text-gray-500 gap-2">
-              <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-green-500 rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-gray-900 dark:border-t-white rounded-full animate-spin" />
               טוען הושלמו...
             </div>
           ) : completedTasks.length === 0 ? (
@@ -1047,7 +1047,7 @@ export default function TasksPage() {
                         i < group.tasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/50"
                       )}
                     >
-                      <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
+                      <CheckCircle2 size={14} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm text-gray-500 dark:text-gray-400 line-through truncate block">
                           {task.title}
@@ -1124,7 +1124,7 @@ export default function TasksPage() {
                     <button
                       onClick={() => handleRestore(task.id)}
                       title="שחזר מארכיון"
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex-shrink-0"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
                     >
                       <RotateCcw size={13} />
                     </button>
