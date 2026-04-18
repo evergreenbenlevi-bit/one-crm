@@ -6,6 +6,12 @@ import { clsx } from "clsx";
 import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskEffort, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
 import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, effortLabels, EFFORT_OPTIONS, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS, DURATION_OPTIONS, durationLabels } from "@/lib/types/tasks";
 
+interface ProjectOption {
+  id: string;
+  title: string;
+  status: string;
+}
+
 type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'any';
 
 function autoAssignSlot(impact: TaskImpact, size: TaskSize, dueDate: string): TimeSlot {
@@ -46,6 +52,8 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurPattern, setRecurPattern] = useState("weekly:0");
   const [errors, setErrors] = useState<{ due_date?: string; estimated_minutes?: string }>({});
+  const [projectId, setProjectId] = useState<string>("");
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
 
   useEffect(() => {
     if (task) {
@@ -65,8 +73,12 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
       setActualMinutes(task.actual_minutes ?? "");
       setIsRecurring(task.is_recurring || false);
       setRecurPattern(task.recur_pattern || "weekly:0");
+      setProjectId(task.project_id || "");
       setErrors({});
       setActiveTab("details");
+      fetch("/api/projects").then(r => r.json()).then(data => {
+        if (Array.isArray(data)) setProjects(data.filter((p: ProjectOption) => p.status !== "archived"));
+      }).catch(() => {});
     }
   }, [task]);
 
@@ -98,6 +110,7 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
       recur_pattern: isRecurring ? recurPattern : null,
       recur_next_at: task!.recur_next_at,
       manually_positioned: dueDateChanged ? false : (task!.manually_positioned ?? false),
+      project_id: projectId || null,
     });
     onClose();
   }
@@ -272,6 +285,17 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
                     />
                   </div>
                 </div>
+
+                {/* Project */}
+                {projects.length > 0 && (
+                  <div>
+                    <label className={labelClass}>פרויקט (אופציונלי)</label>
+                    <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={fieldClass}>
+                      <option value="">— ללא פרויקט —</option>
+                      {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className={labelClass}>תגיות</label>

@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { clsx } from "clsx";
 import type { TaskPriority, TaskOwner, TaskCategory, TaskStatus, EstimatedMinutes, TaskImpact, TaskSize } from "@/lib/types/tasks";
 import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, DURATION_OPTIONS, durationLabels, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS } from "@/lib/types/tasks";
+
+interface ProjectOption {
+  id: string;
+  title: string;
+  status: string;
+}
 
 type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'any';
 
@@ -35,11 +41,13 @@ interface TaskAddModalProps {
     tags: string[];
     is_recurring: boolean;
     recur_pattern: string | null;
+    project_id?: string | null;
   }) => void;
   initialStatus?: TaskStatus;
+  initialProjectId?: string | null;
 }
 
-export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: TaskAddModalProps) {
+export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo", initialProjectId }: TaskAddModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("p2");
@@ -55,6 +63,17 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurPattern, setRecurPattern] = useState("weekly:0");
   const [errors, setErrors] = useState<{ due_date?: string; estimated_minutes?: string }>({});
+  const [projectId, setProjectId] = useState<string>(initialProjectId || "");
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      setProjectId(initialProjectId || "");
+      fetch("/api/projects").then(r => r.json()).then(data => {
+        if (Array.isArray(data)) setProjects(data.filter((p: ProjectOption) => p.status !== "archived"));
+      }).catch(() => {});
+    }
+  }, [open, initialProjectId]);
 
   if (!open) return null;
 
@@ -67,11 +86,12 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     setErrors({});
     const finalSlot = timeSlot === 'any' ? autoAssignSlot(impact, size, dueDate) : timeSlot;
-    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, estimated_minutes: estimatedMinutes || null, time_slot: finalSlot, impact, size, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null });
+    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, estimated_minutes: estimatedMinutes || null, time_slot: finalSlot, impact, size, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, project_id: projectId || null });
     setTitle(""); setDescription(""); setPriority("p2"); setStatus(initialStatus);
     setOwner("claude"); setCategory("one_tm"); setDueDate(""); setEstimatedMinutes(""); setTags([]);
     setImpact("important"); setSize("medium"); setTimeSlot("any");
     setIsRecurring(false); setRecurPattern("weekly:0"); setErrors({});
+    setProjectId(initialProjectId || "");
     onClose();
   }
 
@@ -210,6 +230,22 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
               <option value="evening">ערב (20-22) — מהיר</option>
             </select>
           </div>
+
+          {/* Project (optional) */}
+          {projects.length > 0 && (
+            <div>
+              <label className={labelClass}>פרויקט (אופציונלי)</label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className={fieldClass}
+                disabled={!!initialProjectId}
+              >
+                <option value="">— ללא פרויקט —</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className={labelClass}>תגיות</label>

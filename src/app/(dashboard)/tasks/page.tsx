@@ -718,6 +718,7 @@ function TasksPageContent() {
     impact?: string | null; size?: string | null;
     tags: string[];
     is_recurring?: boolean; recur_pattern?: string | null;
+    project_id?: string | null;
   }) {
     try {
       const res = await fetch("/api/tasks", {
@@ -752,6 +753,7 @@ function TasksPageContent() {
           category: task.category, due_date: task.due_date, tags: task.tags || [],
           estimated_minutes: task.estimated_minutes, actual_minutes: task.actual_minutes,
           time_slot: task.time_slot, impact: task.impact, size: task.size,
+          project_id: task.project_id,
           manually_positioned: task.manually_positioned ?? false,
         }),
       });
