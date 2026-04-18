@@ -23,7 +23,7 @@ const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
 };
 
 const PRIORITY_CYCLE: Record<TaskPriority, TaskPriority> = {
-  p1: "p2", p2: "p3", p3: "p1",
+  p0: "p1", p1: "p2", p2: "p3", p3: "p0",
 };
 
 interface TaskCardProps {

@@ -14,7 +14,22 @@ const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
 const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research", "infrastructure", "personal", "errands"];
 const VALID_IMPACTS: TaskImpact[] = ["needle_mover", "important", "nice"];
 const VALID_SIZES: TaskSize[] = ["quick", "medium", "big"];
-const VALID_ESTIMATED_MINUTES: EstimatedMinutes[] = [5, 15, 30, 45, 60, 90, 120];
+const VALID_ESTIMATED_MINUTES: EstimatedMinutes[] = [5, 15, 30, 45, 60, 90, 120, 180];
+
+// Size → estimated_minutes preset (spec section 8)
+const SIZE_PRESETS: Record<string, EstimatedMinutes> = {
+  quick: 15,
+  medium: 60,
+  big: 180,
+};
+
+// ── Time slot auto-assignment (spec section 7, priority order) ──
+function autoTimeSlot(impact: string | null, size: string | null, due_date: string | null): string {
+  if (impact === "needle_mover") return "morning";
+  if (size === "big") return "morning";
+  if (size === "quick" && due_date && due_date > new Date().toISOString().split("T")[0]) return "evening";
+  return "any";
+}
 
 // ── Validation helpers ──
 function validateTaskFields(body: Record<string, unknown>, requireTitle = false): string | null {
@@ -149,8 +164,10 @@ export async function POST(request: NextRequest) {
     recur_pattern: body.is_recurring && body.recur_pattern ? String(body.recur_pattern) : null,
     impact: body.impact || "important",
     size: body.size || "medium",
-    estimated_minutes: typeof body.estimated_minutes === "number" ? body.estimated_minutes : null,
-    time_slot: body.time_slot || "any",
+    estimated_minutes: typeof body.estimated_minutes === "number"
+      ? body.estimated_minutes
+      : SIZE_PRESETS[body.size as string] ?? null,
+    time_slot: body.time_slot || autoTimeSlot(body.impact as string, body.size as string, body.due_date as string),
     actual_minutes: typeof body.actual_minutes === "number" ? body.actual_minutes : null,
     project_id: body.project_id || null,
   };

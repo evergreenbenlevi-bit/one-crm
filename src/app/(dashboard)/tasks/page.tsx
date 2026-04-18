@@ -283,7 +283,7 @@ export default function TasksPage() {
       return t.status === "in_progress" || t.status === "waiting_ben" || (t.status === "todo" && t.priority === "p1");
     });
     const statusOrder: Record<TaskStatus, number> = { in_progress: 0, waiting_ben: 1, todo: 2, up_next: 3, scheduled: 4, backlog: 5, inbox: 6, waiting: 7, done: 8, someday: 9, archived: 10 };
-    const priorityOrder = { p1: 0, p2: 1, p3: 2 };
+    const priorityOrder: Record<string, number> = { p0: -1, p1: 0, p2: 1, p3: 2 };
     active.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || priorityOrder[a.priority] - priorityOrder[b.priority]);
     return active.slice(0, FOCUS_LIMIT);
   }, [queueFiltered, filterCategory, filterPriority]);
@@ -308,7 +308,7 @@ export default function TasksPage() {
     const cats: TaskCategory[] = ["one_tm", "brand", "research"];
     cats.forEach(c => { groups[c] = []; });
     backlogFiltered.forEach(t => { if (groups[t.category]) groups[t.category].push(t); });
-    const priorityOrder = { p1: 0, p2: 1, p3: 2 };
+    const priorityOrder: Record<string, number> = { p0: -1, p1: 0, p2: 1, p3: 2 };
     (Object.keys(groups) as TaskCategory[]).forEach(c => groups[c].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]));
     return groups;
   }, [backlogFiltered]);

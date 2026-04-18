@@ -7,7 +7,7 @@ export type TaskEffort = "quick" | "small" | "medium" | "large";
 export type TaskImpact = "needle_mover" | "important" | "nice";
 export type TaskSize = "quick" | "medium" | "big";
 /** Precise duration in minutes — replaces vague size concept for scheduling */
-export type EstimatedMinutes = 5 | 15 | 30 | 45 | 60 | 90 | 120;
+export type EstimatedMinutes = 5 | 15 | 30 | 45 | 60 | 90 | 120 | 180;
 
 export type RecurPattern = "daily" | `weekly:${number}` | `monthly:${number}`;
 
@@ -204,7 +204,7 @@ export const EFFORT_OPTIONS: TaskEffort[] = ["quick", "small", "medium", "large"
 export const CRM_CATEGORIES: TaskCategory[] = ["one_tm", "brand", "research", "self", "errands", "infrastructure", "personal"];
 
 // Duration options for estimated_minutes
-export const DURATION_OPTIONS: EstimatedMinutes[] = [5, 15, 30, 45, 60, 90, 120];
+export const DURATION_OPTIONS: EstimatedMinutes[] = [5, 15, 30, 45, 60, 90, 120, 180];
 
 export const durationLabels: Record<EstimatedMinutes, string> = {
   5: "5 דק׳",
@@ -214,6 +214,7 @@ export const durationLabels: Record<EstimatedMinutes, string> = {
   60: "שעה",
   90: "שעה וחצי",
   120: "שעתיים",
+  180: "3 שעות",
 };
 
 export const durationColors: Record<EstimatedMinutes, string> = {
@@ -224,6 +225,7 @@ export const durationColors: Record<EstimatedMinutes, string> = {
   60: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   90: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
   120: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  180: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
 };
 
 export const SUGGESTED_TAGS = [

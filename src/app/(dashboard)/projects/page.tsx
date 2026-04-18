@@ -59,7 +59,7 @@ export default function ProjectsPage() {
     });
 
     // Sort: P1 first, then by progress (least done first)
-    const pOrder = { p1: 0, p2: 1, p3: 2 };
+    const pOrder: Record<string, number> = { p0: -1, p1: 0, p2: 1, p3: 2 };
     projectList.sort((a, b) => {
       if (a.status === "done" && b.status !== "done") return 1;
       if (a.status !== "done" && b.status === "done") return -1;

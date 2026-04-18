@@ -219,7 +219,7 @@ export default function ProjectDetailPage() {
             </thead>
             <tbody>
               {subtasks
-                .sort((a, b) => ({ p1: 0, p2: 1, p3: 2 }[a.priority] - { p1: 0, p2: 1, p3: 2 }[b.priority]))
+                .sort((a, b) => ({ p0: -1, p1: 0, p2: 1, p3: 2 }[a.priority] ?? 0) - ({ p0: -1, p1: 0, p2: 1, p3: 2 }[b.priority] ?? 0))
                 .map(task => (
                   <tr
                     key={task.id}
