@@ -28,6 +28,10 @@ function viralScore(views: number, likes: number, comments: number): number {
   return views + likes * 2 + comments * 3;
 }
 
+function cleanText(s: string): string {
+  return s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
+}
+
 function getWeekLabel(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -80,8 +84,8 @@ export async function POST(req: NextRequest) {
         return {
           week, niche, platform: "instagram" as const,
           post_url: reel.url, creator_handle: username,
-          title: reel.caption.slice(0, 150) || null,
-          hook_text: reel.caption.slice(0, 200) || null,
+          title: cleanText(reel.caption).slice(0, 150) || null,
+          hook_text: cleanText(reel.caption).slice(0, 200) || null,
           views: reel.videoViewCount, likes: reel.likesCount, comments: reel.commentsCount,
           engagement_ratio: reel.videoViewCount > 0 ? (reel.likesCount + reel.commentsCount) / reel.videoViewCount : null,
           viral_score: score, thumbnail_url: reel.thumbnailUrl,
