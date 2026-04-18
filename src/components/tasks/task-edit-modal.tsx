@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { X, Trash2, FileText, MessageSquare } from "lucide-react";
 import { clsx } from "clsx";
-import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskEffort, TaskImpact, TaskSize } from "@/lib/types/tasks";
-import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, effortLabels, EFFORT_OPTIONS, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS } from "@/lib/types/tasks";
+import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskEffort, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
+import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, effortLabels, EFFORT_OPTIONS, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS, DURATION_OPTIONS, durationLabels } from "@/lib/types/tasks";
 import { TagInput } from "./tag-input";
 import { TaskActivityTimeline } from "./task-activity-timeline";
 
@@ -30,8 +30,10 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   const [effort, setEffort] = useState<TaskEffort | "">("");
   const [impact, setImpact] = useState<TaskImpact>("important");
   const [size, setSize] = useState<TaskSize>("medium");
+  const [estimatedMinutes, setEstimatedMinutes] = useState<EstimatedMinutes | "">("");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurPattern, setRecurPattern] = useState("weekly:0");
+  const [errors, setErrors] = useState<{ due_date?: string; estimated_minutes?: string }>({});
 
   useEffect(() => {
     if (task) {
@@ -46,8 +48,10 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
       setEffort(task.effort || "");
       setImpact(task.impact || "important");
       setSize(task.size || "medium");
+      setEstimatedMinutes((task.estimated_minutes as EstimatedMinutes) || "");
       setIsRecurring(task.is_recurring || false);
       setRecurPattern(task.recur_pattern || "weekly:0");
+      setErrors({});
       setActiveTab("details");
     }
   }, [task]);
@@ -57,7 +61,12 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave({ ...task!, title: title.trim(), description: description.trim() || null, priority, status, owner, category, due_date: dueDate || null, tags, effort: (effort || null) as TaskEffort | null, impact, size, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, recur_next_at: task!.recur_next_at });
+    const newErrors: typeof errors = {};
+    if (!dueDate) newErrors.due_date = "דדליין חובה";
+    if (!estimatedMinutes) newErrors.estimated_minutes = "זמן משוער חובה";
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+    setErrors({});
+    onSave({ ...task!, title: title.trim(), description: description.trim() || null, priority, status, owner, category, due_date: dueDate || null, estimated_minutes: (estimatedMinutes || null) as EstimatedMinutes | null, tags, effort: (effort || null) as TaskEffort | null, impact, size, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, recur_next_at: task!.recur_next_at });
     onClose();
   }
 
@@ -165,11 +174,35 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelClass}>דדליין</label>
-                    <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldClass} />
+                    <label className={clsx(labelClass, errors.due_date && "text-red-500")}>
+                      דדליין <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => { setDueDate(e.target.value); setErrors(prev => ({ ...prev, due_date: undefined })); }}
+                      className={clsx(fieldClass, errors.due_date && "border-red-400 dark:border-red-600")}
+                    />
+                    {errors.due_date && <p className="text-[11px] text-red-500 mt-0.5">{errors.due_date}</p>}
                   </div>
+                  <div>
+                    <label className={clsx(labelClass, errors.estimated_minutes && "text-red-500")}>
+                      זמן משוער <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={estimatedMinutes}
+                      onChange={(e) => { setEstimatedMinutes(e.target.value ? Number(e.target.value) as EstimatedMinutes : ""); setErrors(prev => ({ ...prev, estimated_minutes: undefined })); }}
+                      className={clsx(fieldClass, errors.estimated_minutes && "border-red-400 dark:border-red-600")}
+                    >
+                      <option value="">בחר...</option>
+                      {DURATION_OPTIONS.map(m => <option key={m} value={m}>{durationLabels[m]}</option>)}
+                    </select>
+                    {errors.estimated_minutes && <p className="text-[11px] text-red-500 mt-0.5">{errors.estimated_minutes}</p>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>השפעה</label>
                     <select value={impact} onChange={(e) => setImpact(e.target.value as TaskImpact)} className={fieldClass}>

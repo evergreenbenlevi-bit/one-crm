@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
-import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2, ChevronDown, ChevronRight, GitBranch, RotateCcw } from "lucide-react";
+import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2, ChevronDown, ChevronRight, GitBranch, RotateCcw, LayoutGrid } from "lucide-react";
 import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { TASK_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors } from "@/lib/types/tasks";
@@ -131,7 +132,7 @@ function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask:
   );
 }
 
-type ViewMode = "today" | "pillars" | "backlog" | "completed" | "archived";
+type ViewMode = "focus" | "board" | "list" | "backlog" | "completed" | "archived";
 type QueueMode = "claude" | "ben" | "all";
 
 // Max tasks visible in Focus (Today) view — AUDHD threshold
@@ -149,10 +150,14 @@ const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
   inbox: "up_next", up_next: "in_progress", scheduled: "in_progress", waiting: "in_progress", someday: null, archived: null,
 };
 
-export default function TasksPage() {
+function TasksPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const viewMode = (searchParams.get("tab") as ViewMode) || "focus";
+
   const [backlogLoaded, setBacklogLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("today");
   const [queueMode, setQueueMode] = useState<QueueMode>("claude");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -232,7 +237,7 @@ export default function TasksPage() {
         setQuickAddTitle("");
       }
       // Arrow navigation in focus view (skip if typing in input/textarea)
-      if (viewMode === "today" && !quickAddOpen && !editingTask) {
+      if (viewMode === "focus" && !quickAddOpen && !editingTask) {
         const tag = (e.target as HTMLElement)?.tagName;
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
         const tasks_ = todayTasksRef.current;
@@ -258,7 +263,9 @@ export default function TasksPage() {
   }, [quickAddOpen, viewMode, focusedTaskIndex, editingTask]);
 
   function handleViewChange(mode: ViewMode) {
-    setViewMode(mode);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", mode);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false } as Parameters<typeof router.push>[1]);
     setFocusedTaskIndex(-1);
     if (mode === "backlog") setBacklogLoaded(true);
     if (mode === "completed") setCompletedLoaded(true);
@@ -289,9 +296,20 @@ export default function TasksPage() {
   }, [queueFiltered, filterCategory, filterPriority]);
   todayTasksRef.current = todayTasks;
 
-  // PILLARS: all non-done, non-backlog tasks
+  // PILLARS/LIST: all non-done, non-backlog tasks
   const pillarTasks = useMemo(() => {
     return queueFiltered.filter(t => t.status !== "done" && t.status !== "backlog");
+  }, [queueFiltered]);
+
+  // BOARD: tasks grouped by status column
+  const boardColumns = useMemo(() => {
+    const cols = {} as Record<TaskStatus, Task[]>;
+    (["inbox", "up_next", "scheduled", "in_progress", "waiting", "waiting_ben", "todo", "done", "backlog", "someday", "archived"] as TaskStatus[]).forEach(s => { cols[s] = []; });
+    queueFiltered.forEach(t => { if (cols[t.status]) cols[t.status].push(t); });
+    Object.keys(cols).forEach(s => {
+      cols[s as TaskStatus].sort((a, b) => (b.priority_score ?? b.position ?? 0) - (a.priority_score ?? a.position ?? 0));
+    });
+    return cols;
   }, [queueFiltered]);
 
   // BACKLOG grouped by category
@@ -470,6 +488,26 @@ export default function TasksPage() {
     finally { pendingOps.current.delete(taskId); }
   }
 
+  async function handlePositionChange(taskId: string, newPosition: number) {
+    if (pendingOps.current.has(taskId)) return;
+    pendingOps.current.add(taskId);
+    mutateTasks(tasks.map(t => t.id === taskId ? { ...t, position: newPosition, manually_positioned: true } : t), false);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, position: newPosition, manually_positioned: true }),
+      });
+      if (!res.ok) throw new Error();
+      mutateTasks();
+    } catch {
+      mutateTasks();
+      setError("שגיאה בשמירת מיקום");
+    } finally {
+      pendingOps.current.delete(taskId);
+    }
+  }
+
   async function handleQuickAdd() {
     if (!quickAddTitle.trim()) return;
     await handleAddTask({
@@ -500,7 +538,9 @@ export default function TasksPage() {
 
   async function handleAddTask(taskData: {
     title: string; description: string; priority: TaskPriority;
-    status: TaskStatus; owner: TaskOwner; category: TaskCategory; due_date: string | null; tags: string[];
+    status: TaskStatus; owner: TaskOwner; category: TaskCategory; due_date: string | null;
+    estimated_minutes?: number | null; tags: string[];
+    is_recurring?: boolean; recur_pattern?: string | null;
   }) {
     try {
       const res = await fetch("/api/tasks", {
@@ -627,7 +667,7 @@ export default function TasksPage() {
       </div>
 
       {/* Session Restore Banner */}
-      {sessionCtx && viewMode === "today" && (
+      {sessionCtx && viewMode === "focus" && (
         <div className="flex items-center gap-3 px-4 py-3 bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 rounded-xl text-sm animate-in fade-in">
           <span className="text-brand-600 dark:text-brand-400 text-base">💾</span>
           <div className="flex-1">
@@ -708,14 +748,15 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* View Tabs — Focus / Pillars / Backlog / Completed */}
+      {/* View Tabs — Focus / Board / List / Backlog / Completed / Archived */}
       <div className="flex items-center gap-0 border-b border-gray-200 dark:border-gray-700">
         {([
-          { id: "today",     icon: Sun,          label: "Focus",    count: todayTasks.length },
-          { id: "pillars",   icon: Layers,       label: "פילרים",   count: pillarTasks.length },
-          { id: "backlog",   icon: Archive,      label: "Backlog",  count: stats.backlogCount },
-          { id: "completed", icon: CheckCircle2, label: "הושלמו",   count: completedTasks.length },
-          { id: "archived",  icon: Archive,      label: "ארכיון",   count: archivedTasks.length },
+          { id: "focus",     icon: Sun,          label: "Focus",   count: todayTasks.length },
+          { id: "board",     icon: LayoutGrid,   label: "Board",   count: pillarTasks.length },
+          { id: "list",      icon: Layers,       label: "רשימה",   count: pillarTasks.length },
+          { id: "backlog",   icon: Archive,      label: "Backlog", count: stats.backlogCount },
+          { id: "completed", icon: CheckCircle2, label: "הושלמו",  count: completedTasks.length },
+          { id: "archived",  icon: Archive,      label: "ארכיון",  count: archivedTasks.length },
         ] as const).map(({ id, icon: Icon, label, count }) => (
           <button
             key={id}
@@ -742,7 +783,7 @@ export default function TasksPage() {
       </div>
 
       {/* Secondary Filters (Focus + Backlog only) */}
-      {(viewMode === "today" || viewMode === "backlog") && (
+      {(viewMode === "focus" || viewMode === "backlog") && (
         <div className="flex items-center gap-2">
           <TaskFilters
             priority={filterPriority}
@@ -757,7 +798,7 @@ export default function TasksPage() {
       )}
 
       {/* ── FOCUS VIEW ── */}
-      {viewMode === "today" && (
+      {viewMode === "focus" && (
         <div className="space-y-3">
           <Big3Today />
 
@@ -854,8 +895,24 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* ── PILLARS VIEW ── */}
-      {viewMode === "pillars" && (
+      {/* ── BOARD VIEW ── */}
+      {viewMode === "board" && (
+        <div className="overflow-x-auto -mx-4 px-4">
+          <TaskKanban
+            columns={boardColumns}
+            onStatusChange={handleStatusChange}
+            onEdit={handleTaskClick}
+            onPriorityChange={handlePriorityChange}
+            onDelete={handleDeleteTask}
+            onDueDateChange={handleDueDateChange}
+            onPositionChange={handlePositionChange}
+            visibleStatuses={["in_progress", "waiting_ben", "up_next", "todo", "inbox", "waiting", "scheduled"]}
+          />
+        </div>
+      )}
+
+      {/* ── LIST VIEW ── */}
+      {viewMode === "list" && (
         <TaskPillars
           tasks={pillarTasks}
           onEdit={handleTaskClick}
@@ -1148,5 +1205,13 @@ export default function TasksPage() {
         onClear={clearSelection}
       />
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-96"><div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-brand-600 rounded-full animate-spin" /></div>}>
+      <TasksPageContent />
+    </Suspense>
   );
 }

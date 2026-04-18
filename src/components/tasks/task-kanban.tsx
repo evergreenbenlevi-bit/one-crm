@@ -29,6 +29,7 @@ interface TaskKanbanProps {
   onPriorityChange?: (taskId: string, newPriority: import("@/lib/types/tasks").TaskPriority) => void;
   onDelete?: (taskId: string) => void;
   onDueDateChange?: (taskId: string, newDate: string | null) => void;
+  onPositionChange?: (taskId: string, newPosition: number) => void;
   visibleStatuses?: TaskStatus[];
 }
 
@@ -150,7 +151,7 @@ function KanbanColumn({
   );
 }
 
-export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, onDelete, onDueDateChange, visibleStatuses }: TaskKanbanProps) {
+export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, onDelete, onDueDateChange, onPositionChange, visibleStatuses }: TaskKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -176,6 +177,7 @@ export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, 
     const taskId = String(active.id);
     const overId = String(over.id);
 
+    // Cross-column: over is a status
     if (TASK_STATUSES.includes(overId as TaskStatus)) {
       const currentStatus = Object.entries(columns).find(([, tasks]) =>
         tasks.some(t => t.id === taskId)
@@ -184,6 +186,30 @@ export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, 
       if (currentStatus && currentStatus !== overId) {
         onStatusChange(taskId, overId as TaskStatus);
       }
+      return;
+    }
+
+    // Within-column: over is a task ID
+    if (overId !== taskId && onPositionChange) {
+      const colEntry = Object.entries(columns).find(([, colTasks]) =>
+        colTasks.some(t => t.id === taskId)
+      );
+      if (!colEntry) return;
+
+      const colTasks = [...colEntry[1]].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      const fromIdx = colTasks.findIndex(t => t.id === taskId);
+      const toIdx = colTasks.findIndex(t => t.id === overId);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+
+      const reordered = [...colTasks];
+      reordered.splice(fromIdx, 1);
+      const targetIdx = toIdx > fromIdx ? toIdx - 1 : toIdx;
+
+      const prevPos = reordered[targetIdx - 1]?.position ?? 0;
+      const nextPos = reordered[targetIdx]?.position ?? (prevPos + 2000);
+      const newPosition = Math.floor((prevPos + nextPos) / 2) || targetIdx * 100;
+
+      onPositionChange(taskId, newPosition);
     }
   }
 

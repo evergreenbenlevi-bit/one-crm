@@ -232,6 +232,12 @@ export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDel
               <span>{task.due_date}</span>
             </div>
           )}
+
+          {isOverdue && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold">
+              פג תוקף
+            </span>
+          )}
         </div>
 
         {/* Tags */}

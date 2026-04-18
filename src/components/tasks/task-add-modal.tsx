@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { clsx } from "clsx";
-import type { TaskPriority, TaskOwner, TaskCategory, TaskStatus } from "@/lib/types/tasks";
-import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES } from "@/lib/types/tasks";
+import type { TaskPriority, TaskOwner, TaskCategory, TaskStatus, EstimatedMinutes } from "@/lib/types/tasks";
+import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, DURATION_OPTIONS, durationLabels } from "@/lib/types/tasks";
 import { TagInput } from "./tag-input";
 
 interface TaskAddModalProps {
@@ -18,6 +18,7 @@ interface TaskAddModalProps {
     owner: TaskOwner;
     category: TaskCategory;
     due_date: string | null;
+    estimated_minutes: EstimatedMinutes | null;
     tags: string[];
     is_recurring: boolean;
     recur_pattern: string | null;
@@ -33,19 +34,26 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
   const [owner, setOwner] = useState<TaskOwner>("claude");
   const [category, setCategory] = useState<TaskCategory>("one_tm");
   const [dueDate, setDueDate] = useState("");
+  const [estimatedMinutes, setEstimatedMinutes] = useState<EstimatedMinutes | "">("");
   const [tags, setTags] = useState<string[]>([]);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurPattern, setRecurPattern] = useState("weekly:0");
+  const [errors, setErrors] = useState<{ due_date?: string; estimated_minutes?: string }>({});
 
   if (!open) return null;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null });
+    const newErrors: typeof errors = {};
+    if (!dueDate) newErrors.due_date = "דדליין חובה";
+    if (!estimatedMinutes) newErrors.estimated_minutes = "זמן משוער חובה";
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+    setErrors({});
+    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, estimated_minutes: estimatedMinutes || null, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null });
     setTitle(""); setDescription(""); setPriority("p2"); setStatus(initialStatus);
-    setOwner("claude"); setCategory("one_tm"); setDueDate(""); setTags([]);
-    setIsRecurring(false); setRecurPattern("weekly:0");
+    setOwner("claude"); setCategory("one_tm"); setDueDate(""); setEstimatedMinutes(""); setTags([]);
+    setIsRecurring(false); setRecurPattern("weekly:0"); setErrors({});
     onClose();
   }
 
@@ -128,10 +136,34 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
             </div>
           </div>
 
-          {/* Due date + Tags */}
-          <div>
-            <label className={labelClass}>דדליין</label>
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={fieldClass} />
+          {/* Due date + Estimated minutes */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={clsx(labelClass, errors.due_date && "text-red-500")}>
+                דדליין <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => { setDueDate(e.target.value); setErrors(prev => ({ ...prev, due_date: undefined })); }}
+                className={clsx(fieldClass, errors.due_date && "border-red-400 dark:border-red-600")}
+              />
+              {errors.due_date && <p className="text-[11px] text-red-500 mt-0.5">{errors.due_date}</p>}
+            </div>
+            <div>
+              <label className={clsx(labelClass, errors.estimated_minutes && "text-red-500")}>
+                זמן משוער <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={estimatedMinutes}
+                onChange={(e) => { setEstimatedMinutes(e.target.value ? Number(e.target.value) as EstimatedMinutes : ""); setErrors(prev => ({ ...prev, estimated_minutes: undefined })); }}
+                className={clsx(fieldClass, errors.estimated_minutes && "border-red-400 dark:border-red-600")}
+              >
+                <option value="">בחר...</option>
+                {DURATION_OPTIONS.map(m => <option key={m} value={m}>{durationLabels[m]}</option>)}
+              </select>
+              {errors.estimated_minutes && <p className="text-[11px] text-red-500 mt-0.5">{errors.estimated_minutes}</p>}
+            </div>
           </div>
 
           <div>
