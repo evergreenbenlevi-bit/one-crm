@@ -19,6 +19,8 @@ export interface ViralScan {
   viral_score: number | null;
   hook_text: string | null;
   ben_action: string;
+  is_lifetime_top5: boolean | null;
+  is_7day_best: boolean | null;
 }
 
 interface ViralCardProps {
@@ -76,6 +78,16 @@ export function ViralCard({ scan, onAction }: ViralCardProps) {
             <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${PLATFORM_COLOR[scan.platform] ?? "bg-gray-100 dark:bg-gray-800 text-gray-500"}`}>
               {scan.platform}
             </span>
+            {scan.is_lifetime_top5 && (
+              <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500">
+                LIFETIME TOP 5
+              </span>
+            )}
+            {scan.is_7day_best && (
+              <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">
+                7-DAY BEST
+              </span>
+            )}
             <span className="text-xs text-gray-400 dark:text-gray-500">
               {NICHE_LABEL[scan.niche] ?? scan.niche}
             </span>

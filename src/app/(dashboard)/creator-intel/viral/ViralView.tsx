@@ -23,11 +23,13 @@ const PLATFORM_TABS = [
 export default function ViralView() {
   const [niche, setNiche] = useState("all");
   const [platform, setPlatform] = useState("all");
+  const [lifetime, setLifetime] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const params = new URLSearchParams({ action: "none", limit: "50" });
   if (niche !== "all")    params.set("niche", niche);
   if (platform !== "all") params.set("platform", platform);
+  if (lifetime)           params.set("lifetime", "true");
 
   const { data: scans, isLoading, mutate } = useSWR<ViralScan[]>(
     `/api/viral-feed?${params}&k=${refreshKey}`,
@@ -71,6 +73,18 @@ export default function ViralView() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Lifetime toggle */}
+          <button
+            onClick={() => setLifetime((v) => !v)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+              lifetime
+                ? "bg-amber-500/20 text-amber-500 border border-amber-500/30"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+            }`}
+          >
+            Lifetime Top
+          </button>
+
           {/* Platform filter */}
           <div className="flex gap-1">
             {PLATFORM_TABS.map((t) => (

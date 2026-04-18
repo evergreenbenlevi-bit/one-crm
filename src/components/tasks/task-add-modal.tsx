@@ -3,8 +3,18 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { clsx } from "clsx";
-import type { TaskPriority, TaskOwner, TaskCategory, TaskStatus, EstimatedMinutes } from "@/lib/types/tasks";
-import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, DURATION_OPTIONS, durationLabels } from "@/lib/types/tasks";
+import type { TaskPriority, TaskOwner, TaskCategory, TaskStatus, EstimatedMinutes, TaskImpact, TaskSize } from "@/lib/types/tasks";
+import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, DURATION_OPTIONS, durationLabels, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS } from "@/lib/types/tasks";
+
+type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'any';
+
+function autoAssignSlot(impact: TaskImpact, size: TaskSize, dueDate: string): TimeSlot {
+  if (impact === 'needle_mover') return 'morning';
+  const today = new Date().toISOString().split('T')[0];
+  if (size === 'quick' && dueDate > today) return 'evening';
+  if (size === 'big') return 'morning';
+  return 'any';
+}
 import { TagInput } from "./tag-input";
 
 interface TaskAddModalProps {
@@ -19,6 +29,9 @@ interface TaskAddModalProps {
     category: TaskCategory;
     due_date: string | null;
     estimated_minutes: EstimatedMinutes | null;
+    time_slot: TimeSlot;
+    impact: TaskImpact;
+    size: TaskSize;
     tags: string[];
     is_recurring: boolean;
     recur_pattern: string | null;
@@ -36,6 +49,9 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
   const [dueDate, setDueDate] = useState("");
   const [estimatedMinutes, setEstimatedMinutes] = useState<EstimatedMinutes | "">("");
   const [tags, setTags] = useState<string[]>([]);
+  const [impact, setImpact] = useState<TaskImpact>("important");
+  const [size, setSize] = useState<TaskSize>("medium");
+  const [timeSlot, setTimeSlot] = useState<TimeSlot>("any");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurPattern, setRecurPattern] = useState("weekly:0");
   const [errors, setErrors] = useState<{ due_date?: string; estimated_minutes?: string }>({});
@@ -50,9 +66,11 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
     if (!estimatedMinutes) newErrors.estimated_minutes = "זמן משוער חובה";
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     setErrors({});
-    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, estimated_minutes: estimatedMinutes || null, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null });
+    const finalSlot = timeSlot === 'any' ? autoAssignSlot(impact, size, dueDate) : timeSlot;
+    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, estimated_minutes: estimatedMinutes || null, time_slot: finalSlot, impact, size, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null });
     setTitle(""); setDescription(""); setPriority("p2"); setStatus(initialStatus);
     setOwner("claude"); setCategory("one_tm"); setDueDate(""); setEstimatedMinutes(""); setTags([]);
+    setImpact("important"); setSize("medium"); setTimeSlot("any");
     setIsRecurring(false); setRecurPattern("weekly:0"); setErrors({});
     onClose();
   }
@@ -164,6 +182,33 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo" }: 
               </select>
               {errors.estimated_minutes && <p className="text-[11px] text-red-500 mt-0.5">{errors.estimated_minutes}</p>}
             </div>
+          </div>
+
+          {/* Impact + Size */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>השפעה</label>
+              <select value={impact} onChange={(e) => setImpact(e.target.value as TaskImpact)} className={fieldClass}>
+                {IMPACT_OPTIONS.map(i => <option key={i} value={i}>{impactLabels[i]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>גודל</label>
+              <select value={size} onChange={(e) => setSize(e.target.value as TaskSize)} className={fieldClass}>
+                {SIZE_OPTIONS.map(s => <option key={s} value={s}>{sizeLabels[s]}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Time slot */}
+          <div>
+            <label className={labelClass}>חלון זמן</label>
+            <select value={timeSlot} onChange={(e) => setTimeSlot(e.target.value as TimeSlot)} className={fieldClass}>
+              <option value="any">כלשהו (auto)</option>
+              <option value="morning">בוקר (07-12) — עמוק</option>
+              <option value="afternoon">אחה״צ (12-17) — בינוני</option>
+              <option value="evening">ערב (20-22) — מהיר</option>
+            </select>
           </div>
 
           <div>

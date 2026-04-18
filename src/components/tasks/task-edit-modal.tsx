@@ -5,6 +5,16 @@ import { X, Trash2, FileText, MessageSquare } from "lucide-react";
 import { clsx } from "clsx";
 import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskEffort, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
 import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, effortLabels, EFFORT_OPTIONS, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS, DURATION_OPTIONS, durationLabels } from "@/lib/types/tasks";
+
+type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'any';
+
+function autoAssignSlot(impact: TaskImpact, size: TaskSize, dueDate: string): TimeSlot {
+  if (impact === 'needle_mover') return 'morning';
+  const today = new Date().toISOString().split('T')[0];
+  if (size === 'quick' && dueDate > today) return 'evening';
+  if (size === 'big') return 'morning';
+  return 'any';
+}
 import { TagInput } from "./tag-input";
 import { TaskActivityTimeline } from "./task-activity-timeline";
 
@@ -31,6 +41,8 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   const [impact, setImpact] = useState<TaskImpact>("important");
   const [size, setSize] = useState<TaskSize>("medium");
   const [estimatedMinutes, setEstimatedMinutes] = useState<EstimatedMinutes | "">("");
+  const [timeSlot, setTimeSlot] = useState<TimeSlot>("any");
+  const [actualMinutes, setActualMinutes] = useState<number | "">("");
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurPattern, setRecurPattern] = useState("weekly:0");
   const [errors, setErrors] = useState<{ due_date?: string; estimated_minutes?: string }>({});
@@ -49,6 +61,8 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
       setImpact(task.impact || "important");
       setSize(task.size || "medium");
       setEstimatedMinutes((task.estimated_minutes as EstimatedMinutes) || "");
+      setTimeSlot((task.time_slot as TimeSlot) || "any");
+      setActualMinutes(task.actual_minutes ?? "");
       setIsRecurring(task.is_recurring || false);
       setRecurPattern(task.recur_pattern || "weekly:0");
       setErrors({});
@@ -66,7 +80,25 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
     if (!estimatedMinutes) newErrors.estimated_minutes = "זמן משוער חובה";
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     setErrors({});
-    onSave({ ...task!, title: title.trim(), description: description.trim() || null, priority, status, owner, category, due_date: dueDate || null, estimated_minutes: (estimatedMinutes || null) as EstimatedMinutes | null, tags, effort: (effort || null) as TaskEffort | null, impact, size, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, recur_next_at: task!.recur_next_at });
+    const finalSlot = timeSlot === 'any' ? autoAssignSlot(impact, size, dueDate) : timeSlot;
+    const dueDateChanged = (dueDate || null) !== (task!.due_date || null);
+    onSave({
+      ...task!,
+      title: title.trim(),
+      description: description.trim() || null,
+      priority, status, owner, category,
+      due_date: dueDate || null,
+      estimated_minutes: (estimatedMinutes || null) as EstimatedMinutes | null,
+      actual_minutes: actualMinutes !== "" ? Number(actualMinutes) : null,
+      time_slot: finalSlot,
+      tags,
+      effort: (effort || null) as TaskEffort | null,
+      impact, size,
+      is_recurring: isRecurring,
+      recur_pattern: isRecurring ? recurPattern : null,
+      recur_next_at: task!.recur_next_at,
+      manually_positioned: dueDateChanged ? false : (task!.manually_positioned ?? false),
+    });
     onClose();
   }
 
@@ -214,6 +246,30 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
                     <select value={size} onChange={(e) => setSize(e.target.value as TaskSize)} className={fieldClass}>
                       {SIZE_OPTIONS.map(s => <option key={s} value={s}>{sizeLabels[s]}</option>)}
                     </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelClass}>חלון זמן</label>
+                    <select value={timeSlot} onChange={(e) => setTimeSlot(e.target.value as TimeSlot)} className={fieldClass}>
+                      <option value="any">כלשהו (auto)</option>
+                      <option value="morning">בוקר (07-12)</option>
+                      <option value="afternoon">אחה״צ (12-17)</option>
+                      <option value="evening">ערב (20-22)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>זמן בפועל (דק׳)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={480}
+                      placeholder="דק׳..."
+                      value={actualMinutes}
+                      onChange={(e) => setActualMinutes(e.target.value === "" ? "" : Number(e.target.value))}
+                      className={fieldClass}
+                    />
                   </div>
                 </div>
 

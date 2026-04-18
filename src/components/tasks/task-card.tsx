@@ -238,6 +238,12 @@ export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDel
               פג תוקף
             </span>
           )}
+
+          {(task.priority_score ?? 0) > 0 && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 font-mono">
+              {Math.round(task.priority_score!)}
+            </span>
+          )}
         </div>
 
         {/* Tags */}

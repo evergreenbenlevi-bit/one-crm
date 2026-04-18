@@ -281,17 +281,37 @@ function TasksPageContent() {
     });
   }, [tasks, queueMode]);
 
-  // FOCUS (Today): max FOCUS_LIMIT tasks — in_progress first, then p1 todos
+  function getCurrentSlot(): 'morning' | 'afternoon' | 'evening' | null {
+    const hour = new Date().getHours();
+    if (hour >= 7 && hour < 12) return 'morning';
+    if (hour >= 12 && hour < 17) return 'afternoon';
+    if (hour >= 20 && hour < 22) return 'evening';
+    return null;
+  }
+
+  // FOCUS (Today): slot-aware, max FOCUS_LIMIT
   const todayTasks = useMemo(() => {
+    const currentSlot = getCurrentSlot();
+    const today = new Date().toISOString().split('T')[0];
     const active = queueFiltered.filter(t => {
       if (t.status === "done" || t.status === "backlog") return false;
       if (filterCategory !== "all" && t.category !== filterCategory) return false;
       if (filterPriority !== "all" && t.priority !== filterPriority) return false;
-      return t.status === "in_progress" || t.status === "waiting_ben" || (t.status === "todo" && t.priority === "p1");
+      const isBase = t.status === "in_progress" || t.status === "waiting_ben" || (t.status === "todo" && t.priority === "p1");
+      if (!isBase) return false;
+      const isOverdue = t.due_date && t.due_date < today;
+      if (isOverdue) return true;
+      if (!currentSlot) return true;
+      const taskSlot = t.time_slot || "any";
+      return taskSlot === "any" || taskSlot === currentSlot;
     });
     const statusOrder: Record<TaskStatus, number> = { in_progress: 0, waiting_ben: 1, todo: 2, up_next: 3, scheduled: 4, backlog: 5, inbox: 6, waiting: 7, done: 8, someday: 9, archived: 10 };
     const priorityOrder: Record<string, number> = { p0: -1, p1: 0, p2: 1, p3: 2 };
-    active.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || priorityOrder[a.priority] - priorityOrder[b.priority]);
+    active.sort((a, b) => {
+      const aScore = (a.due_date && a.due_date < today ? 1000 : 0) + (a.priority_score ?? 0);
+      const bScore = (b.due_date && b.due_date < today ? 1000 : 0) + (b.priority_score ?? 0);
+      return statusOrder[a.status] - statusOrder[b.status] || bScore - aScore || priorityOrder[a.priority] - priorityOrder[b.priority];
+    });
     return active.slice(0, FOCUS_LIMIT);
   }, [queueFiltered, filterCategory, filterPriority]);
   todayTasksRef.current = todayTasks;
@@ -305,11 +325,41 @@ function TasksPageContent() {
   const boardColumns = useMemo(() => {
     const cols = {} as Record<TaskStatus, Task[]>;
     (["inbox", "up_next", "scheduled", "in_progress", "waiting", "waiting_ben", "todo", "done", "backlog", "someday", "archived"] as TaskStatus[]).forEach(s => { cols[s] = []; });
-    queueFiltered.forEach(t => { if (cols[t.status]) cols[t.status].push(t); });
+    const today = new Date().toISOString().split('T')[0];
+    queueFiltered.forEach(t => {
+      if (!cols[t.status]) return;
+      const isOverdue = t.due_date && t.due_date < today && t.status !== "done";
+      const escalated = isOverdue ? { ...t, priority_score: (t.priority_score ?? 0) + 1000 } : t;
+      cols[t.status].push(escalated);
+    });
     Object.keys(cols).forEach(s => {
       cols[s as TaskStatus].sort((a, b) => (b.priority_score ?? b.position ?? 0) - (a.priority_score ?? a.position ?? 0));
     });
     return cols;
+  }, [queueFiltered]);
+
+  const SLOT_CAPACITY = { morning: 180, afternoon: 240, evening: 120 };
+
+  // Weekly capacity: next 7 days
+  const weeklyCapacity = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayTasks = queueFiltered.filter(t => t.due_date === dateStr && t.status !== "done" && t.estimated_minutes);
+      const morningMin = dayTasks.filter(t => t.time_slot === "morning").reduce((s, t) => s + (t.estimated_minutes || 0), 0);
+      const afternoonMin = dayTasks.filter(t => t.time_slot === "afternoon").reduce((s, t) => s + (t.estimated_minutes || 0), 0);
+      const eveningMin = dayTasks.filter(t => t.time_slot === "evening").reduce((s, t) => s + (t.estimated_minutes || 0), 0);
+      const anyMin = dayTasks.filter(t => !t.time_slot || t.time_slot === "any").reduce((s, t) => s + (t.estimated_minutes || 0), 0);
+      return {
+        date: dateStr,
+        label: d.toLocaleDateString("he-IL", { weekday: "short", day: "numeric" }),
+        morning: morningMin + anyMin,
+        afternoon: afternoonMin + anyMin,
+        evening: eveningMin + anyMin,
+        total: morningMin + afternoonMin + eveningMin + anyMin,
+      };
+    });
   }, [queueFiltered]);
 
   // BACKLOG grouped by category
@@ -438,7 +488,7 @@ function TasksPageContent() {
       const res = await fetch("/api/tasks", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: taskId, status: newStatus }),
+        body: JSON.stringify({ id: taskId, status: newStatus, manually_positioned: false }),
       });
       if (!res.ok) throw new Error();
       mutateTasks();
@@ -539,7 +589,9 @@ function TasksPageContent() {
   async function handleAddTask(taskData: {
     title: string; description: string; priority: TaskPriority;
     status: TaskStatus; owner: TaskOwner; category: TaskCategory; due_date: string | null;
-    estimated_minutes?: number | null; tags: string[];
+    estimated_minutes?: number | null; time_slot?: string | null;
+    impact?: string | null; size?: string | null;
+    tags: string[];
     is_recurring?: boolean; recur_pattern?: string | null;
   }) {
     try {
@@ -573,6 +625,9 @@ function TasksPageContent() {
           id: task.id, title: task.title, description: task.description,
           priority: task.priority, status: task.status, owner: task.owner,
           category: task.category, due_date: task.due_date, tags: task.tags || [],
+          estimated_minutes: task.estimated_minutes, actual_minutes: task.actual_minutes,
+          time_slot: task.time_slot, impact: task.impact, size: task.size,
+          manually_positioned: task.manually_positioned ?? false,
         }),
       });
       if (!res.ok) throw new Error();
@@ -745,6 +800,40 @@ function TasksPageContent() {
             הוסף
           </button>
           <button onClick={() => { setQuickAddOpen(false); setQuickAddTitle(""); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+        </div>
+      )}
+
+      {/* Weekly Capacity View */}
+      {(viewMode === "board" || viewMode === "list") && (
+        <div className="overflow-x-auto -mx-4 px-4">
+          <div className="flex gap-2 pb-1 min-w-max">
+            {weeklyCapacity.map(day => {
+              const mPct = Math.min(100, Math.round((day.morning / SLOT_CAPACITY.morning) * 100));
+              const aPct = Math.min(100, Math.round((day.afternoon / SLOT_CAPACITY.afternoon) * 100));
+              const ePct = Math.min(100, Math.round((day.evening / SLOT_CAPACITY.evening) * 100));
+              const isOver = mPct >= 100 || aPct >= 100 || ePct >= 100;
+              return (
+                <div key={day.date} className={clsx("flex-shrink-0 w-[100px] rounded-xl border px-2 py-2 text-[10px]", isOver ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/10" : "border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800")}>
+                  <p className="font-semibold text-gray-600 dark:text-gray-400 mb-1.5 truncate">{day.label}</p>
+                  {[
+                    { label: "בוקר", pct: mPct, min: day.morning, cap: SLOT_CAPACITY.morning },
+                    { label: "אחה״צ", pct: aPct, min: day.afternoon, cap: SLOT_CAPACITY.afternoon },
+                    { label: "ערב", pct: ePct, min: day.evening, cap: SLOT_CAPACITY.evening },
+                  ].map(({ label, pct, min, cap }) => (
+                    <div key={label} className="mb-1">
+                      <div className="flex justify-between text-gray-400 dark:text-gray-500 mb-0.5">
+                        <span>{label}</span>
+                        <span className={clsx(pct >= 100 ? "text-amber-600 dark:text-amber-400 font-bold" : "")}>{min}/{cap}</span>
+                      </div>
+                      <div className="h-1 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                        <div className={clsx("h-full rounded-full transition-all", pct >= 100 ? "bg-amber-400" : "bg-brand-400")} style={{ width: `${Math.min(100, pct)}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

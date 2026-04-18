@@ -138,3 +138,56 @@ export async function getCreatorSnapshot(channelId: string): Promise<YouTubeCrea
 
   return { channel, recentVideos, topVideo, avgViews };
 }
+
+/**
+ * Get top N videos by view count for a channel.
+ * Uses search order=viewCount — YouTube Data API v3.
+ * Returns sorted by viewCount DESC.
+ */
+export async function getTopVideos(channelId: string, maxResults = 20): Promise<YouTubeVideoSummary[]> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) throw new Error("YOUTUBE_API_KEY not set");
+
+  // YouTube search API supports order=viewCount for channel videos
+  const searchUrl = `${YT_API_BASE}/search?part=snippet&channelId=${channelId}&order=viewCount&maxResults=${maxResults}&type=video&key=${apiKey}`;
+  const searchRes = await fetch(searchUrl);
+  if (!searchRes.ok) return [];
+
+  const searchData = await searchRes.json();
+  const videoIds = ((searchData.items || []) as Array<{ id: { videoId: string } }>)
+    .map((i) => i.id.videoId)
+    .filter(Boolean);
+  if (videoIds.length === 0) return [];
+
+  // Get full stats in one call
+  const statsUrl = `${YT_API_BASE}/videos?part=snippet,statistics&id=${videoIds.join(",")}&key=${apiKey}`;
+  const statsRes = await fetch(statsUrl);
+  if (!statsRes.ok) return [];
+
+  const statsData = await statsRes.json();
+  return ((statsData.items || []) as Array<{
+    id: string;
+    snippet: {
+      title: string;
+      publishedAt: string;
+      thumbnails: { maxres?: { url: string }; high?: { url: string }; medium?: { url: string }; default?: { url: string } };
+    };
+    statistics: { viewCount?: string; likeCount?: string; commentCount?: string };
+  }>)
+    .map((v) => ({
+      videoId: v.id,
+      title: v.snippet.title,
+      publishedAt: v.snippet.publishedAt,
+      viewCount: parseInt(v.statistics.viewCount || "0"),
+      likeCount: parseInt(v.statistics.likeCount || "0"),
+      commentCount: parseInt(v.statistics.commentCount || "0"),
+      thumbnailUrl:
+        v.snippet.thumbnails?.maxres?.url ||
+        v.snippet.thumbnails?.high?.url ||
+        v.snippet.thumbnails?.medium?.url ||
+        v.snippet.thumbnails?.default?.url ||
+        "",
+      url: `https://www.youtube.com/watch?v=${v.id}`,
+    }))
+    .sort((a, b) => b.viewCount - a.viewCount);
+}

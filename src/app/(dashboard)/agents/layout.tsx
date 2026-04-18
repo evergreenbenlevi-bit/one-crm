@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutGrid, List, GitBranch, DollarSign, Clock, FileText, MessageSquare
+  LayoutGrid, List, GitBranch, DollarSign, Clock, FileText, MessageSquare, Radio
 } from "lucide-react";
 import "./nexus-theme.css";
 
@@ -16,6 +16,7 @@ const tabs = [
   { href: "/agents/crons", label: "קרונים", icon: Clock },
   { href: "/agents/logs", label: "לוגים", icon: FileText },
   { href: "/agents/chat", label: "צ׳אט", icon: MessageSquare },
+  { href: "/agents/sessions", label: "סשנים", icon: Radio },
 ];
 
 export default function AgentsLayout({ children }: { children: React.ReactNode }) {
