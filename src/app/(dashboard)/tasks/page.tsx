@@ -655,7 +655,7 @@ function TasksPageContent() {
     try {
       const res = await fetch("/api/tasks", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: taskId, due_date: newDate }),
+        body: JSON.stringify({ id: taskId, due_date: newDate, manually_positioned: false }),
       });
       if (!res.ok) throw new Error();
       mutateTasks();

@@ -239,9 +239,18 @@ export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDel
             </span>
           )}
 
-          {(task.priority_score ?? 0) > 0 && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 font-mono">
-              {Math.round(task.priority_score!)}
+          {task.priority_score != null && task.priority_score > 0 && (
+            <span className={clsx(
+              "text-[9px] px-1.5 py-0.5 rounded-full font-mono",
+              task.priority_score >= 1000
+                ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                : task.priority_score >= 800
+                ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+                : task.priority_score >= 500
+                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
+                : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+            )}>
+              {task.priority_score}
             </span>
           )}
         </div>
