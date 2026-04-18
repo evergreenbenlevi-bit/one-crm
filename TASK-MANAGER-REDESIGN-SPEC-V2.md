@@ -312,15 +312,15 @@ Monday:
 - [x] Mandatory field validation in task-add-modal + task-edit-modal (deadline + estimated_minutes)
 - [x] Overdue badge on task cards ("פג תוקף" red chip)
 
-### Phase 3 — New Features
-- [ ] time_slot field + auto-assign + UI selector
-- [ ] Focus tab redesign (slot-aware)
-- [ ] Daily view filtered by current time slot
-- [ ] actual_minutes input in EOD flow
-- [ ] Priority score display on cards (small badge)
-- [ ] manually_positioned flag + drag behavior
-- [ ] Overdue auto-escalation (priority_score + 1000)
-- [ ] Weekly capacity view
+### Phase 3 — New Features (done 2026-04-18 except EOD UI)
+- [x] time_slot field + auto-assign + UI selector
+- [x] Focus tab redesign (slot-aware, getCurrentSlot() filters by morning/afternoon/evening)
+- [x] Daily view filtered by current time slot
+- [ ] actual_minutes input in EOD flow — deferred to Phase 5 (no EOD UI component yet)
+- [x] Priority score display on cards (tiered color badge)
+- [x] manually_positioned flag + drag behavior (reset on status change + due_date change)
+- [x] Overdue auto-escalation (priority_score + 1000, client-side in boardColumns)
+- [x] Weekly capacity view (7-day slot bars in Board + List tabs)
 
 ### Phase 4 — Projects UI
 - [ ] `/projects` page with project cards
