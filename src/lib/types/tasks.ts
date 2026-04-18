@@ -1,4 +1,4 @@
-export type TaskPriority = "p1" | "p2" | "p3";
+export type TaskPriority = "p0" | "p1" | "p2" | "p3";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "waiting_ben" | "done" | "inbox" | "up_next" | "scheduled" | "waiting" | "someday" | "archived";
 export type TaskOwner = "claude" | "ben" | "both" | "avitar";
 export type TaskCategory = "one_tm" | "self" | "brand" | "temp" | "research" | "infrastructure" | "personal" | "errands";
@@ -54,6 +54,12 @@ export interface Task {
   triage_action?: string | null;
   triage_notes?: string | null;
   triaged_at?: string | null;
+  // Phase 0 — Task Manager Redesign
+  time_slot?: 'morning' | 'afternoon' | 'evening' | 'any' | null;
+  actual_minutes?: number | null;
+  priority_score?: number | null;
+  manually_positioned?: boolean;
+  project_id?: string | null;
 }
 
 export const statusLabels: Record<TaskStatus, string> = {
@@ -99,12 +105,14 @@ export const statusAccent: Record<TaskStatus, string> = {
 };
 
 export const priorityLabels: Record<TaskPriority, string> = {
+  p0: "P0 — בוער",
   p1: "P1 — קריטי",
   p2: "P2 — חשוב",
   p3: "P3 — Nice to have",
 };
 
 export const priorityColors: Record<TaskPriority, string> = {
+  p0: "bg-red-600 text-white dark:bg-red-700 dark:text-red-100",
   p1: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
   p2: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
   p3: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",

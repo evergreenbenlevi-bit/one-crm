@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
 
 // ── Valid enums for input validation ──
-const VALID_PRIORITIES: TaskPriority[] = ["p1", "p2", "p3"];
+const VALID_PRIORITIES: TaskPriority[] = ["p0", "p1", "p2", "p3"];
 const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done", "inbox", "up_next", "scheduled", "waiting", "someday", "archived"];
 const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
 const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research", "infrastructure", "personal", "errands"];
@@ -48,6 +48,12 @@ function validateTaskFields(body: Record<string, unknown>, requireTitle = false)
   if (body.due_date !== undefined && body.due_date !== null) {
     if (typeof body.due_date !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(body.due_date)) {
       return "due_date must be a valid date string (YYYY-MM-DD)";
+    }
+  }
+  if (body.time_slot !== undefined && body.time_slot !== null) {
+    const VALID_TIME_SLOTS = ["morning", "afternoon", "evening", "any"];
+    if (!VALID_TIME_SLOTS.includes(body.time_slot as string)) {
+      return `time_slot must be one of: ${VALID_TIME_SLOTS.join(", ")}`;
     }
   }
   return null;
@@ -144,6 +150,9 @@ export async function POST(request: NextRequest) {
     impact: body.impact || "important",
     size: body.size || "medium",
     estimated_minutes: typeof body.estimated_minutes === "number" ? body.estimated_minutes : null,
+    time_slot: body.time_slot || "any",
+    actual_minutes: typeof body.actual_minutes === "number" ? body.actual_minutes : null,
+    project_id: body.project_id || null,
   };
 
   if (isLocalMode) {
@@ -202,6 +211,10 @@ export async function PATCH(request: NextRequest) {
   }
   if (rawUpdates.is_recurring !== undefined) updates.is_recurring = Boolean(rawUpdates.is_recurring);
   if (rawUpdates.recur_pattern !== undefined) updates.recur_pattern = rawUpdates.is_recurring && rawUpdates.recur_pattern ? String(rawUpdates.recur_pattern) : null;
+  if (rawUpdates.time_slot !== undefined) updates.time_slot = rawUpdates.time_slot || "any";
+  if (rawUpdates.actual_minutes !== undefined) updates.actual_minutes = typeof rawUpdates.actual_minutes === "number" ? rawUpdates.actual_minutes : null;
+  if (rawUpdates.manually_positioned !== undefined) updates.manually_positioned = Boolean(rawUpdates.manually_positioned);
+  if (rawUpdates.project_id !== undefined) updates.project_id = rawUpdates.project_id || null;
 
   if (isLocalMode) {
     const task = updateTask(id, updates);
@@ -219,7 +232,7 @@ export async function PATCH(request: NextRequest) {
 
   // Auto-log changes to task_activity
   if (currentTask) {
-    const trackedFields = ["status", "priority", "category", "layer", "owner", "due_date", "title", "effort", "impact", "size", "estimated_minutes"];
+    const trackedFields = ["status", "priority", "category", "owner", "due_date", "title", "effort", "impact", "size", "estimated_minutes", "time_slot", "project_id"];
     const activities: { task_id: string; activity_type: string; actor: string; content?: string; field_name?: string; old_value?: string; new_value?: string }[] = [];
 
     for (const field of trackedFields) {
