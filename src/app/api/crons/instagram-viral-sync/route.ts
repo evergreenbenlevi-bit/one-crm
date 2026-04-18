@@ -57,9 +57,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, synced: 0, message: "No Instagram creators found" });
   }
 
-  const results: Array<{ handle: string; status: string; reels?: number; error?: string }> = [];
-
-  for (const creator of creators) {
+  type Creator = { id: string; handle: string; display_name: string; domain: string | null; instagram_username: string | null; platform: string };
+  async function syncCreator(creator: Creator) {
     const username = (creator.instagram_username || creator.handle).replace("@", "");
     const niche = NICHE_MAP[creator.domain ?? "other"] ?? "other";
 
@@ -67,69 +66,48 @@ export async function POST(req: NextRequest) {
       const reels = await getTopReels(username, 300);
 
       if (reels.length === 0) {
-        results.push({ handle: username, status: "empty" });
-        continue;
+        return { handle: username, status: "empty" };
       }
 
-      // Mark top 5 by views as lifetime top
       const lifetimeTopIds = new Set(
         [...reels].sort((a, b) => b.videoViewCount - a.videoViewCount).slice(0, 5).map((r) => r.shortCode)
       );
 
-      // Upsert each reel
       const rows = reels.map((reel) => {
         const isLifetimeTop5 = lifetimeTopIds.has(reel.shortCode);
         const is7dayBest = reel.timestamp ? new Date(reel.timestamp) >= sevenDaysAgo : false;
         const score = viralScore(reel.videoViewCount, reel.likesCount, reel.commentsCount);
-
         return {
-          week,
-          niche,
-          platform: "instagram" as const,
-          post_url: reel.url,
-          creator_handle: username,
+          week, niche, platform: "instagram" as const,
+          post_url: reel.url, creator_handle: username,
           title: reel.caption.slice(0, 150) || null,
           hook_text: reel.caption.slice(0, 200) || null,
-          views: reel.videoViewCount,
-          likes: reel.likesCount,
-          comments: reel.commentsCount,
+          views: reel.videoViewCount, likes: reel.likesCount, comments: reel.commentsCount,
           engagement_ratio: reel.videoViewCount > 0 ? (reel.likesCount + reel.commentsCount) / reel.videoViewCount : null,
-          viral_score: score,
-          thumbnail_url: reel.thumbnailUrl,
+          viral_score: score, thumbnail_url: reel.thumbnailUrl,
           format_type: "short_form" as const,
-          is_lifetime_top5: isLifetimeTop5,
-          is_7day_best: is7dayBest,
+          is_lifetime_top5: isLifetimeTop5, is_7day_best: is7dayBest,
           captured_at: new Date().toISOString(),
         };
       });
 
       const { error: upsertErr } = await supabase
         .from("viral_scans")
-        .upsert(rows, {
-          onConflict: "post_url",
-          ignoreDuplicates: false,
-        });
+        .upsert(rows, { onConflict: "post_url", ignoreDuplicates: false });
 
-      if (upsertErr) {
-        results.push({ handle: username, status: "error", error: upsertErr.message });
-        continue;
-      }
+      if (upsertErr) return { handle: username, status: "error", error: upsertErr.message };
 
-      // Update creator last_synced_at
-      await supabase
-        .from("creators")
-        .update({ last_synced_at: new Date().toISOString() })
-        .eq("id", creator.id);
-
-      results.push({ handle: username, status: "ok", reels: reels.length });
+      await supabase.from("creators").update({ last_synced_at: new Date().toISOString() }).eq("id", creator.id);
+      return { handle: username, status: "ok", reels: reels.length };
     } catch (err) {
-      results.push({
-        handle: username,
-        status: "error",
-        error: err instanceof Error ? err.message : String(err),
-      });
+      return { handle: username, status: "error", error: err instanceof Error ? err.message : String(err) };
     }
   }
+
+  const settled = await Promise.allSettled(creators.map(syncCreator));
+  const results = settled.map((r) =>
+    r.status === "fulfilled" ? r.value : { handle: "unknown", status: "error", error: String(r.reason) }
+  );
 
   const synced = results.filter((r) => r.status === "ok").length;
   return NextResponse.json({ ok: true, week, synced, total: creators.length, results });
