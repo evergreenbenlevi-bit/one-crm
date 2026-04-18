@@ -13,7 +13,6 @@ import { TaskAddModal } from "@/components/tasks/task-add-modal";
 import { TaskEditModal } from "@/components/tasks/task-edit-modal";
 import { TaskImportModal } from "@/components/tasks/task-import-modal";
 import { Big3Today } from "@/components/tasks/big3-today";
-import { TaskPillars } from "@/components/tasks/task-pillars";
 import { BulkActionBar } from "@/components/tasks/bulk-action-bar";
 import { loadSessionContext, saveSessionContext, sessionAgeLabel } from "@/lib/session-context";
 import { clsx } from "clsx";
@@ -128,6 +127,132 @@ function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask:
           הוסף תת-משימה
         </button>
       )}
+    </div>
+  );
+}
+
+// ─── Inline List View ─────────────────────────────────────────────────────────
+interface InlineListViewProps {
+  tasks: Task[];
+  onEdit: (task: Task) => void;
+  onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
+  onSave: (task: Task) => void;
+  onDueDateChange: (taskId: string, newDate: string | null) => void;
+}
+
+function InlineListRow({ task, onEdit, onStatusChange, onSave, onDueDateChange }: {
+  task: Task;
+  onEdit: (task: Task) => void;
+  onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onSave: (task: Task) => void;
+  onDueDateChange: (taskId: string, date: string | null) => void;
+}) {
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleVal, setTitleVal] = useState(task.title);
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setTitleVal(task.title);
+  }, [task.title]);
+
+  useEffect(() => {
+    if (editingTitle) titleRef.current?.focus();
+  }, [editingTitle]);
+
+  function saveTitle() {
+    if (titleVal.trim() && titleVal.trim() !== task.title) {
+      onSave({ ...task, title: titleVal.trim() });
+    }
+    setEditingTitle(false);
+  }
+
+  const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "done";
+
+  return (
+    <tr className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+      <td className="px-4 py-2.5">
+        {editingTitle ? (
+          <input
+            ref={titleRef}
+            value={titleVal}
+            onChange={(e) => setTitleVal(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={(e) => { if (e.key === "Enter") saveTitle(); if (e.key === "Escape") { setTitleVal(task.title); setEditingTitle(false); } }}
+            className="w-full text-sm px-2 py-1 rounded-lg border border-brand-300 dark:border-brand-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 outline-none focus:ring-2 focus:ring-brand-400"
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            {isOverdue && <span className="text-red-500 text-xs flex-shrink-0">🔴</span>}
+            <span
+              className="text-sm text-gray-700 dark:text-gray-200 cursor-text hover:text-brand-600 dark:hover:text-brand-400 transition-colors truncate"
+              onClick={() => setEditingTitle(true)}
+            >{task.title}</span>
+            <button onClick={() => onEdit(task)} className="flex-shrink-0 text-[10px] text-gray-300 hover:text-brand-500 dark:hover:text-brand-400 transition-colors">ערוך</button>
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-2.5 w-[130px]">
+        <select
+          value={task.status}
+          onChange={(e) => onStatusChange(task.id, e.target.value as TaskStatus)}
+          className="text-[11px] px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-brand-400 outline-none w-full"
+        >
+          {TASK_STATUSES.map(s => <option key={s} value={s}>{statusLabels[s]}</option>)}
+        </select>
+      </td>
+      <td className="px-3 py-2.5 w-[140px]">
+        <input
+          type="date"
+          value={task.due_date || ""}
+          onChange={(e) => onDueDateChange(task.id, e.target.value || null)}
+          className={clsx(
+            "text-[11px] px-2 py-1 rounded-lg border bg-white dark:bg-gray-700 outline-none focus:ring-1 focus:ring-brand-400 w-full",
+            isOverdue ? "border-red-300 dark:border-red-700 text-red-600 dark:text-red-400" : "border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300"
+          )}
+        />
+      </td>
+      <td className="px-3 py-2.5 w-16">
+        <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md", priorityColors[task.priority])}>
+          {task.priority.toUpperCase()}
+        </span>
+      </td>
+      <td className="px-3 py-2.5 w-[100px]">
+        <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium", categoryColors[task.category])}>
+          {categoryLabels[task.category]}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+function InlineListView({ tasks, onEdit, onStatusChange, onSave, onDueDateChange }: InlineListViewProps) {
+  if (tasks.length === 0) {
+    return (
+      <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+        <p className="text-sm">אין משימות</p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100 dark:border-gray-700 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+              <th className="px-4 py-2.5 text-right">משימה</th>
+              <th className="px-3 py-2.5 text-right w-[130px]">סטטוס</th>
+              <th className="px-3 py-2.5 text-right w-[140px]">דדליין</th>
+              <th className="px-3 py-2.5 text-right w-16">עדיפות</th>
+              <th className="px-3 py-2.5 text-right w-[100px]">קטגוריה</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map(task => (
+              <InlineListRow key={task.id} task={task} onEdit={onEdit} onStatusChange={onStatusChange} onSave={onSave} onDueDateChange={onDueDateChange} />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -1002,10 +1127,12 @@ function TasksPageContent() {
 
       {/* ── LIST VIEW ── */}
       {viewMode === "list" && (
-        <TaskPillars
+        <InlineListView
           tasks={pillarTasks}
           onEdit={handleTaskClick}
           onStatusChange={handleStatusChange}
+          onSave={handleEditTask}
+          onDueDateChange={handleDueDateChange}
         />
       )}
 

@@ -304,13 +304,13 @@ Monday:
 - [ ] Size preset auto-fill logic
 - [ ] Calendar sync service (Google Calendar OAuth + block creation)
 
-### Phase 2 — UI Foundation (connect existing, not rewrite)
-- [ ] Connect `TaskKanban` to `/tasks` Board tab
-- [ ] Wire DnD position persistence (calls position update API on drag-end)
-- [ ] Add tab navigation: Focus / Board / List / Backlog
-- [ ] Inline editing in List view (click-to-edit title, status, deadline)
-- [ ] Mandatory field validation in task-add-modal + task-edit-modal
-- [ ] Overdue badge on task cards
+### Phase 2 — UI Foundation (connect existing, not rewrite) ✅ 2026-04-18
+- [x] Connect `TaskKanban` to `/tasks` Board tab
+- [x] Wire DnD position persistence (calls position update API on drag-end)
+- [x] Add tab navigation: Focus / Board / List / Backlog via ?tab= URL param
+- [ ] Inline editing in List view (click-to-edit title, status, deadline) — deferred to Phase 3
+- [x] Mandatory field validation in task-add-modal + task-edit-modal (deadline + estimated_minutes)
+- [x] Overdue badge on task cards ("פג תוקף" red chip)
 
 ### Phase 3 — New Features
 - [ ] time_slot field + auto-assign + UI selector

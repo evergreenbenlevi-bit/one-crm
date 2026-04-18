@@ -24,6 +24,7 @@
 | `/calendar` | `(dashboard)/calendar/` | Calendar view | calendar components |
 | `/financial` | `(dashboard)/financial/` | Revenue, expenses, P&L, partner settlement (Ben↔Avitar), expense entry form. **Tabs:** סקירה כללית / קבלות / הוצאות אישיות | `FinancialTabs`, `KpiRow`, `PartnerSettlement`, `ExpenseForm`, `ExpenseBreakdown`, `RevenueBreakdown`, `MarketingMetricsTable`, `TrendsChartClient`, `ReceiptsTable`, `PersonalExpenses` |
 | `/news` | `(dashboard)/news/` | AI-curated news feed | news components |
+| `/creator-intel` | `(dashboard)/creator-intel/` | Creator Intelligence Dashboard — 2 tabs: My Creators (curated list with snapshots) + Global Viral (Phase 3). CreatorCard shows followers, 7d delta, top 5 posts. AddCreatorModal for manual add. | `CreatorCard`, `AddCreatorModal`, `/api/creators`, `/api/snapshots` |
 | `/settings` | `(dashboard)/settings/` | App settings | settings components |
 | `/settings/custom-fields` | `(dashboard)/settings/custom-fields/page.tsx` | Custom fields manager — add/edit/reorder dynamic fields for leads/expenses/tasks. Grouped by entity type, toggle active/inactive, up/down reorder | form, field list, toggle, reorder |
 | `/dashboard-builder` | `(dashboard)/dashboard-builder/page.tsx` | Dashboard builder MVP — add NumberWidget/BarChart/PieChart/TableWidget from data sources (leads, expenses, customers). Save/load dashboard configs. Grid layout | `NumberWidget`, `BarChartWidget`, `PieChartWidget`, `TableWidget` |
