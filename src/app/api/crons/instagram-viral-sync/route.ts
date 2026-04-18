@@ -95,11 +95,24 @@ export async function POST(req: NextRequest) {
         };
       });
 
-      const { error: upsertErr } = await supabase
-        .from("viral_scans")
-        .upsert(rows, { onConflict: "post_url", ignoreDuplicates: false });
-
-      if (upsertErr) return { handle: username, status: "error", error: upsertErr.message };
+      // Upsert in chunks of 50 — row-by-row fallback on error to skip bad rows
+      const CHUNK = 50;
+      let skipped = 0;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+        const { error: batchErr } = await supabase
+          .from("viral_scans")
+          .upsert(chunk, { onConflict: "post_url", ignoreDuplicates: false });
+        if (batchErr) {
+          for (const row of chunk) {
+            const { error: rowErr } = await supabase
+              .from("viral_scans")
+              .upsert([row], { onConflict: "post_url", ignoreDuplicates: false });
+            if (rowErr) skipped++;
+          }
+        }
+      }
+      if (skipped === rows.length) return { handle: username, status: "error", error: `all ${skipped} rows failed upsert` };
 
       await supabase.from("creators").update({ last_synced_at: new Date().toISOString() }).eq("id", creator.id);
       return { handle: username, status: "ok", reels: reels.length };
