@@ -19,7 +19,8 @@ export async function middleware(request: NextRequest) {
   if (
     request.nextUrl.pathname.startsWith("/api/webhook") ||
     request.nextUrl.pathname.startsWith("/api/chat") ||
-    request.nextUrl.pathname.startsWith("/api/crm-query")
+    request.nextUrl.pathname.startsWith("/api/crm-query") ||
+    request.nextUrl.pathname.startsWith("/api/crons/")
   ) {
     return NextResponse.next({ request });
   }
