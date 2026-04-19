@@ -1,9 +1,9 @@
 /**
- * Instagram Viral Sync — weekly Sunday 09:00
- * Fetches LIFETIME top reels (resultsLimit=300) per creator via Apify.
- * Computes viral_score, marks is_lifetime_top5 + is_7day_best, upserts to viral_scans.
+ * Instagram Viral Sync
+ * - weekly (default): resultsLimit=20, every Sunday 09:00
+ * - deep (1st Sunday of month): resultsLimit=100, refreshes lifetime_top5
  *
- * vercel.json cron: { "path": "/api/crons/instagram-viral-sync", "schedule": "0 9 * * 0" }
+ * Auto-detects mode by date. Override: POST body { "mode": "deep" } or ?mode=deep
  */
 import { NextRequest, NextResponse } from "next/server";
 
@@ -40,17 +40,34 @@ function getWeekLabel(): string {
   return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
+function isFirstSundayOfMonth(): boolean {
+  const now = new Date();
+  return now.getDay() === 0 && now.getDate() <= 7;
+}
+
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Detect mode: body/query override, else auto by date
+  const url = new URL(req.url);
+  let mode = url.searchParams.get("mode");
+  if (!mode) {
+    try {
+      const body = await req.json().catch(() => ({}));
+      mode = body?.mode ?? null;
+    } catch { mode = null; }
+  }
+  if (!mode) mode = isFirstSundayOfMonth() ? "deep" : "weekly";
+
+  const resultsLimit = mode === "deep" ? 100 : 20;
+
   const supabase = createAdminClient();
   const week = getWeekLabel();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  // Fetch all active Instagram creators
   const { data: creators, error: fetchErr } = await supabase
     .from("creators")
     .select("id, handle, display_name, domain, instagram_username, platform")
@@ -67,7 +84,7 @@ export async function POST(req: NextRequest) {
     const niche = NICHE_MAP[creator.domain ?? "other"] ?? "other";
 
     try {
-      const reels = await getTopReels(username, 300);
+      const reels = await getTopReels(username, resultsLimit);
 
       if (reels.length === 0) {
         return { handle: username, status: "empty" };
@@ -95,7 +112,6 @@ export async function POST(req: NextRequest) {
         };
       });
 
-      // Upsert in chunks of 50 — row-by-row fallback on error to skip bad rows
       const CHUNK = 50;
       let skipped = 0;
       for (let i = 0; i < rows.length; i += CHUNK) {
@@ -127,7 +143,7 @@ export async function POST(req: NextRequest) {
   );
 
   const synced = results.filter((r) => r.status === "ok").length;
-  return NextResponse.json({ ok: true, week, synced, total: creators.length, results });
+  return NextResponse.json({ ok: true, week, mode, resultsLimit, synced, total: creators.length, results });
 }
 
 export async function GET(req: NextRequest) {
