@@ -6,6 +6,7 @@ import { isLocalMode, getAllTasks, createTask, updateTask, deleteTask } from "@/
 import type { TaskStatus, TaskPriority, TaskOwner, TaskCategory, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/api-auth";
+import { syncTaskToCalendar } from "@/lib/calendar-sync";
 
 // ── Valid enums for input validation ──
 const VALID_PRIORITIES: TaskPriority[] = ["p0", "p1", "p2", "p3"];
@@ -180,6 +181,18 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   const { data, error } = await supabase.from("tasks").insert([sanitized]).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Calendar sync — fire-and-forget, silent fail
+  if (data?.due_date && data?.time_slot && data.time_slot !== "any") {
+    syncTaskToCalendar({
+      taskId: data.id,
+      title: data.title,
+      due_date: data.due_date,
+      time_slot: data.time_slot,
+      estimated_minutes: data.estimated_minutes ?? null,
+    }).catch(() => {});
+  }
+
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -246,6 +259,18 @@ export async function PATCH(request: NextRequest) {
 
   const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Calendar sync when due_date or time_slot changed — fire-and-forget
+  const slotChanged = updates.due_date !== undefined || updates.time_slot !== undefined;
+  if (slotChanged && data?.due_date && data?.time_slot && data.time_slot !== "any") {
+    syncTaskToCalendar({
+      taskId: data.id,
+      title: data.title,
+      due_date: data.due_date as string,
+      time_slot: data.time_slot as string,
+      estimated_minutes: (data.estimated_minutes as number | null) ?? null,
+    }).catch(() => {});
+  }
 
   // Auto-log changes to task_activity
   if (currentTask) {
