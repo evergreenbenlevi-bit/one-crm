@@ -8,7 +8,7 @@ export const preferredRegion = ["fra1", "arn1", "cdg1"];
 const VALID_CATEGORIES: ExpenseCategory[] = [
   "meta_ads", "ai_tools", "editing_design", "software",
   "content_creation", "coaching_tools", "education", "skool", "other",
-  "haircut", "car_wash", "groceries", "personal_other", "fuel",
+  "haircut", "car_wash", "groceries", "personal_other",
 ];
 const VALID_EXPENSE_TYPES: ExpenseType[] = ["business", "personal"];
 const PERSONAL_CATEGORIES: ExpenseCategory[] = [
