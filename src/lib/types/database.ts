@@ -183,6 +183,8 @@ export interface Expense {
   is_recurring: boolean;
   notes: string | null;
   external_id: string | null;
+  expense_type: 'business' | 'personal';
+  needs_review?: boolean;
   created_at: string;
 }
 
