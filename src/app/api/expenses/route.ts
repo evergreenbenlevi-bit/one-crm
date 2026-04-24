@@ -8,11 +8,11 @@ export const preferredRegion = ["fra1", "arn1", "cdg1"];
 const VALID_CATEGORIES: ExpenseCategory[] = [
   "meta_ads", "ai_tools", "editing_design", "software",
   "content_creation", "coaching_tools", "education", "skool", "other",
-  "haircut", "fuel", "car_wash", "groceries", "personal_other",
+  "haircut", "car_wash", "groceries", "personal_other",
 ];
 const VALID_EXPENSE_TYPES: ExpenseType[] = ["business", "personal"];
 const PERSONAL_CATEGORIES: ExpenseCategory[] = [
-  "haircut", "fuel", "car_wash", "groceries", "personal_other",
+  "haircut", "car_wash", "groceries", "personal_other",
 ];
 const VALID_PARTNERS: Partner[] = ["ben", "avitar", "shared"];
 
@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
       receipt_url: body.receipt_url || null,
       is_recurring: body.is_recurring || false,
       notes: body.notes || null,
+      external_id: body.external_id || null,
     })
     .select()
     .single();
