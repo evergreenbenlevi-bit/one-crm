@@ -11,7 +11,8 @@ export const preferredRegion = ["fra1"];
 export const maxDuration = 300;
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getInstagramProfiles } from "@/lib/apify";
+import { getInstagramProfiles } from "@/lib/scrape-creators";
+import { withCronNotify } from "@/lib/cron-notify";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -117,9 +118,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET for manual trigger from dashboard
-export async function GET(req: NextRequest) {
-  return POST(req);
-}
+export const GET = withCronNotify("instagram-sync", (req) => POST(req));
 
 function getWeekLabel(): string {
   const now = new Date();

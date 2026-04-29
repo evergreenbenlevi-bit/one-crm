@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRecentVideos } from "@/lib/youtube";
+import { withCronNotify } from "@/lib/cron-notify";
 
 export const preferredRegion = ["fra1"];
 export const maxDuration = 120;
@@ -96,6 +97,4 @@ export async function POST(req: NextRequest) {
 }
 
 // GET for manual trigger from dashboard
-export async function GET(req: NextRequest) {
-  return POST(req);
-}
+export const GET = withCronNotify("ben-youtube-sync", (req) => POST(req));

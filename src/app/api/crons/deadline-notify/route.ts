@@ -3,6 +3,7 @@ export const preferredRegion = ["fra1", "arn1", "cdg1"];
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { withCronNotify } from "@/lib/cron-notify";
 
 async function sendTelegram(token: string, chatId: string, text: string) {
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -26,7 +27,7 @@ const SLOT_LABEL: Record<string, string> = {
   any: "",
 };
 
-export async function GET(request: NextRequest) {
+async function _handler(request: NextRequest) {
   // Vercel cron auth
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
   const { data: tasks, error } = await supabase
     .from("tasks")
     .select("id,title,priority,priority_score,due_date,time_slot,estimated_minutes,impact")
-    .not("status", "in", '("done","archived","someday")')
+    .not("status", "in", '("done")').is("archived_at", null)
     .or(`due_date.eq.${today},due_date.eq.${tomorrow}`)
     .is("archived_at", null)
     .order("priority_score", { ascending: false });
@@ -92,3 +93,5 @@ export async function GET(request: NextRequest) {
   await sendTelegram(token, chatId, lines.join("\n"));
   return NextResponse.json({ sent: allTasks.length, today: todayTasks.length, tomorrow: tomorrowTasks.length });
 }
+
+export const GET = withCronNotify("deadline-notify", _handler);

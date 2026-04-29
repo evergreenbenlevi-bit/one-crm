@@ -1,9 +1,16 @@
 /**
- * Instagram Viral Sync
- * - weekly (default): resultsLimit=20, every Sunday 09:00
- * - deep (1st Sunday of month): resultsLimit=100, refreshes lifetime_top5
+ * Instagram Viral Sync — ScrapeCreators edition
+ * Weekly Sunday 09:00 (vercel.json cron).
  *
- * Auto-detects mode by date. Override: POST body { "mode": "deep" } or ?mode=deep
+ * Per creator:
+ *   - Fetches reels via ScrapeCreators /v1/instagram/user/reels (1 credit/call)
+ *   - Takes top 3 by play_count
+ *   - Downloads video to Supabase Storage at ingest time (CDN URLs expire)
+ *   - Upserts rows to viral_scans (same schema as before)
+ *
+ * ENV: SCRAPE_CREATORS_API_KEY, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET
+ * FLAG: Supabase bucket "viral-videos" must exist (public or private).
+ *       Create via Supabase dashboard → Storage → New bucket → "viral-videos".
  */
 import { NextRequest, NextResponse } from "next/server";
 
@@ -11,9 +18,14 @@ export const preferredRegion = ["fra1"];
 export const maxDuration = 300;
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getTopReels } from "@/lib/apify";
+import { getTopReelsSC, SCReel } from "@/lib/scrape-creators";
+import { transcribeVideo } from "@/lib/assemblyai";
+import { withCronNotify } from "@/lib/cron-notify";
 
 const CRON_SECRET = process.env.CRON_SECRET;
+
+// Supabase Storage bucket for downloaded videos
+const VIDEO_BUCKET = "viral-videos";
 
 const NICHE_MAP: Record<string, string> = {
   manifesto: "confessional",
@@ -40,9 +52,140 @@ function getWeekLabel(): string {
   return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
-function isFirstSundayOfMonth(): boolean {
-  const now = new Date();
-  return now.getDay() === 0 && now.getDate() <= 7;
+/**
+ * Download video from CDN URL and upload to Supabase Storage.
+ * Returns permanent public URL, or null if download/upload fails.
+ */
+async function downloadAndStore(
+  videoUrl: string,
+  storagePath: string
+): Promise<string | null> {
+  const supabase = createAdminClient();
+  try {
+    const res = await fetch(videoUrl, { cache: "no-store" });
+    if (!res.ok) {
+      console.warn(`[viral-sync] video fetch failed: ${res.status} for ${videoUrl.slice(0, 80)}`);
+      return null;
+    }
+    const contentType = res.headers.get("content-type") ?? "video/mp4";
+    const buffer = await res.arrayBuffer();
+    const { error } = await supabase.storage
+      .from(VIDEO_BUCKET)
+      .upload(storagePath, buffer, { contentType, upsert: true });
+    if (error) {
+      console.warn(`[viral-sync] storage upload failed for ${storagePath}: ${error.message}`);
+      return null;
+    }
+    const { data } = supabase.storage.from(VIDEO_BUCKET).getPublicUrl(storagePath);
+    return data?.publicUrl ?? null;
+  } catch (err) {
+    console.warn(`[viral-sync] downloadAndStore exception: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  }
+}
+
+type Creator = {
+  id: string;
+  handle: string;
+  display_name: string;
+  domain: string | null;
+  instagram_username: string | null;
+  platform: string;
+};
+
+async function syncCreator(creator: Creator, week: string, sevenDaysAgo: Date) {
+  const supabase = createAdminClient();
+  const username = (creator.instagram_username || creator.handle).replace("@", "");
+  const niche = NICHE_MAP[creator.domain ?? "other"] ?? "other";
+
+  try {
+    // Fetch reels sorted by play_count desc
+    const reels = await getTopReelsSC(username, 20);
+
+    if (reels.length === 0) {
+      return { handle: username, status: "empty" };
+    }
+
+    // Top 3 by play_count
+    const top3 = reels.slice(0, 3);
+
+    const lifetimeTopIds = new Set(
+      [...reels].sort((a, b) => b.videoViewCount - a.videoViewCount).slice(0, 5).map((r) => r.shortCode)
+    );
+
+    const rows = await Promise.all(
+      top3.map(async (reel: SCReel, idx: number) => {
+        const isLifetimeTop5 = lifetimeTopIds.has(reel.shortCode);
+        const is7dayBest = reel.timestamp ? new Date(reel.timestamp) >= sevenDaysAgo : false;
+        const score = viralScore(reel.videoViewCount, reel.likesCount, reel.commentsCount);
+
+        // Download video to Supabase Storage (CDN URLs expire)
+        let storedVideoUrl: string | null = null;
+        if (reel.videoUrl) {
+          const safeCode = reel.shortCode || `${username}-${week}-${idx}`;
+          storedVideoUrl = await downloadAndStore(reel.videoUrl, `instagram/${username}/${safeCode}.mp4`);
+        }
+
+        // Transcribe top reel only
+        const transcript =
+          idx === 0 && reel.videoUrl ? await transcribeVideo(reel.videoUrl) : null;
+
+        return {
+          week,
+          niche,
+          platform: "instagram" as const,
+          post_url: reel.url,
+          creator_handle: username,
+          title: cleanText(reel.caption).slice(0, 150) || null,
+          hook_text: cleanText(reel.caption).slice(0, 200) || null,
+          views: reel.videoViewCount,
+          likes: reel.likesCount,
+          comments: reel.commentsCount,
+          engagement_ratio:
+            reel.videoViewCount > 0
+              ? (reel.likesCount + reel.commentsCount) / reel.videoViewCount
+              : null,
+          viral_score: score,
+          thumbnail_url: reel.thumbnailUrl,
+          // stored permanent URL preferred; falls back to original CDN URL
+          video_url: storedVideoUrl ?? reel.videoUrl ?? null,
+          transcript,
+          format_type: "short_form" as const,
+          is_lifetime_top5: isLifetimeTop5,
+          is_7day_best: is7dayBest,
+          captured_at: new Date().toISOString(),
+        };
+      })
+    );
+
+    let skipped = 0;
+    for (const row of rows) {
+      const { error: rowErr } = await supabase
+        .from("viral_scans")
+        .upsert([row], { onConflict: "post_url", ignoreDuplicates: false });
+      if (rowErr) {
+        console.warn(`[viral-sync] upsert error for ${row.post_url}: ${rowErr.message}`);
+        skipped++;
+      }
+    }
+
+    if (skipped === rows.length) {
+      return { handle: username, status: "error", error: `all ${skipped} rows failed upsert` };
+    }
+
+    await supabase
+      .from("creators")
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq("id", creator.id);
+
+    return { handle: username, status: "ok", reels: top3.length, skipped };
+  } catch (err) {
+    return {
+      handle: username,
+      status: "error",
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -50,19 +193,6 @@ export async function POST(req: NextRequest) {
   if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  // Detect mode: body/query override, else auto by date
-  const url = new URL(req.url);
-  let mode = url.searchParams.get("mode");
-  if (!mode) {
-    try {
-      const body = await req.json().catch(() => ({}));
-      mode = body?.mode ?? null;
-    } catch { mode = null; }
-  }
-  if (!mode) mode = isFirstSundayOfMonth() ? "deep" : "weekly";
-
-  const resultsLimit = mode === "deep" ? 100 : 20;
 
   const supabase = createAdminClient();
   const week = getWeekLabel();
@@ -78,74 +208,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, synced: 0, message: "No Instagram creators found" });
   }
 
-  type Creator = { id: string; handle: string; display_name: string; domain: string | null; instagram_username: string | null; platform: string };
-  async function syncCreator(creator: Creator) {
-    const username = (creator.instagram_username || creator.handle).replace("@", "");
-    const niche = NICHE_MAP[creator.domain ?? "other"] ?? "other";
+  const settled = await Promise.allSettled(
+    creators.map((c) => syncCreator(c as Creator, week, sevenDaysAgo))
+  );
 
-    try {
-      const reels = await getTopReels(username, resultsLimit);
-
-      if (reels.length === 0) {
-        return { handle: username, status: "empty" };
-      }
-
-      const lifetimeTopIds = new Set(
-        [...reels].sort((a, b) => b.videoViewCount - a.videoViewCount).slice(0, 5).map((r) => r.shortCode)
-      );
-
-      const rows = reels.map((reel) => {
-        const isLifetimeTop5 = lifetimeTopIds.has(reel.shortCode);
-        const is7dayBest = reel.timestamp ? new Date(reel.timestamp) >= sevenDaysAgo : false;
-        const score = viralScore(reel.videoViewCount, reel.likesCount, reel.commentsCount);
-        return {
-          week, niche, platform: "instagram" as const,
-          post_url: reel.url, creator_handle: username,
-          title: cleanText(reel.caption).slice(0, 150) || null,
-          hook_text: cleanText(reel.caption).slice(0, 200) || null,
-          views: reel.videoViewCount, likes: reel.likesCount, comments: reel.commentsCount,
-          engagement_ratio: reel.videoViewCount > 0 ? (reel.likesCount + reel.commentsCount) / reel.videoViewCount : null,
-          viral_score: score, thumbnail_url: reel.thumbnailUrl,
-          format_type: "short_form" as const,
-          is_lifetime_top5: isLifetimeTop5, is_7day_best: is7dayBest,
-          captured_at: new Date().toISOString(),
-        };
-      });
-
-      const CHUNK = 50;
-      let skipped = 0;
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const chunk = rows.slice(i, i + CHUNK);
-        const { error: batchErr } = await supabase
-          .from("viral_scans")
-          .upsert(chunk, { onConflict: "post_url", ignoreDuplicates: false });
-        if (batchErr) {
-          for (const row of chunk) {
-            const { error: rowErr } = await supabase
-              .from("viral_scans")
-              .upsert([row], { onConflict: "post_url", ignoreDuplicates: false });
-            if (rowErr) skipped++;
-          }
-        }
-      }
-      if (skipped === rows.length) return { handle: username, status: "error", error: `all ${skipped} rows failed upsert` };
-
-      await supabase.from("creators").update({ last_synced_at: new Date().toISOString() }).eq("id", creator.id);
-      return { handle: username, status: "ok", reels: reels.length };
-    } catch (err) {
-      return { handle: username, status: "error", error: err instanceof Error ? err.message : String(err) };
-    }
-  }
-
-  const settled = await Promise.allSettled(creators.map(syncCreator));
   const results = settled.map((r) =>
-    r.status === "fulfilled" ? r.value : { handle: "unknown", status: "error", error: String(r.reason) }
+    r.status === "fulfilled"
+      ? r.value
+      : { handle: "unknown", status: "error", error: String(r.reason) }
   );
 
   const synced = results.filter((r) => r.status === "ok").length;
-  return NextResponse.json({ ok: true, week, mode, resultsLimit, synced, total: creators.length, results });
+  return NextResponse.json({
+    ok: true,
+    week,
+    provider: "scrape-creators",
+    topN: 3,
+    synced,
+    total: creators.length,
+    results,
+  });
 }
 
-export async function GET(req: NextRequest) {
-  return POST(req);
-}
+export const GET = withCronNotify("instagram-viral-sync", (req) => POST(req));

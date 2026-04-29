@@ -12,6 +12,7 @@ export const maxDuration = 300;
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCreatorSnapshot, findChannelId } from "@/lib/youtube";
+import { withCronNotify } from "@/lib/cron-notify";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -125,9 +126,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GET endpoint for manual trigger from dashboard
-export async function GET(req: NextRequest) {
-  return POST(req);
-}
+export const GET = withCronNotify("youtube-sync", (req) => POST(req));
 
 function getWeekLabel(): string {
   const now = new Date();

@@ -2,6 +2,7 @@ export const runtime = "edge";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+import { withCronNotify } from "@/lib/cron-notify";
 
 async function sendTelegram(token: string, chatId: string, text: string) {
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
@@ -12,7 +13,7 @@ async function sendTelegram(token: string, chatId: string, text: string) {
   });
 }
 
-export async function GET(request: NextRequest) {
+async function _handler(request: NextRequest) {
   // Auth check
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
@@ -88,3 +89,5 @@ export async function GET(request: NextRequest) {
     timestamp: new Date().toISOString(),
   });
 }
+
+export const GET = withCronNotify("retention-check", _handler);
