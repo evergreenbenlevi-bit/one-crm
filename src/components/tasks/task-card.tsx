@@ -3,28 +3,49 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { clsx } from "clsx";
-import { Calendar, ChevronDown, ChevronUp, Trash2, ArrowRight, ChevronUp as PriorityUp, ChevronDown as PriorityDown } from "lucide-react";
-import { useState, useCallback } from "react";
+import { Calendar, ChevronDown, ChevronUp, Trash2, ArrowRight, GripVertical, Layers } from "lucide-react";
+import { useState, useCallback, useMemo } from "react";
 import type { Task, TaskStatus, TaskPriority } from "@/lib/types/tasks";
-import {
-  priorityColors,
-  ownerIcons,
-  ownerLabels,
-  categoryColors,
-  categoryLabels,
-  statusLabels,
-  effortLabels,
-  effortColors,
-} from "@/lib/types/tasks";
+import { ownerLabels, statusLabels } from "@/lib/types/tasks";
+import { getProjectColor } from "@/lib/project-colors";
+import { TaskSubtaskPreview } from "./task-subtask-preview";
+import { checkTitleQuality } from "@/lib/task-title-quality";
 
 const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
-  backlog: "todo", todo: "in_progress", in_progress: "done", waiting_ben: "in_progress", done: null,
-  inbox: "up_next", up_next: "in_progress", scheduled: "in_progress", waiting: "in_progress", someday: null, archived: null,
+  open: "in_progress", in_progress: "waiting", waiting: "done", done: null,
 };
 
 const PRIORITY_CYCLE: Record<TaskPriority, TaskPriority> = {
   p0: "p1", p1: "p2", p2: "p3", p3: "p0",
 };
+
+const PRIORITY_CONFIG: Record<TaskPriority, { label: string; cls: string }> = {
+  p0: { label: "P0 אש", cls: "bg-red-600 text-white font-bold" },
+  p1: { label: "P1 קריטי", cls: "bg-orange-500 text-white font-semibold" },
+  p2: { label: "P2", cls: "bg-blue-600/80 text-blue-100 font-medium" },
+  p3: { label: "P3", cls: "bg-gray-700 text-gray-400" },
+};
+
+const OWNER_AVATAR: Record<string, { label: string; cls: string }> = {
+  ben:     { label: "בן",  cls: "bg-emerald-800 text-emerald-200 border-emerald-700" },
+  claude:  { label: "AI",  cls: "bg-violet-800 text-violet-200 border-violet-700" },
+  both:    { label: "✦",   cls: "bg-slate-700 text-slate-200 border-slate-600" },
+  evyatar: { label: "אב",  cls: "bg-amber-800 text-amber-200 border-amber-700" },
+};
+
+function formatRelativeDate(dateStr: string): { label: string; urgent: boolean; overdue: boolean } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + "T00:00:00");
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+
+  if (diff < 0) return { label: `⚠️ איחור ${Math.abs(diff)} ימים`, urgent: true, overdue: true };
+  if (diff === 0) return { label: "היום !", urgent: true, overdue: false };
+  if (diff === 1) return { label: "מחר", urgent: false, overdue: false };
+  if (diff <= 7) return { label: `בעוד ${diff} ימים`, urgent: false, overdue: false };
+  const months = ["ינו", "פבר", "מרץ", "אפר", "מאי", "יונ", "יול", "אוג", "ספט", "אוק", "נוב", "דצמ"];
+  return { label: `${d.getDate()} ${months[d.getMonth()]}`, urgent: false, overdue: false };
+}
 
 interface TaskCardProps {
   task: Task;
@@ -33,19 +54,42 @@ interface TaskCardProps {
   onPriorityChange?: (taskId: string, newPriority: TaskPriority) => void;
   onDelete?: (taskId: string) => void;
   onDueDateChange?: (taskId: string, newDate: string | null) => void;
+  projectName?: string;
+  projectColor?: string;
+  subtaskCount?: number;
 }
 
-export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDelete, onDueDateChange }: TaskCardProps) {
+export function TaskCard({
+  task,
+  onEdit,
+  onStatusChange,
+  onPriorityChange,
+  onDelete,
+  onDueDateChange,
+  projectName,
+  projectColor,
+  subtaskCount,
+}: TaskCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [undoDelete, setUndoDelete] = useState(false);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  const [subtasksOpen, setSubtasksOpen] = useState(false);
 
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
-  const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "done";
-  const isP1 = task.priority === "p1";
-  const tags = task.tags || [];
+
   const nextStatus = NEXT_STATUS[task.status];
+  const { isGood: titleIsGood } = checkTitleQuality(task.title);
+
+  const projectColors = useMemo(
+    () => projectColor ? { bar: projectColor, bg: 'rgba(0,0,0,0)', text: '#9CA3AF' } : getProjectColor(task.project_id),
+    [projectColor, task.project_id]
+  );
+
+  const dateInfo = useMemo(
+    () => task.due_date ? formatRelativeDate(task.due_date) : null,
+    [task.due_date, task.status]
+  );
 
   const handleAdvanceStatus = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -64,13 +108,12 @@ export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDel
       if (onDelete) onDelete(task.id);
       setUndoDelete(false);
     }, 2500);
-    // Store timer for undo
-    (window as unknown as Record<string, NodeJS.Timeout>)[`__undo_${task.id}`] = timer;
+    (window as unknown as Record<string, ReturnType<typeof setTimeout>>)[`__undo_${task.id}`] = timer;
   }, [task.id, onDelete]);
 
   const handleUndoDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    const timer = (window as unknown as Record<string, NodeJS.Timeout>)[`__undo_${task.id}`];
+    const timer = (window as unknown as Record<string, ReturnType<typeof setTimeout>>)[`__undo_${task.id}`];
     if (timer) clearTimeout(timer);
     setUndoDelete(false);
   }, [task.id]);
@@ -86,13 +129,13 @@ export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDel
       <div
         ref={setNodeRef}
         style={style}
-        className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 flex items-center justify-between"
+        className="rounded-xl border border-red-900/40 bg-red-950/20 p-3 flex items-center justify-between min-h-[60px]"
       >
-        <span className="text-xs text-red-600 dark:text-red-400 font-medium">נמחק</span>
+        <span className="text-sm text-red-400 font-medium">נמחק</span>
         <button
           onClick={handleUndoDelete}
           onPointerDown={(e) => e.stopPropagation()}
-          className="text-xs font-bold text-red-700 dark:text-red-300 hover:underline px-2 py-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+          className="text-sm font-bold text-red-400 hover:underline px-3 py-1.5 rounded-lg hover:bg-red-900/30 transition-colors"
         >
           בטל
         </button>
@@ -100,199 +143,225 @@ export function TaskCard({ task, onEdit, onStatusChange, onPriorityChange, onDel
     );
   }
 
+  const priorityConf = PRIORITY_CONFIG[task.priority];
+  const ownerConf = OWNER_AVATAR[task.owner] ?? { label: task.owner[0].toUpperCase(), cls: "bg-gray-700 text-gray-300 border-gray-600" };
+  const tags = task.tags || [];
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
       className={clsx(
-        "group rounded-xl shadow-sm border cursor-grab active:cursor-grabbing transition-all duration-150 overflow-hidden relative",
-        isDragging ? "opacity-50 shadow-xl scale-105" : "hover:shadow-md hover:-translate-y-0.5",
-        isP1
-          ? "bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-gray-800 border-red-100 dark:border-red-900/40"
-          : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700",
-        isOverdue && !isP1 && "border-red-200 dark:border-red-800"
+        "group relative rounded-xl bg-gray-900 border border-white/[0.07] overflow-hidden",
+        "transition-all duration-150 select-none",
+        isDragging
+          ? "opacity-50 shadow-2xl scale-[1.03] border-white/20"
+          : "hover:border-white/15 hover:shadow-lg hover:shadow-black/50 hover:-translate-y-0.5"
       )}
     >
-      {/* P1 accent bar */}
-      {isP1 && (
-        <div className="absolute top-0 right-0 bottom-0 w-[3px] bg-gradient-to-b from-red-400 to-red-600" />
-      )}
+      {/* Project color bar — 4px left strip */}
+      <div
+        className="absolute inset-y-0 left-0 w-1"
+        style={{ backgroundColor: projectColors.bar }}
+        aria-hidden
+      />
 
-      {/* ── Hover Quick-Action Bar ── */}
-      <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        {/* Advance status */}
-        {nextStatus && onStatusChange && (
-          <button
-            onClick={handleAdvanceStatus}
-            onPointerDown={(e) => e.stopPropagation()}
-            title={`→ ${statusLabels[nextStatus]}`}
-            className="p-1 rounded-md bg-white/90 dark:bg-gray-700/90 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-900/40 dark:hover:text-brand-300 transition-colors"
-          >
-            <ArrowRight size={11} />
-          </button>
-        )}
-        {/* Cycle priority */}
-        {onPriorityChange && (
-          <button
-            onClick={handleCyclePriority}
-            onPointerDown={(e) => e.stopPropagation()}
-            title={`עדיפות → ${PRIORITY_CYCLE[task.priority].toUpperCase()}`}
-            className="p-1 rounded-md bg-white/90 dark:bg-gray-700/90 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/40 dark:hover:text-yellow-300 transition-colors"
-          >
-            <PriorityUp size={11} />
-          </button>
-        )}
-        {/* Date picker toggle */}
-        {onDueDateChange && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowDatePicker(!showDatePicker); }}
-            onPointerDown={(e) => e.stopPropagation()}
-            title="שנה תאריך"
-            className="p-1 rounded-md bg-white/90 dark:bg-gray-700/90 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/40 dark:hover:text-blue-300 transition-colors"
-          >
-            <Calendar size={11} />
-          </button>
-        )}
-        {/* Delete */}
-        {onDelete && (
-          <button
-            onClick={handleDelete}
-            onPointerDown={(e) => e.stopPropagation()}
-            title="מחק"
-            className="p-1 rounded-md bg-white/90 dark:bg-gray-700/90 shadow-sm border border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/40 dark:hover:text-red-400 transition-colors"
-          >
-            <Trash2 size={11} />
-          </button>
-        )}
+      {/* Drag handle — always visible */}
+      <div
+        {...listeners}
+        className="absolute inset-y-0 left-2 flex items-center cursor-grab active:cursor-grabbing opacity-20 group-hover:opacity-60 transition-opacity z-10"
+        title="גרור"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <GripVertical size={14} className="text-gray-400" />
       </div>
 
       {/* Inline date picker */}
       {showDatePicker && (
-        <div className="absolute top-9 left-1.5 z-20" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+        <div
+          className="absolute top-10 right-3 z-30"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           <input
             type="date"
             defaultValue={task.due_date || ""}
             onChange={handleDateChange}
-            className="text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg focus:ring-2 focus:ring-brand-400 outline-none"
+            className="text-sm px-2 py-1.5 rounded-lg border border-white/15 bg-gray-800 text-gray-200 shadow-xl focus:ring-1 focus:ring-white/20 outline-none"
             autoFocus
             onBlur={() => setShowDatePicker(false)}
           />
         </div>
       )}
 
-      {/* Hover Preview Popover */}
-      {(task.description || task.due_date) && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 delay-300 z-20">
-          <div className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg shadow-xl px-3 py-2 text-xs">
-            {task.description && (
-              <p className="text-gray-200 dark:text-gray-700 line-clamp-3 leading-relaxed mb-1">{task.description}</p>
+      <div className="pl-6 pr-3 pt-3 pb-3">
+
+        {/* Row 1: Priority pill + Project pill + Date */}
+        <div className="flex items-center gap-1.5 mb-2.5 flex-wrap" dir="rtl">
+          {/* Priority — big, colored, always visible */}
+          <button
+            onClick={handleCyclePriority}
+            onPointerDown={(e) => e.stopPropagation()}
+            title={`עדיפות — לחץ לשינוי`}
+            className={clsx(
+              "text-xs px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 shrink-0",
+              priorityConf.cls
             )}
-            <div className="flex items-center gap-3 text-[10px] text-gray-400 dark:text-gray-500">
-              {task.due_date && <span>דדליין: {task.due_date}</span>}
-              {task.created_at && <span>נוצר: {new Date(task.created_at).toLocaleDateString("he-IL")}</span>}
-            </div>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-100" />
-          </div>
-        </div>
-      )}
+          >
+            {priorityConf.label}
+          </button>
 
-      <div className="p-3">
-        {/* Header: priority + owner */}
-        <div className="flex items-center justify-between mb-2">
-          <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md", priorityColors[task.priority])}>
-            {task.priority.toUpperCase()}
-          </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500" title={ownerLabels[task.owner]}>
-            {ownerIcons[task.owner]}
-          </span>
+          {/* Project pill */}
+          {projectName && (
+            <span
+              className="text-xs px-2 py-0.5 rounded-full shrink-0 font-medium"
+              style={{
+                backgroundColor: projectColors.bar + '22',
+                color: projectColors.bar,
+                border: `1px solid ${projectColors.bar}44`,
+              }}
+            >
+              {projectName}
+            </span>
+          )}
+
+          {/* Due date — relative, urgent coloring */}
+          {dateInfo ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowDatePicker(!showDatePicker); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className={clsx(
+                "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full transition-colors shrink-0",
+                dateInfo.overdue
+                  ? "bg-red-900/40 text-red-300 border border-red-700/40"
+                  : dateInfo.urgent
+                  ? "bg-amber-900/40 text-amber-300 border border-amber-700/40"
+                  : "bg-gray-800 text-gray-400 border border-white/5 hover:text-gray-200"
+              )}
+            >
+              <Calendar size={10} />
+              <span>{dateInfo.label}</span>
+            </button>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowDatePicker(!showDatePicker); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="text-xs text-gray-600 hover:text-gray-400 transition-colors px-1"
+            >
+              + תאריך
+            </button>
+          )}
         </div>
 
-        {/* Title */}
-        <p className="text-sm font-medium dark:text-gray-200 leading-snug mb-2">
-          {isOverdue && <span className="mr-1">🔴</span>}{task.title}
+        {/* Row 2: Title */}
+        <p
+          className="text-base font-semibold text-white leading-snug mb-1.5 line-clamp-2"
+          dir="rtl"
+          title={!titleIsGood ? "כותרת לא תקנית — ראה TASK-STANDARDS.md" : undefined}
+          style={{ fontSize: '16px' }}
+        >
+          {task.title}
         </p>
 
-        {/* Category + due date row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium", categoryColors[task.category])}>
-            {categoryLabels[task.category]}
-          </span>
-
-          {task.effort && (
-            <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium", effortColors[task.effort])}>
-              {effortLabels[task.effort].split(" ")[0]}
-            </span>
-          )}
-
-          {task.due_date && (
-            <div className={clsx("flex items-center gap-0.5 text-[10px]", isOverdue ? "text-red-500 font-bold" : "text-gray-400 dark:text-gray-500")}>
-              <Calendar size={9} />
-              <span>{task.due_date}</span>
-            </div>
-          )}
-
-          {isOverdue && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500 text-white font-bold">
-              פג תוקף
-            </span>
-          )}
-
-          {task.priority_score != null && task.priority_score > 0 && (
-            <span className={clsx(
-              "text-[9px] px-1.5 py-0.5 rounded-full font-mono",
-              task.priority_score >= 1000
-                ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                : task.priority_score >= 800
-                ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
-                : task.priority_score >= 500
-                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300"
-                : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-            )}>
-              {task.priority_score}
-            </span>
-          )}
-        </div>
-
-        {/* Tags */}
-        {tags.length > 0 && (
-          <div className="flex items-center gap-1 flex-wrap mt-1.5">
-            {tags.map(tag => (
-              <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full font-mono">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Expand description */}
+        {/* Row 3: Description preview — always visible if exists */}
         {task.description && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="flex items-center gap-0.5 mt-2 text-[10px] text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+          <p
+            className={clsx(
+              "text-sm text-gray-500 leading-relaxed mb-2",
+              expanded ? "line-clamp-none whitespace-pre-wrap" : "line-clamp-1"
+            )}
+            dir="rtl"
+            style={{ fontSize: '13px' }}
           >
-            {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-            {expanded ? "סגור" : "פרטים"}
-          </button>
-        )}
-        {expanded && task.description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed whitespace-pre-wrap border-t border-gray-100 dark:border-gray-700 pt-1.5">
             {task.description}
           </p>
         )}
 
-        {/* Edit button */}
-        {onEdit && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="mt-2 text-[10px] text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 transition-colors"
+        {/* Row 4: Owner + Tags + Subtask count */}
+        <div className="flex items-center gap-1.5 flex-wrap" dir="rtl">
+          {/* Owner avatar */}
+          <span
+            className={clsx(
+              "inline-flex items-center justify-center text-[11px] font-bold rounded-full px-2 h-5 border shrink-0",
+              ownerConf.cls
+            )}
+            title={ownerLabels[task.owner]}
           >
-            ערוך
-          </button>
-        )}
+            {ownerConf.label}
+          </span>
+
+          {/* Tags */}
+          {tags.slice(0, 2).map(tag => (
+            <span key={tag} className="text-[11px] px-1.5 py-0 rounded-full bg-gray-800 text-gray-500 border border-white/5 font-mono">
+              {tag}
+            </span>
+          ))}
+          {tags.length > 2 && (
+            <span className="text-[11px] text-gray-600">+{tags.length - 2}</span>
+          )}
+
+          {/* Subtask count chip */}
+          {(subtaskCount ?? 0) > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setSubtasksOpen(!subtasksOpen); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-white/5 hover:text-gray-200 hover:border-white/15 transition-colors ml-auto"
+            >
+              <Layers size={10} />
+              <span>{subtaskCount} תת-משימות</span>
+              {subtasksOpen ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
+            </button>
+          )}
+        </div>
+
+        {/* Subtask expansion */}
+        <TaskSubtaskPreview taskId={task.id} isOpen={subtasksOpen} />
+
+        {/* Action bar — compact, always visible on hover */}
+        <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity" dir="rtl">
+          {nextStatus && onStatusChange && (
+            <button
+              onClick={handleAdvanceStatus}
+              onPointerDown={(e) => e.stopPropagation()}
+              title={`→ ${statusLabels[nextStatus]}`}
+              className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-gray-800 border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition-colors"
+            >
+              <ArrowRight size={10} />
+              <span>{statusLabels[nextStatus]}</span>
+            </button>
+          )}
+
+          {task.description && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="text-[11px] text-gray-600 hover:text-gray-300 transition-colors px-1"
+            >
+              {expanded ? "סגור" : "פרטים"}
+            </button>
+          )}
+
+          {onEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="text-[11px] text-gray-600 hover:text-gray-200 transition-colors px-1"
+            >
+              ערוך
+            </button>
+          )}
+
+          {onDelete && (
+            <button
+              onClick={handleDelete}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="mr-auto p-1 text-gray-700 hover:text-red-400 transition-colors rounded"
+            >
+              <Trash2 size={11} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

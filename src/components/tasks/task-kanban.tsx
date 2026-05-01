@@ -14,13 +14,28 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import type { Task, TaskStatus } from "@/lib/types/tasks";
-import { statusLabels, statusColors, statusAccent, TASK_STATUSES } from "@/lib/types/tasks";
+import { TASK_STATUSES } from "@/lib/types/tasks";
 import { TaskCard } from "./task-card";
+import { projectBarColor } from "@/lib/project-colors";
+
+// ADHD-optimized column config — big, colored, unmistakable
+const COLUMN_CONFIG: Record<TaskStatus, {
+  label: string;
+  underline: string;
+  dropBg: string;
+  emptyText: string;
+}> = {
+  open:        { label: "פתוח",   underline: "border-blue-500",   dropBg: "bg-blue-950/20",   emptyText: "↓ גרור לכאן" },
+  in_progress: { label: "בעבודה", underline: "border-amber-500",  dropBg: "bg-amber-950/20",  emptyText: "↓ גרור לכאן" },
+  waiting:     { label: "ממתין",  underline: "border-purple-500", dropBg: "bg-purple-950/20", emptyText: "↓ גרור לכאן" },
+  done:        { label: "הושלם",  underline: "border-green-500",  dropBg: "bg-green-950/20",  emptyText: "↓ גרור לכאן" },
+};
 
 const WIP_LIMIT = 5;
+
+interface ProjectMeta { id: string; title: string }
 
 interface TaskKanbanProps {
   columns: Record<TaskStatus, Task[]>;
@@ -31,6 +46,8 @@ interface TaskKanbanProps {
   onDueDateChange?: (taskId: string, newDate: string | null) => void;
   onPositionChange?: (taskId: string, newPosition: number) => void;
   visibleStatuses?: TaskStatus[];
+  projects?: ProjectMeta[];           // for project pill on cards
+  subtaskCounts?: Record<string, number>; // taskId → count
 }
 
 function KanbanColumn({
@@ -42,6 +59,8 @@ function KanbanColumn({
   onDelete,
   onDueDateChange,
   wipCount,
+  projects,
+  subtaskCounts,
 }: {
   status: TaskStatus;
   tasks: Task[];
@@ -51,107 +70,93 @@ function KanbanColumn({
   onDelete?: (taskId: string) => void;
   onDueDateChange?: (taskId: string, newDate: string | null) => void;
   wipCount?: number;
+  projects?: ProjectMeta[];
+  subtaskCounts?: Record<string, number>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
-  const isBacklog = status === "backlog";
+  const col = COLUMN_CONFIG[status];
   const isInProgress = status === "in_progress";
-  const [backlogExpanded, setBacklogExpanded] = useState(false);
-
-  const displayTasks = isBacklog && !backlogExpanded ? [] : tasks;
   const isWipFull = isInProgress && wipCount !== undefined && wipCount >= WIP_LIMIT;
 
+  const projectMap = Object.fromEntries((projects ?? []).map(p => [p.id, p.title]));
+
   return (
-    <div className="flex-shrink-0 w-[280px]">
-      {/* Column header */}
-      <div
-        className={clsx(
-          "flex items-center justify-between mb-3 px-2 py-2 rounded-xl transition-colors",
-          isBacklog && "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50",
-          isOver && "bg-brand-50 dark:bg-brand-900/20"
-        )}
-        onClick={isBacklog ? () => setBacklogExpanded(e => !e) : undefined}
-      >
-        <div className="flex items-center gap-2">
-          {/* Status accent dot */}
-          <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", statusAccent[status])} />
-          {isBacklog && (
-            backlogExpanded
-              ? <ChevronDown size={13} className="text-gray-400" />
-              : <ChevronRight size={13} className="text-gray-400" />
-          )}
-          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">{statusLabels[status]}</h3>
-        </div>
+    <div className="flex-shrink-0 w-[300px] min-w-[300px]">
+      {/* Column header — big, colored, unmistakable */}
+      <div className={clsx(
+        "flex items-center justify-between mb-3 px-1 pb-2.5 border-b-[3px]",
+        col.underline
+      )}>
+        <h3 className="text-xl font-bold text-white" dir="rtl" style={{ fontSize: '22px' }}>
+          {col.label}
+        </h3>
 
         <div className="flex items-center gap-2">
-          {/* WIP counter for in_progress */}
-          {isInProgress && (
+          {/* WIP limit badge */}
+          {isInProgress && wipCount !== undefined && (
             <span className={clsx(
-              "text-[10px] font-bold px-1.5 py-0.5 rounded-md",
+              "text-xs font-bold px-2 py-0.5 rounded-full",
               isWipFull
-                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                : "bg-gray-700 text-gray-400"
             )}>
               {wipCount}/{WIP_LIMIT}
             </span>
           )}
-          <span className={clsx(
-            "text-xs px-2 py-0.5 rounded-full font-semibold",
-            isBacklog
-              ? "bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500"
-          )}>
+          {/* Task count */}
+          <span className="text-sm font-semibold text-gray-500 bg-gray-800 px-2.5 py-0.5 rounded-full">
             {tasks.length}
           </span>
         </div>
       </div>
 
-      {/* Collapsed backlog */}
-      {isBacklog && !backlogExpanded && (
-        <div
-          ref={setNodeRef}
-          onClick={() => setBacklogExpanded(true)}
-          className={clsx(
-            "flex items-center justify-center gap-2 min-h-[60px] p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all",
-            isOver
-              ? "border-brand-400 bg-brand-50 dark:bg-brand-900/20"
-              : "border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
-          )}
-        >
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            {tasks.length > 0 ? `${tasks.length} משימות — לחץ להרחבה` : "ריק"}
-          </span>
-        </div>
-      )}
+      {/* Droppable column */}
+      <div
+        ref={setNodeRef}
+        className={clsx(
+          "space-y-3 min-h-[240px] p-2 rounded-xl transition-all duration-150",
+          isOver
+            ? `${col.dropBg} ring-2 ring-inset ring-white/10 border-2 border-dashed border-white/20`
+            : "border-2 border-transparent"
+        )}
+      >
+        <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+          {tasks.map(task => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onEdit={onEdit}
+              onStatusChange={onStatusChange}
+              onPriorityChange={onPriorityChange}
+              onDelete={onDelete}
+              onDueDateChange={onDueDateChange}
+              projectName={task.project_id ? projectMap[task.project_id] : undefined}
+              projectColor={task.project_id ? projectBarColor(task.project_id) : undefined}
+              subtaskCount={subtaskCounts?.[task.id]}
+            />
+          ))}
+        </SortableContext>
 
-      {/* Expanded column */}
-      {(!isBacklog || backlogExpanded) && (
-        <div
-          ref={setNodeRef}
-          className={clsx(
-            "space-y-2 min-h-[200px] p-2 rounded-xl transition-all",
+        {tasks.length === 0 && (
+          <div className={clsx(
+            "flex items-center justify-center h-20 rounded-lg border-2 border-dashed",
             isOver
-              ? "bg-brand-50 dark:bg-brand-900/20 ring-2 ring-brand-200 dark:ring-brand-800"
-              : statusColors[status]
-          )}
-        >
-          <SortableContext items={displayTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-            {displayTasks.map(task => (
-              <TaskCard key={task.id} task={task} onEdit={onEdit} onStatusChange={onStatusChange} onPriorityChange={onPriorityChange} onDelete={onDelete} onDueDateChange={onDueDateChange} />
-            ))}
-          </SortableContext>
-
-          {displayTasks.length === 0 && (
-            <div className="flex items-center justify-center h-16 text-xs text-gray-300 dark:text-gray-600">
-              גרור משימה לכאן
-            </div>
-          )}
-        </div>
-      )}
+              ? "border-white/30 text-white/60"
+              : "border-white/5 text-gray-700"
+          )}>
+            <span className="text-sm" dir="rtl">{col.emptyText}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, onDelete, onDueDateChange, onPositionChange, visibleStatuses }: TaskKanbanProps) {
+export function TaskKanban({
+  columns, onStatusChange, onEdit, onPriorityChange, onDelete,
+  onDueDateChange, onPositionChange, visibleStatuses,
+  projects, subtaskCounts,
+}: TaskKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -160,13 +165,21 @@ export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, 
 
   const statuses = visibleStatuses || TASK_STATUSES;
   const wipCount = columns["in_progress"]?.length || 0;
-
   const activeTask = activeId
     ? Object.values(columns).flat().find(t => t.id === activeId)
     : null;
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
+  }
+
+  function persistPositions(items: Task[]) {
+    const updates = items.map((task, index) => ({ id: task.id, position: index * 100 }));
+    fetch("/api/tasks/bulk-update", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updates }),
+    }).catch(console.error);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -177,20 +190,31 @@ export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, 
     const taskId = String(active.id);
     const overId = String(over.id);
 
-    // Cross-column: over is a status
+    // Cross-column drop: over is a status ID
     if (TASK_STATUSES.includes(overId as TaskStatus)) {
-      const currentStatus = Object.entries(columns).find(([, tasks]) =>
+      const sourceEntry = Object.entries(columns).find(([, tasks]) =>
         tasks.some(t => t.id === taskId)
-      )?.[0] as TaskStatus | undefined;
+      );
+      const currentStatus = sourceEntry?.[0] as TaskStatus | undefined;
 
       if (currentStatus && currentStatus !== overId) {
         onStatusChange(taskId, overId as TaskStatus);
+        fetch("/api/tasks/bulk-update", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates: [{ id: taskId, position: 0, status: overId as TaskStatus }] }),
+        }).catch(console.error);
+
+        if (sourceEntry) {
+          const sourceTasks = sourceEntry[1].filter(t => t.id !== taskId);
+          if (sourceTasks.length > 0) persistPositions(sourceTasks);
+        }
       }
       return;
     }
 
-    // Within-column: over is a task ID
-    if (overId !== taskId && onPositionChange) {
+    // Within-column reorder: over is a task ID
+    if (overId !== taskId) {
       const colEntry = Object.entries(columns).find(([, colTasks]) =>
         colTasks.some(t => t.id === taskId)
       );
@@ -202,14 +226,12 @@ export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, 
       if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
 
       const reordered = [...colTasks];
-      reordered.splice(fromIdx, 1);
-      const targetIdx = toIdx > fromIdx ? toIdx - 1 : toIdx;
+      const [moved] = reordered.splice(fromIdx, 1);
+      const insertAt = toIdx > fromIdx ? toIdx - 1 : toIdx;
+      reordered.splice(insertAt, 0, moved);
 
-      const prevPos = reordered[targetIdx - 1]?.position ?? 0;
-      const nextPos = reordered[targetIdx]?.position ?? (prevPos + 2000);
-      const newPosition = Math.floor((prevPos + nextPos) / 2) || targetIdx * 100;
-
-      onPositionChange(taskId, newPosition);
+      if (onPositionChange) onPositionChange(taskId, (insertAt + 1) * 100);
+      persistPositions(reordered);
     }
   }
 
@@ -220,7 +242,7 @@ export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, 
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-6">
+      <div className="flex gap-5 overflow-x-auto pb-6">
         {statuses.map(status => (
           <KanbanColumn
             key={status}
@@ -232,13 +254,28 @@ export function TaskKanban({ columns, onStatusChange, onEdit, onPriorityChange, 
             onDelete={onDelete}
             onDueDateChange={onDueDateChange}
             wipCount={status === "in_progress" ? wipCount : undefined}
+            projects={projects}
+            subtaskCounts={subtaskCounts}
           />
         ))}
       </div>
-      <DragOverlay dropAnimation={{ duration: 150, easing: "ease-out" }}>
+
+      {/* Drag overlay — lifted card with project color */}
+      <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
         {activeTask && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-2xl border-2 border-brand-200 dark:border-brand-700 w-[280px] rotate-1 opacity-95">
-            <span className="text-sm font-medium dark:text-gray-200">{activeTask.title}</span>
+          <div
+            className="rounded-xl bg-gray-900 border border-white/15 overflow-hidden shadow-2xl w-[300px] rotate-1 opacity-95"
+            style={{ boxShadow: `0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px ${projectBarColor(activeTask.project_id)}44` }}
+          >
+            <div className="w-full h-1" style={{ backgroundColor: projectBarColor(activeTask.project_id) }} />
+            <div className="p-3">
+              <p className="text-base font-semibold text-white" dir="rtl" style={{ fontSize: '16px' }}>
+                {activeTask.title}
+              </p>
+              {activeTask.due_date && (
+                <p className="text-xs text-gray-500 mt-1" dir="rtl">{activeTask.due_date}</p>
+              )}
+            </div>
           </div>
         )}
       </DragOverlay>

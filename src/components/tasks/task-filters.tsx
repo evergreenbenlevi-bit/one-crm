@@ -1,16 +1,21 @@
 "use client";
 
 import { clsx } from "clsx";
+import { useEffect, useState } from "react";
 import type { TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 import { priorityLabels, ownerLabels, categoryLabels } from "@/lib/types/tasks";
+
+interface ProjectOption { id: string; title: string }
 
 interface TaskFiltersProps {
   priority: TaskPriority | "all";
   owner: TaskOwner | "all";
   category: TaskCategory | "all";
+  projectId: string | "all";
   onPriorityChange: (v: TaskPriority | "all") => void;
   onOwnerChange: (v: TaskOwner | "all") => void;
   onCategoryChange: (v: TaskCategory | "all") => void;
+  onProjectChange: (v: string | "all") => void;
   hideOwner?: boolean;
 }
 
@@ -30,9 +35,10 @@ function FilterSelect<T extends string>({
       value={value}
       onChange={(e) => onChange(e.target.value as T | "all")}
       className={clsx(
-        "text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600",
-        "bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200",
-        "focus:ring-2 focus:ring-brand-400 focus:border-transparent"
+        "text-sm px-3 py-1.5 rounded-lg border border-white/10",
+        "bg-gray-800 text-gray-200",
+        "focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 outline-none",
+        "transition-colors hover:border-white/20"
       )}
       aria-label={label}
     >
@@ -44,20 +50,63 @@ function FilterSelect<T extends string>({
   );
 }
 
-export function TaskFilters({ priority, owner, category, onPriorityChange, onOwnerChange, onCategoryChange, hideOwner }: TaskFiltersProps) {
-  const hasFilters = priority !== "all" || owner !== "all" || category !== "all";
+export function TaskFilters({
+  priority, owner, category, projectId,
+  onPriorityChange, onOwnerChange, onCategoryChange, onProjectChange,
+  hideOwner,
+}: TaskFiltersProps) {
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+
+  useEffect(() => {
+    fetch("/api/projects?status=active")
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setProjects(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const hasFilters = priority !== "all" || owner !== "all" || category !== "all" || projectId !== "all";
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2" dir="rtl">
       <FilterSelect label="עדיפות" value={priority} options={priorityLabels} onChange={onPriorityChange} />
       {!hideOwner && <FilterSelect label="אחראי" value={owner} options={ownerLabels} onChange={onOwnerChange} />}
       <FilterSelect label="קטגוריה" value={category} options={categoryLabels} onChange={onCategoryChange} />
+
+      {/* Project filter */}
+      {projects.length > 0 && (
+        <select
+          value={projectId}
+          onChange={(e) => onProjectChange(e.target.value)}
+          className={clsx(
+            "text-sm px-3 py-1.5 rounded-lg border border-white/10",
+            "bg-gray-800 text-gray-200",
+            "focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40 outline-none",
+            "transition-colors hover:border-white/20",
+            projectId !== "all" && "border-blue-500/40 text-blue-300"
+          )}
+          aria-label="פרויקט"
+        >
+          <option value="all">פרויקט: הכל</option>
+          <option value="none">ללא פרויקט</option>
+          {projects.map(p => (
+            <option key={p.id} value={p.id}>{p.title}</option>
+          ))}
+        </select>
+      )}
+
       {hasFilters && (
         <button
-          onClick={() => { onPriorityChange("all"); onOwnerChange("all"); onCategoryChange("all"); }}
-          className="text-xs text-brand-500 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+          onClick={() => {
+            onPriorityChange("all");
+            onOwnerChange("all");
+            onCategoryChange("all");
+            onProjectChange("all");
+          }}
+          className="text-sm text-blue-400 hover:text-blue-300 transition-colors px-1"
         >
-          נקה פילטרים
+          נקה
         </button>
       )}
     </div>

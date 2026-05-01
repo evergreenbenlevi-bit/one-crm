@@ -10,8 +10,8 @@ import { syncTaskToCalendar } from "@/lib/calendar-sync";
 
 // ── Valid enums for input validation ──
 const VALID_PRIORITIES: TaskPriority[] = ["p0", "p1", "p2", "p3"];
-const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done", "inbox", "up_next", "scheduled", "waiting", "someday", "archived"];
-const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
+const VALID_STATUSES: TaskStatus[] = ["open", "in_progress", "waiting", "done"];
+const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "evyatar"];
 const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research", "infrastructure", "personal", "errands"];
 const VALID_IMPACTS: TaskImpact[] = ["needle_mover", "important", "nice"];
 const VALID_SIZES: TaskSize[] = ["quick", "medium", "big"];
@@ -102,6 +102,7 @@ export async function GET(request: NextRequest) {
   const owner = searchParams.get("owner");
   const category = searchParams.get("category");
   const parent_id = searchParams.get("parent_id");
+  const project_id = searchParams.get("project_id");
 
   // Archived filter
   const showArchived = searchParams.get("archived");
@@ -113,11 +114,12 @@ export async function GET(request: NextRequest) {
 
   if (status && VALID_STATUSES.includes(status as TaskStatus)) query = query.eq("status", status);
   // Lazy load: exclude backlog on initial fetch for fast page load
-  if (!status && searchParams.get("exclude_backlog") === "1") query = query.neq("status", "backlog").neq("status", "done");
+  if (!status && searchParams.get("exclude_backlog") === "1") query = query.neq("status", "done").is("archived_at", null);
   if (priority && VALID_PRIORITIES.includes(priority as TaskPriority)) query = query.eq("priority", priority);
   if (owner && VALID_OWNERS.includes(owner as TaskOwner)) query = query.eq("owner", owner);
   if (category && VALID_CATEGORIES.includes(category as TaskCategory)) query = query.eq("category", category);
   if (parent_id) query = query.eq("parent_id", parent_id);
+  if (project_id) query = query.eq("project_id", project_id);
 
   const impact = searchParams.get("impact");
   const size = searchParams.get("size");
@@ -151,7 +153,7 @@ export async function POST(request: NextRequest) {
     title: (body.title as string).trim(),
     description: body.description?.trim() || null,
     priority: body.priority || "p2",
-    status: body.status || "todo",
+    status: body.status || "open",
     owner: body.owner || "claude",
     category: body.category || "one_tm",
     due_date: body.due_date || null,
@@ -255,9 +257,18 @@ export async function PATCH(request: NextRequest) {
   const supabase = createAdminClient();
 
   // Fetch current task for change logging
-  const { data: currentTask } = await supabase.from("tasks").select("*").eq("id", id).single();
+  const { data: currentTask, error: fetchErr } = await supabase.from("tasks").select("*").eq("id", id).single();
+  if (fetchErr || !currentTask) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
 
-  const { data, error } = await supabase.from("tasks").update(updates).eq("id", id).select().single();
+  // Scope position updates to (project_id, status) to prevent cross-bucket collisions
+  let updateQuery = supabase.from("tasks").update(updates).eq("id", id);
+  if (updates.position !== undefined) {
+    if (currentTask.project_id != null) updateQuery = updateQuery.eq("project_id", currentTask.project_id);
+    updateQuery = updateQuery.eq("status", currentTask.status);
+  }
+  const { data, error } = await updateQuery.select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Calendar sync when due_date or time_slot changed — fire-and-forget
@@ -273,7 +284,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Auto-log changes to task_activity
-  if (currentTask) {
+  {
     const trackedFields = ["status", "priority", "category", "owner", "due_date", "title", "effort", "impact", "size", "estimated_minutes", "time_slot", "project_id"];
     const activities: { task_id: string; activity_type: string; actor: string; content?: string; field_name?: string; old_value?: string; new_value?: string }[] = [];
 

@@ -3,10 +3,11 @@
 import { useState, useMemo, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import useSWR from "swr";
-import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2, ChevronDown, ChevronRight, GitBranch, RotateCcw, LayoutGrid } from "lucide-react";
+import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2, ChevronDown, ChevronRight, GitBranch, RotateCcw, LayoutGrid, GripVertical, Bot, User, UserCheck, Users, Save } from "lucide-react";
 import { fetcher } from "@/lib/fetcher";
+import { createClient } from "@/lib/supabase/client";
 import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
-import { TASK_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors } from "@/lib/types/tasks";
+import { TASK_STATUSES, KANBAN_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors } from "@/lib/types/tasks";
 import { TaskKanban } from "@/components/tasks/task-kanban";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import { TaskAddModal } from "@/components/tasks/task-add-modal";
@@ -14,35 +15,119 @@ import { TaskEditModal } from "@/components/tasks/task-edit-modal";
 import { TaskImportModal } from "@/components/tasks/task-import-modal";
 import { Big3Today } from "@/components/tasks/big3-today";
 import { BulkActionBar } from "@/components/tasks/bulk-action-bar";
+import { WeeklyCapacityView } from "@/components/tasks/weekly-capacity-view";
 import { loadSessionContext, saveSessionContext, sessionAgeLabel } from "@/lib/session-context";
 import { clsx } from "clsx";
 import { useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ─── Sub-tasks panel ──────────────────────────────────────────────────────────
-const STATUS_BADGE: Record<TaskStatus, string> = {
-  in_progress: "bg-gray-900 text-white dark:bg-white dark:text-gray-900",
-  waiting_ben: "bg-gray-700 text-white dark:bg-gray-300 dark:text-gray-800",
-  up_next:     "bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100",
-  scheduled:   "border border-gray-300 dark:border-gray-500 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
-  todo:        "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
-  backlog:     "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-500",
-  inbox:       "border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400",
-  waiting:     "border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-500",
-  done:        "border border-gray-100 dark:border-gray-800 text-gray-300 dark:text-gray-600",
-  someday:     "bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-600",
-  archived:    "bg-gray-50 text-gray-300 dark:bg-gray-800 dark:text-gray-700",
+const STATUS_BADGE: Record<string, string> = {
+  open:        "bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100",
+  in_progress: "bg-amber-200 text-amber-800 dark:bg-amber-700 dark:text-amber-100",
+  waiting:     "bg-purple-200 text-purple-800 dark:bg-purple-700 dark:text-purple-100",
+  done:        "bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-100",
 };
 
+// ─── Sortable subtask row (used inside SubTasksPanel DnD) ────────────────────
+function SortableSubTask({ sub, onEditTask }: { sub: Task; onEditTask: (t: Task) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sub.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={clsx(
+        "flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 transition-colors",
+        isDragging ? "opacity-50 shadow-lg" : "hover:border-brand-200 dark:hover:border-brand-700"
+      )}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="flex-shrink-0 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 cursor-grab active:cursor-grabbing p-0.5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical size={11} />
+      </button>
+      <span
+        onClick={() => onEditTask(sub)}
+        className={clsx("text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0 cursor-pointer", STATUS_BADGE[sub.status] ?? STATUS_BADGE.open)}
+      >
+        {statusLabels[sub.status]}
+      </span>
+      <span
+        onClick={() => onEditTask(sub)}
+        className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate cursor-pointer"
+      >{sub.title}</span>
+    </div>
+  );
+}
+
 function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask: (t: Task) => void }) {
-  const { data: subTasks = [], mutate } = useSWR<Task[]>(
+  const { data: rawSubTasks = [], mutate } = useSWR<Task[]>(
     `/api/tasks?parent_id=${parentId}`,
     fetcher,
     { revalidateOnFocus: false }
   );
+  const [subTasks, setSubTasks] = useState<Task[]>([]);
   const [adding, setAdding] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const subSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // Sync raw data into local state for optimistic DnD reorder
+  useEffect(() => {
+    const sorted = [...rawSubTasks].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    setSubTasks(sorted);
+  }, [rawSubTasks]);
+
+  async function handleSubDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = subTasks.findIndex(t => t.id === active.id);
+    const newIndex = subTasks.findIndex(t => t.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Optimistic reorder
+    const reordered = arrayMove(subTasks, oldIndex, newIndex);
+    setSubTasks(reordered);
+
+    // Persist position for the moved task
+    // position = midpoint between neighbours (fractional indexing)
+    // needs migration: position column must exist on tasks table
+    const prev = reordered[newIndex - 1]?.position ?? 0;
+    const next = reordered[newIndex + 1]?.position ?? (prev + 2000);
+    const newPosition = Math.floor((prev + next) / 2) || newIndex * 100;
+
+    try {
+      await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: String(active.id), position: newPosition, manually_positioned: true }),
+      });
+      mutate();
+    } catch {
+      // revert on error
+      mutate();
+    }
+  }
 
   useEffect(() => {
     if (adding) setTimeout(() => inputRef.current?.focus(), 50);
@@ -58,7 +143,7 @@ function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask:
         body: JSON.stringify({
           title: newTitle.trim(),
           priority: "p2",
-          status: "todo",
+          status: "open",
           owner: "claude",
           category: "one_tm",
           parent_id: parentId,
@@ -82,20 +167,15 @@ function SubTasksPanel({ parentId, onEditTask }: { parentId: string; onEditTask:
       </div>
 
       {subTasks.length > 0 && (
-        <div className="space-y-1 mb-2">
-          {subTasks.map((sub) => (
-            <div
-              key={sub.id}
-              onClick={() => onEditTask(sub)}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 cursor-pointer hover:border-brand-200 dark:hover:border-brand-700 transition-colors"
-            >
-              <span className={clsx("text-[9px] px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0", STATUS_BADGE[sub.status])}>
-                {statusLabels[sub.status]}
-              </span>
-              <span className="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate">{sub.title}</span>
+        <DndContext sensors={subSensors} collisionDetection={closestCenter} onDragEnd={handleSubDragEnd}>
+          <SortableContext items={subTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-1 mb-2">
+              {subTasks.map((sub) => (
+                <SortableSubTask key={sub.id} sub={sub} onEditTask={onEditTask} />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {adding ? (
@@ -138,14 +218,16 @@ interface InlineListViewProps {
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onSave: (task: Task) => void;
   onDueDateChange: (taskId: string, newDate: string | null) => void;
+  readOnly?: boolean;
 }
 
-function InlineListRow({ task, onEdit, onStatusChange, onSave, onDueDateChange }: {
+function InlineListRow({ task, onEdit, onStatusChange, onSave, onDueDateChange, readOnly }: {
   task: Task;
   onEdit: (task: Task) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onSave: (task: Task) => void;
   onDueDateChange: (taskId: string, date: string | null) => void;
+  readOnly?: boolean;
 }) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleVal, setTitleVal] = useState(task.title);
@@ -182,12 +264,12 @@ function InlineListRow({ task, onEdit, onStatusChange, onSave, onDueDateChange }
           />
         ) : (
           <div className="flex items-center gap-2">
-            {isOverdue && <span className="text-red-500 text-xs flex-shrink-0">🔴</span>}
+            {isOverdue && <span className="inline-block w-2 h-2 rounded-full bg-red-500 ml-1" aria-label="דחוף" />}
             <span
               className="text-sm text-gray-700 dark:text-gray-200 cursor-text hover:text-brand-600 dark:hover:text-brand-400 transition-colors truncate"
               onClick={() => setEditingTitle(true)}
             >{task.title}</span>
-            <button onClick={() => onEdit(task)} className="flex-shrink-0 text-[10px] text-gray-300 hover:text-brand-500 dark:hover:text-brand-400 transition-colors">ערוך</button>
+            {!readOnly && <button onClick={() => onEdit(task)} className="flex-shrink-0 text-[10px] text-gray-300 hover:text-brand-500 dark:hover:text-brand-400 transition-colors">ערוך</button>}
           </div>
         )}
       </td>
@@ -210,6 +292,11 @@ function InlineListRow({ task, onEdit, onStatusChange, onSave, onDueDateChange }
             isOverdue ? "border-red-300 dark:border-red-700 text-red-600 dark:text-red-400" : "border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300"
           )}
         />
+        {!task.due_date && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block bg-gray-700 text-gray-400">
+            אין תאריך יעד
+          </span>
+        )}
       </td>
       <td className="px-3 py-2.5 w-16">
         <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md", priorityColors[task.priority])}>
@@ -225,7 +312,7 @@ function InlineListRow({ task, onEdit, onStatusChange, onSave, onDueDateChange }
   );
 }
 
-function InlineListView({ tasks, onEdit, onStatusChange, onSave, onDueDateChange }: InlineListViewProps) {
+function InlineListView({ tasks, onEdit, onStatusChange, onSave, onDueDateChange, readOnly }: InlineListViewProps) {
   if (tasks.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400 dark:text-gray-500">
@@ -248,7 +335,7 @@ function InlineListView({ tasks, onEdit, onStatusChange, onSave, onDueDateChange
           </thead>
           <tbody>
             {tasks.map(task => (
-              <InlineListRow key={task.id} task={task} onEdit={onEdit} onStatusChange={onStatusChange} onSave={onSave} onDueDateChange={onDueDateChange} />
+              <InlineListRow key={task.id} task={task} onEdit={onEdit} onStatusChange={onStatusChange} onSave={onSave} onDueDateChange={onDueDateChange} readOnly={readOnly} />
             ))}
           </tbody>
         </table>
@@ -258,21 +345,21 @@ function InlineListView({ tasks, onEdit, onStatusChange, onSave, onDueDateChange
 }
 
 type ViewMode = "focus" | "board" | "list" | "backlog" | "completed" | "archived";
-type QueueMode = "claude" | "ben" | "all";
+type QueueMode = "claude" | "ben" | "all" | "evyatar";
 
 // Max tasks visible in Focus (Today) view — AUDHD threshold
 const FOCUS_LIMIT = 3;
 const WIP_LIMIT = 5;
 
-const QUEUE_TABS: { id: QueueMode; label: string; icon: string }[] = [
-  { id: "claude", label: "Claude", icon: "🤖" },
-  { id: "ben",    label: "Ben",    icon: "🙋" },
-  { id: "all",    label: "הכל",    icon: "👥" },
+const QUEUE_TABS: { id: QueueMode; label: string; icon: React.ReactNode }[] = [
+  { id: "claude", label: "Claude", icon: <Bot size={13} /> },
+  { id: "ben",    label: "Ben",    icon: <User size={13} /> },
+  { id: "evyatar", label: "אביתר", icon: <UserCheck size={13} /> },
+  { id: "all",    label: "הכל",    icon: <Users size={13} /> },
 ];
 
-const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
-  backlog: "todo", todo: "in_progress", in_progress: "done", waiting_ben: "in_progress", done: null,
-  inbox: "up_next", up_next: "in_progress", scheduled: "in_progress", waiting: "in_progress", someday: null, archived: null,
+const NEXT_STATUS: Record<string, TaskStatus | null> = {
+  open: "in_progress", in_progress: "waiting", waiting: "done", done: "open",
 };
 
 function TasksPageContent() {
@@ -300,6 +387,7 @@ function TasksPageContent() {
   const [filterPriority, setFilterPriority] = useState<TaskPriority | "all">("all");
   const [filterCategory, setFilterCategory] = useState<TaskCategory | "all">("all");
   const [filterOwner, setFilterOwner] = useState<TaskOwner | "all">("all");
+  const [filterProjectId, setFilterProjectId] = useState<string | "all">("all");
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -311,9 +399,25 @@ function TasksPageContent() {
   );
   const tasks: Task[] = Array.isArray(tasksData) ? tasksData : [];
 
+  // ─── Realtime subscription ───────────────────────────────────────────────
+  const [isLive, setIsLive] = useState(false);
+  const supabase = createClient();
+  useEffect(() => {
+    const channel = supabase
+      .channel("tasks-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
+        mutateTasks();
+      })
+      .subscribe((status) => {
+        setIsLive(status === "SUBSCRIBED");
+      });
+
+    return () => { supabase.removeChannel(channel); };
+  }, [mutateTasks]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // SWR — backlog (lazy: only fetched when backlogLoaded = true)
   const { data: backlogData, isLoading: backlogLoading, mutate: mutateBacklog } = useSWR(
-    backlogLoaded ? "/api/tasks?status=backlog" : null,
+    backlogLoaded ? "/api/tasks?status=open" : null,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 60_000 }
   );
@@ -337,6 +441,21 @@ function TasksPageContent() {
   );
   const archivedTasks: Task[] = Array.isArray(archivedData) ? archivedData : [];
 
+  // Filtered derived arrays for completed + archived views
+  const completedFiltered: Task[] = completedTasks.filter(t => {
+    if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+    if (filterCategory !== "all" && t.category !== filterCategory) return false;
+    if (filterOwner !== "all" && t.owner !== filterOwner) return false;
+    return true;
+  });
+
+  const archivedFiltered: Task[] = archivedTasks.filter(t => {
+    if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+    if (filterCategory !== "all" && t.category !== filterCategory) return false;
+    if (filterOwner !== "all" && t.owner !== filterOwner) return false;
+    return true;
+  });
+
   // Load session context on mount
   useEffect(() => {
     setSessionCtx(loadSessionContext());
@@ -354,8 +473,10 @@ function TasksPageContent() {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setQuickAddOpen(prev => !prev);
-        setTimeout(() => quickAddRef.current?.focus(), 50);
+        if (queueMode !== "evyatar") {
+          setQuickAddOpen(prev => !prev);
+          setTimeout(() => quickAddRef.current?.focus(), 50);
+        }
       }
       if (e.key === "Escape" && quickAddOpen) {
         setQuickAddOpen(false);
@@ -402,6 +523,7 @@ function TasksPageContent() {
     return tasks.filter(t => {
       if (queueMode === "claude") return t.owner === "claude" || t.owner === "both";
       if (queueMode === "ben")    return t.owner === "ben"    || t.owner === "both";
+      if (queueMode === "evyatar") return (t.owner === "evyatar" || t.owner === "both") && (t.category === "one_tm" || t.category === "brand");
       return true;
     });
   }, [tasks, queueMode]);
@@ -419,10 +541,10 @@ function TasksPageContent() {
     const currentSlot = getCurrentSlot();
     const today = new Date().toISOString().split('T')[0];
     const active = queueFiltered.filter(t => {
-      if (t.status === "done" || t.status === "backlog") return false;
+      if (t.status === "done" || !!t.archived_at) return false;
       if (filterCategory !== "all" && t.category !== filterCategory) return false;
       if (filterPriority !== "all" && t.priority !== filterPriority) return false;
-      const isBase = t.status === "in_progress" || t.status === "waiting_ben" || (t.status === "todo" && t.priority === "p1");
+      const isBase = t.status === "in_progress" || t.status === "waiting" || (t.status === "open" && t.priority === "p1");
       if (!isBase) return false;
       const isOverdue = t.due_date && t.due_date < today;
       if (isOverdue) return true;
@@ -430,7 +552,7 @@ function TasksPageContent() {
       const taskSlot = t.time_slot || "any";
       return taskSlot === "any" || taskSlot === currentSlot;
     });
-    const statusOrder: Record<TaskStatus, number> = { in_progress: 0, waiting_ben: 1, todo: 2, up_next: 3, scheduled: 4, backlog: 5, inbox: 6, waiting: 7, done: 8, someday: 9, archived: 10 };
+    const statusOrder: Record<string, number> = { open: 0, in_progress: 1, waiting: 2, done: 3 };
     const priorityOrder: Record<string, number> = { p0: -1, p1: 0, p2: 1, p3: 2 };
     active.sort((a, b) => {
       const aScore = (a.due_date && a.due_date < today ? 1000 : 0) + (a.priority_score ?? 0);
@@ -443,13 +565,13 @@ function TasksPageContent() {
 
   // PILLARS/LIST: all non-done, non-backlog tasks
   const pillarTasks = useMemo(() => {
-    return queueFiltered.filter(t => t.status !== "done" && t.status !== "backlog");
+    return queueFiltered.filter(t => t.status !== "done" && !t.archived_at);
   }, [queueFiltered]);
 
   // BOARD: tasks grouped by status column
   const boardColumns = useMemo(() => {
     const cols = {} as Record<TaskStatus, Task[]>;
-    (["inbox", "up_next", "scheduled", "in_progress", "waiting", "waiting_ben", "todo", "done", "backlog", "someday", "archived"] as TaskStatus[]).forEach(s => { cols[s] = []; });
+    (["open", "in_progress", "waiting", "done"] as TaskStatus[]).forEach(s => { cols[s] = []; });
     const today = new Date().toISOString().split('T')[0];
     queueFiltered.forEach(t => {
       if (!cols[t.status]) return;
@@ -458,7 +580,13 @@ function TasksPageContent() {
       cols[t.status].push(escalated);
     });
     Object.keys(cols).forEach(s => {
-      cols[s as TaskStatus].sort((a, b) => (b.priority_score ?? b.position ?? 0) - (a.priority_score ?? a.position ?? 0));
+      const col = cols[s as TaskStatus];
+      const hasManual = col.some(t => t.manually_positioned === true);
+      if (hasManual) {
+        col.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      } else {
+        col.sort((a, b) => (b.priority_score ?? b.position ?? 0) - (a.priority_score ?? a.position ?? 0));
+      }
     });
     return cols;
   }, [queueFiltered]);
@@ -492,6 +620,7 @@ function TasksPageContent() {
     return backlogTasks.filter(t => {
       if (queueMode === "claude") return t.owner === "claude" || t.owner === "both";
       if (queueMode === "ben")    return t.owner === "ben"    || t.owner === "both";
+      if (queueMode === "evyatar") return (t.owner === "evyatar" || t.owner === "both") && (t.category === "one_tm" || t.category === "brand");
       return true;
     });
   }, [backlogTasks, queueMode]);
@@ -514,11 +643,7 @@ function TasksPageContent() {
       total: open.length,
       p1: open.filter(t => t.priority === "p1").length,
       inProgress: queueFiltered.filter(t => t.status === "in_progress").length,
-      backlogCount: backlogTasks.filter(t => {
-        if (queueMode === "claude") return t.owner === "claude" || t.owner === "both";
-        if (queueMode === "ben")    return t.owner === "ben"    || t.owner === "both";
-        return true;
-      }).length,
+      backlogCount: queueFiltered.filter(t => t.status === "open").length,
     };
   }, [queueFiltered, backlogTasks, queueMode]);
 
@@ -674,7 +799,6 @@ function TasksPageContent() {
         body: JSON.stringify({ id: taskId, position: newPosition, manually_positioned: true }),
       });
       if (!res.ok) throw new Error();
-      mutateTasks();
     } catch {
       mutateTasks();
       setError("שגיאה בשמירת מיקום");
@@ -687,7 +811,7 @@ function TasksPageContent() {
     if (!quickAddTitle.trim()) return;
     await handleAddTask({
       title: quickAddTitle.trim(), description: "", priority: "p2",
-      status: "todo", owner: "claude", category: "one_tm", due_date: null, tags: [],
+      status: "open", owner: "claude", category: "one_tm", due_date: null, tags: [],
     });
     setQuickAddTitle("");
     setQuickAddOpen(false);
@@ -820,38 +944,48 @@ function TasksPageContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold dark:text-gray-100">משימות</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold dark:text-gray-100">משימות</h1>
+            {isLive && (
+              <span className="flex items-center gap-1 text-xs text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live
+              </span>
+            )}
+          </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {stats.total} פתוחות
             {stats.p1 > 0 && <span className="text-red-500 font-semibold"> · {stats.p1} P1</span>}
             <span className={clsx("font-medium", wipCount >= WIP_LIMIT ? "text-amber-500" : "")}>
               {" "}· {stats.inProgress}/{WIP_LIMIT} WIP
             </span>
-            <span className="text-gray-400"> · {stats.backlogCount} backlog</span>
+            <span className="text-gray-400"> · {stats.backlogCount} פתוח</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl text-sm font-medium transition-colors"
-          >
-            <Upload size={14} />
-            ייבוא
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-bold transition-colors"
-          >
-            <Plus size={16} />
-            משימה חדשה
-          </button>
-        </div>
+        {queueMode !== "evyatar" && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl text-sm font-medium transition-colors"
+            >
+              <Upload size={14} />
+              ייבוא
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-bold transition-colors"
+            >
+              <Plus size={16} />
+              משימה חדשה
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Session Restore Banner */}
       {sessionCtx && viewMode === "focus" && (
         <div className="flex items-center gap-3 px-4 py-3 bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-700 rounded-xl text-sm animate-in fade-in">
-          <span className="text-brand-600 dark:text-brand-400 text-base">💾</span>
+          <Save size={14} className="text-gray-400 flex-shrink-0" />
           <div className="flex-1">
             <span className="text-brand-700 dark:text-brand-300 font-medium">
               {sessionAgeLabel(sessionCtx.savedAt)}:
@@ -874,7 +1008,7 @@ function TasksPageContent() {
       )}
 
       {/* Queue Mode Tabs */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-700/60 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-gray-800 p-1 rounded-xl w-fit">
         {QUEUE_TABS.map(tab => (
           <button
             key={tab.id}
@@ -882,8 +1016,8 @@ function TasksPageContent() {
             className={clsx(
               "flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
               queueMode === tab.id
-                ? "bg-white dark:bg-gray-800 shadow-sm text-gray-900 dark:text-gray-100"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                ? "bg-gray-700 text-white shadow-sm"
+                : "text-gray-500 hover:text-gray-300"
             )}
           >
             <span>{tab.icon}</span>
@@ -898,6 +1032,7 @@ function TasksPageContent() {
                 const open = t.status !== "done";
                 if (tab.id === "claude") return open && (t.owner === "claude" || t.owner === "both");
                 if (tab.id === "ben")    return open && (t.owner === "ben"    || t.owner === "both");
+                if (tab.id === "evyatar") return open && (t.owner === "evyatar" || t.owner === "both") && (t.category === "one_tm" || t.category === "brand");
                 return open;
               }).length}
             </span>
@@ -932,36 +1067,7 @@ function TasksPageContent() {
 
       {/* Weekly Capacity View */}
       {(viewMode === "board" || viewMode === "list") && (
-        <div className="overflow-x-auto -mx-4 px-4">
-          <div className="flex gap-2 pb-1 min-w-max">
-            {weeklyCapacity.map(day => {
-              const mPct = Math.min(100, Math.round((day.morning / SLOT_CAPACITY.morning) * 100));
-              const aPct = Math.min(100, Math.round((day.afternoon / SLOT_CAPACITY.afternoon) * 100));
-              const ePct = Math.min(100, Math.round((day.evening / SLOT_CAPACITY.evening) * 100));
-              const isOver = mPct >= 100 || aPct >= 100 || ePct >= 100;
-              return (
-                <div key={day.date} className={clsx("flex-shrink-0 w-[100px] rounded-xl border px-2 py-2 text-[10px]", isOver ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/10" : "border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800")}>
-                  <p className="font-semibold text-gray-600 dark:text-gray-400 mb-1.5 truncate">{day.label}</p>
-                  {[
-                    { label: "בוקר", pct: mPct, min: day.morning, cap: SLOT_CAPACITY.morning },
-                    { label: "אחה״צ", pct: aPct, min: day.afternoon, cap: SLOT_CAPACITY.afternoon },
-                    { label: "ערב", pct: ePct, min: day.evening, cap: SLOT_CAPACITY.evening },
-                  ].map(({ label, pct, min, cap }) => (
-                    <div key={label} className="mb-1">
-                      <div className="flex justify-between text-gray-400 dark:text-gray-500 mb-0.5">
-                        <span>{label}</span>
-                        <span className={clsx(pct >= 100 ? "text-amber-600 dark:text-amber-400 font-bold" : "")}>{min}/{cap}</span>
-                      </div>
-                      <div className="h-1 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                        <div className={clsx("h-full rounded-full transition-all", pct >= 100 ? "bg-amber-400" : "bg-brand-400")} style={{ width: `${Math.min(100, pct)}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <WeeklyCapacityView tasks={queueFiltered} />
       )}
 
       {/* View Tabs — Focus / Board / List / Backlog / Completed / Archived */}
@@ -999,15 +1105,17 @@ function TasksPageContent() {
       </div>
 
       {/* Secondary Filters (Focus + Backlog only) */}
-      {(viewMode === "focus" || viewMode === "backlog") && (
+      {(viewMode === "focus" || viewMode === "backlog" || viewMode === "completed" || viewMode === "archived") && (
         <div className="flex items-center gap-2">
           <TaskFilters
             priority={filterPriority}
             owner={queueMode === "all" ? filterOwner : "all"}
             category={filterCategory}
+            projectId={filterProjectId}
             onPriorityChange={setFilterPriority}
             onOwnerChange={queueMode === "all" ? setFilterOwner : () => {}}
             onCategoryChange={setFilterCategory}
+            onProjectChange={setFilterProjectId}
             hideOwner={queueMode !== "all"}
           />
         </div>
@@ -1060,12 +1168,12 @@ function TasksPageContent() {
                         {task.priority.toUpperCase()}
                       </span>
                       <span className="flex-1 text-sm font-medium dark:text-gray-200 truncate">
-                        {isOverdue && "🔴 "}{task.title}
+                        {isOverdue && <span className="inline-block w-2 h-2 rounded-full bg-red-500 ml-1" aria-label="דחוף" />}{task.title}
                       </span>
                       <span className={clsx("text-[10px] px-1.5 py-0.5 rounded-md font-medium flex-shrink-0", categoryColors[task.category])}>
                         {categoryLabels[task.category]}
                       </span>
-                      <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0", STATUS_BADGE[task.status])}>
+                      <span className={clsx("text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0", STATUS_BADGE[task.status] ?? STATUS_BADGE.open)}>
                         {statusLabels[task.status]}
                       </span>
                       <span className="text-sm flex-shrink-0">{ownerIcons[task.owner]}</span>
@@ -1122,7 +1230,7 @@ function TasksPageContent() {
             onDelete={handleDeleteTask}
             onDueDateChange={handleDueDateChange}
             onPositionChange={handlePositionChange}
-            visibleStatuses={["in_progress", "waiting_ben", "up_next", "todo", "inbox", "waiting", "scheduled"]}
+            visibleStatuses={KANBAN_STATUSES}
           />
         </div>
       )}
@@ -1135,6 +1243,7 @@ function TasksPageContent() {
           onStatusChange={handleStatusChange}
           onSave={handleEditTask}
           onDueDateChange={handleDueDateChange}
+          readOnly={queueMode === "evyatar"}
         />
       )}
 
@@ -1224,7 +1333,7 @@ function TasksPageContent() {
                                       {task.priority.toUpperCase()}
                                     </span>
                                     <span className="flex-1 text-sm dark:text-gray-200 truncate">
-                                      {isOverdue && "🔴 "}{task.title}
+                                      {isOverdue && <span className="inline-block w-2 h-2 rounded-full bg-red-500 ml-1" aria-label="דחוף" />}{task.title}
                                     </span>
                                     <span className="text-sm flex-shrink-0">{ownerIcons[task.owner]}</span>
                                     {task.due_date && (
@@ -1283,8 +1392,17 @@ function TasksPageContent() {
               <p className="text-sm">אין משימות שהושלמו</p>
             </div>
           ) : (() => {
+            const filtersActive = filterPriority !== "all" || filterCategory !== "all" || filterOwner !== "all";
+            if (completedFiltered.length === 0) {
+              return (
+                <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+                  <CheckCircle2 size={32} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">אין תוצאות לפילטרים הנוכחיים</p>
+                </div>
+              );
+            }
             // Group completed tasks by week
-            const sorted = [...completedTasks].sort((a, b) =>
+            const sorted = [...completedFiltered].sort((a, b) =>
               new Date(b.completed_at || b.updated_at).getTime() - new Date(a.completed_at || a.updated_at).getTime()
             );
             const groups: { label: string; tasks: Task[] }[] = [];
@@ -1304,12 +1422,14 @@ function TasksPageContent() {
             if (lastWeek.length > 0) groups.push({ label: "שבוע שעבר", tasks: lastWeek });
             if (older.length > 0) groups.push({ label: "קודם", tasks: older });
 
+            if (filtersActive) {/* filter count shown in header below */}
             return groups.map(group => (
               <div key={group.label}>
                 <div className="flex items-center gap-2 py-2">
                   <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
                   <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 px-2">{group.label}</span>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500">{group.tasks.length}</span>
+                  {filtersActive && <span className="text-[10px] text-blue-400 dark:text-blue-500">{completedFiltered.length} / {completedTasks.length} משימות</span>}
                   <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -1366,15 +1486,27 @@ function TasksPageContent() {
               <p className="text-xs mt-1 opacity-70">משימות שנמחקו עם סיבה יופיעו כאן</p>
             </div>
           ) : (
+            <>
+              {(filterPriority !== "all" || filterCategory !== "all" || filterOwner !== "all") && (
+                <div className="flex items-center gap-2 py-2 px-1">
+                  <span className="text-[11px] text-blue-400 dark:text-blue-500">{archivedFiltered.length} / {archivedTasks.length} משימות</span>
+                </div>
+              )}
+              {archivedFiltered.length === 0 ? (
+                <div className="text-center py-16 text-gray-400 dark:text-gray-500">
+                  <Archive size={32} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">אין תוצאות לפילטרים הנוכחיים</p>
+                </div>
+              ) : (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-              {archivedTasks
+              {archivedFiltered
                 .sort((a, b) => new Date(b.archived_at || b.updated_at).getTime() - new Date(a.archived_at || a.updated_at).getTime())
                 .map((task, i) => (
                   <div
                     key={task.id}
                     className={clsx(
                       "flex items-center gap-3 px-4 py-3",
-                      i < archivedTasks.length - 1 && "border-b border-gray-50 dark:border-gray-700/50"
+                      i < archivedFiltered.length - 1 && "border-b border-gray-50 dark:border-gray-700/50"
                     )}
                   >
                     <Archive size={14} className="text-red-400 flex-shrink-0" />
@@ -1406,6 +1538,8 @@ function TasksPageContent() {
                   </div>
                 ))}
             </div>
+              )}
+            </>
           )}
         </div>
       )}
