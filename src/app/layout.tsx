@@ -11,13 +11,13 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ONE™ CRM",
+  title: "EDEN™ CRM",
   description: "מערכת ניהול לקוחות ודשבורד עסקי",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ONE™ CRM",
+    title: "EDEN™ CRM",
   },
 };
 

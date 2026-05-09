@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
-  LayoutDashboard, Users, MoreHorizontal, CheckSquare, FolderKanban, Target, GraduationCap
+  LayoutDashboard, Users, MoreHorizontal, CheckSquare, FolderKanban, Target, GraduationCap, LayoutList
 } from "lucide-react";
 import type { UserRole } from "@/lib/rbac";
 
@@ -12,6 +12,7 @@ const adminNavItems = [
   { href: "/", label: "דשבורד", icon: LayoutDashboard },
   { href: "/leads", label: "לידים", icon: Users },
   { href: "/triage", label: "טריאז׳", icon: Target },
+  { href: "/master", label: "Master", icon: LayoutList },
   { href: "/more", label: "עוד", icon: MoreHorizontal },
 ];
 
