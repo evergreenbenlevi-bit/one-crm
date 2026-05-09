@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { X, Trash2, FileText, MessageSquare } from "lucide-react";
 import { clsx } from "clsx";
-import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskEffort, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
-import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, effortLabels, EFFORT_OPTIONS, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS, DURATION_OPTIONS, durationLabels } from "@/lib/types/tasks";
+import type { Task, TaskPriority, TaskOwner, TaskCategory, TaskStatus, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
+import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS, DURATION_OPTIONS, durationLabels } from "@/lib/types/tasks";
+import { checkTitleQuality } from "@/lib/task-title-quality";
 
 interface ProjectOption {
   id: string;
@@ -38,20 +39,18 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("p2");
-  const [status, setStatus] = useState<TaskStatus>("todo");
+  const [status, setStatus] = useState<TaskStatus>("open");
   const [owner, setOwner] = useState<TaskOwner>("claude");
   const [category, setCategory] = useState<TaskCategory>("one_tm");
   const [dueDate, setDueDate] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [effort, setEffort] = useState<TaskEffort | "">("");
   const [impact, setImpact] = useState<TaskImpact>("important");
   const [size, setSize] = useState<TaskSize>("medium");
   const [estimatedMinutes, setEstimatedMinutes] = useState<EstimatedMinutes | "">("");
   const [timeSlot, setTimeSlot] = useState<TimeSlot>("any");
   const [actualMinutes, setActualMinutes] = useState<number | "">("");
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurPattern, setRecurPattern] = useState("weekly:0");
   const [errors, setErrors] = useState<{ due_date?: string; estimated_minutes?: string }>({});
+  const titleQuality = title.trim() ? checkTitleQuality(title.trim()) : null;
   const [projectId, setProjectId] = useState<string>("");
   const [projects, setProjects] = useState<ProjectOption[]>([]);
 
@@ -65,14 +64,11 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
       setCategory(task.category);
       setDueDate(task.due_date || "");
       setTags(task.tags || []);
-      setEffort(task.effort || "");
       setImpact(task.impact || "important");
       setSize(task.size || "medium");
       setEstimatedMinutes((task.estimated_minutes as EstimatedMinutes) || "");
       setTimeSlot((task.time_slot as TimeSlot) || "any");
       setActualMinutes(task.actual_minutes ?? "");
-      setIsRecurring(task.is_recurring || false);
-      setRecurPattern(task.recur_pattern || "weekly:0");
       setProjectId(task.project_id || "");
       setErrors({});
       setActiveTab("details");
@@ -104,11 +100,7 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
       actual_minutes: actualMinutes !== "" ? Number(actualMinutes) : null,
       time_slot: finalSlot,
       tags,
-      effort: (effort || null) as TaskEffort | null,
       impact, size,
-      is_recurring: isRecurring,
-      recur_pattern: isRecurring ? recurPattern : null,
-      recur_next_at: task!.recur_next_at,
       manually_positioned: dueDateChanged ? false : (task!.manually_positioned ?? false),
       project_id: projectId || null,
     });
@@ -183,6 +175,16 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
               <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
                 <div>
                   <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className={clsx(fieldClass, "font-medium")} required />
+                  {titleQuality && !titleQuality.isGood && (
+                    <ul className="mt-1 space-y-0.5">
+                      {titleQuality.issues.map((issue) => (
+                        <li key={issue} className="text-[11px] text-amber-500 flex items-center gap-1">
+                          <span>⚠</span>
+                          <span>{issue}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
 
                 <div>
@@ -256,7 +258,7 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
                   </div>
                   <div>
                     <label className={labelClass}>גודל</label>
-                    <select value={size} onChange={(e) => setSize(e.target.value as TaskSize)} className={fieldClass}>
+                    <select value={size} onChange={(e) => { const s = e.target.value as TaskSize; setSize(s); const sizePresets: Record<TaskSize, EstimatedMinutes> = { quick: 15, medium: 60, big: 180 }; setEstimatedMinutes(sizePresets[s]); setErrors(prev => ({ ...prev, estimated_minutes: undefined })); }} className={fieldClass}>
                       {SIZE_OPTIONS.map(s => <option key={s} value={s}>{sizeLabels[s]}</option>)}
                     </select>
                   </div>
@@ -302,33 +304,6 @@ export function TaskEditModal({ task, onClose, onSave, onDelete }: TaskEditModal
                   <TagInput tags={tags} onChange={setTags} />
                 </div>
 
-                {/* Recurring */}
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isRecurring}
-                      onChange={(e) => setIsRecurring(e.target.checked)}
-                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-400"
-                    />
-                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400">משימה חוזרת</span>
-                  </label>
-                  {isRecurring && (
-                    <select value={recurPattern} onChange={(e) => setRecurPattern(e.target.value)} className={fieldClass}>
-                      <option value="daily">כל יום</option>
-                      <option value="weekly:0">כל שבוע — ראשון</option>
-                      <option value="weekly:1">כל שבוע — שני</option>
-                      <option value="weekly:2">כל שבוע — שלישי</option>
-                      <option value="weekly:3">כל שבוע — רביעי</option>
-                      <option value="weekly:4">כל שבוע — חמישי</option>
-                      <option value="weekly:5">כל שבוע — שישי</option>
-                      <option value="weekly:6">כל שבוע — שבת</option>
-                      <option value="monthly:1">כל חודש — תאריך 1</option>
-                      <option value="monthly:15">כל חודש — תאריך 15</option>
-                      <option value="monthly:28">כל חודש — תאריך 28</option>
-                    </select>
-                  )}
-                </div>
 
                 <button type="submit" className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-xl text-sm font-bold transition-colors">
                   שמור שינויים

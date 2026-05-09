@@ -6,14 +6,15 @@ import useSWR from "swr";
 import { Plus, Upload, AlertCircle, Sun, Layers, Archive, Zap, CheckCircle2, ChevronDown, ChevronRight, GitBranch, RotateCcw, LayoutGrid, GripVertical, Bot, User, UserCheck, Users, Save } from "lucide-react";
 import { fetcher } from "@/lib/fetcher";
 import { createClient } from "@/lib/supabase/client";
-import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory } from "@/lib/types/tasks";
+import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory, TaskImpact, TaskSize } from "@/lib/types/tasks";
 import { TASK_STATUSES, KANBAN_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors } from "@/lib/types/tasks";
 import { TaskKanban } from "@/components/tasks/task-kanban";
-import { TaskFilters } from "@/components/tasks/task-filters";
+import { TaskFilters, type SortBy } from "@/components/tasks/task-filters";
 import { TaskAddModal } from "@/components/tasks/task-add-modal";
 import { TaskEditModal } from "@/components/tasks/task-edit-modal";
 import { TaskImportModal } from "@/components/tasks/task-import-modal";
 import { Big3Today } from "@/components/tasks/big3-today";
+import { EODPanel } from "@/components/tasks/eod-panel";
 import { BulkActionBar } from "@/components/tasks/bulk-action-bar";
 import { WeeklyCapacityView } from "@/components/tasks/weekly-capacity-view";
 import { loadSessionContext, saveSessionContext, sessionAgeLabel } from "@/lib/session-context";
@@ -380,14 +381,43 @@ function TasksPageContent() {
   const [quickAddTitle, setQuickAddTitle] = useState("");
   const quickAddRef = useRef<HTMLInputElement>(null);
   const [focusedTaskIndex, setFocusedTaskIndex] = useState(-1);
+  const [eodDismissed, setEodDismissed] = useState(false);
   const todayTasksRef = useRef<Task[]>([]);
 
   const pendingOps = useRef(new Set<string>());
 
-  const [filterPriority, setFilterPriority] = useState<TaskPriority | "all">("all");
-  const [filterCategory, setFilterCategory] = useState<TaskCategory | "all">("all");
-  const [filterOwner, setFilterOwner] = useState<TaskOwner | "all">("all");
-  const [filterProjectId, setFilterProjectId] = useState<string | "all">("all");
+  // ── URL-synced filters ────────────────────────────────────────────────────
+  const filterPriority = (searchParams.get("priority") as TaskPriority | "all") || "all";
+  const filterCategory = (searchParams.get("category") as TaskCategory | "all") || "all";
+  const filterOwner    = (searchParams.get("owner")    as TaskOwner    | "all") || "all";
+  const filterProjectId = searchParams.get("project") || "all";
+  const filterDomain   = (searchParams.get("domain")   as "all" | "business" | "personal") || "all";
+  const filterImpact   = (searchParams.get("impact")   as TaskImpact   | "all") || "all";
+  const filterSize     = (searchParams.get("size")     as TaskSize     | "all") || "all";
+  const sortBy         = (searchParams.get("sortBy")   as SortBy) || "priority_score";
+  const filterDueDateFrom = searchParams.get("dateFrom") || "";
+  const filterDueDateTo   = searchParams.get("dateTo")   || "";
+
+  function setFilterParam(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "all" || value === "") {
+      params.delete(key);
+    } else {
+      params.set(key, value);
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false } as Parameters<typeof router.replace>[1]);
+  }
+
+  const setFilterPriority  = (v: TaskPriority | "all") => setFilterParam("priority", v);
+  const setFilterCategory  = (v: TaskCategory | "all") => setFilterParam("category", v);
+  const setFilterOwner     = (v: TaskOwner    | "all") => setFilterParam("owner", v);
+  const setFilterProjectId = (v: string)               => setFilterParam("project", v);
+  const setFilterDomain    = (v: "all" | "business" | "personal") => setFilterParam("domain", v);
+  const setFilterImpact    = (v: TaskImpact   | "all") => setFilterParam("impact", v);
+  const setFilterSize      = (v: TaskSize     | "all") => setFilterParam("size", v);
+  const setSortBy          = (v: SortBy)               => setFilterParam("sortBy", v);
+  const setFilterDueDateFrom = (v: string)             => setFilterParam("dateFrom", v);
+  const setFilterDueDateTo   = (v: string)             => setFilterParam("dateTo", v);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -442,19 +472,26 @@ function TasksPageContent() {
   const archivedTasks: Task[] = Array.isArray(archivedData) ? archivedData : [];
 
   // Filtered derived arrays for completed + archived views
-  const completedFiltered: Task[] = completedTasks.filter(t => {
-    if (filterPriority !== "all" && t.priority !== filterPriority) return false;
-    if (filterCategory !== "all" && t.category !== filterCategory) return false;
-    if (filterOwner !== "all" && t.owner !== filterOwner) return false;
-    return true;
-  });
+  function applyCommonFilters(arr: Task[]): Task[] {
+    return arr.filter(t => {
+      if (filterDomain !== "all" && t.domain !== filterDomain) return false;
+      if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+      if (filterCategory !== "all" && t.category !== filterCategory) return false;
+      if (filterOwner !== "all" && t.owner !== filterOwner) return false;
+      if (filterProjectId !== "all") {
+        if (filterProjectId === "none" && t.project_id) return false;
+        if (filterProjectId !== "none" && t.project_id !== filterProjectId) return false;
+      }
+      if (filterImpact !== "all" && t.impact !== filterImpact) return false;
+      if (filterSize !== "all" && t.size !== filterSize) return false;
+      if (filterDueDateFrom && t.due_date && t.due_date < filterDueDateFrom) return false;
+      if (filterDueDateTo && t.due_date && t.due_date > filterDueDateTo) return false;
+      return true;
+    });
+  }
 
-  const archivedFiltered: Task[] = archivedTasks.filter(t => {
-    if (filterPriority !== "all" && t.priority !== filterPriority) return false;
-    if (filterCategory !== "all" && t.category !== filterCategory) return false;
-    if (filterOwner !== "all" && t.owner !== filterOwner) return false;
-    return true;
-  });
+  const completedFiltered: Task[] = applyCommonFilters(completedTasks);
+  const archivedFiltered: Task[] = applyCommonFilters(archivedTasks);
 
   // Load session context on mount
   useEffect(() => {
@@ -521,12 +558,24 @@ function TasksPageContent() {
   // Queue filter — base for all views
   const queueFiltered = useMemo(() => {
     return tasks.filter(t => {
+      if (filterDomain !== "all" && t.domain !== filterDomain) return false;
+      if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+      if (filterCategory !== "all" && t.category !== filterCategory) return false;
+      if (filterOwner !== "all" && t.owner !== filterOwner) return false;
+      if (filterProjectId !== "all") {
+        if (filterProjectId === "none" && t.project_id) return false;
+        if (filterProjectId !== "none" && t.project_id !== filterProjectId) return false;
+      }
+      if (filterImpact !== "all" && t.impact !== filterImpact) return false;
+      if (filterSize !== "all" && t.size !== filterSize) return false;
+      if (filterDueDateFrom && t.due_date && t.due_date < filterDueDateFrom) return false;
+      if (filterDueDateTo && t.due_date && t.due_date > filterDueDateTo) return false;
       if (queueMode === "claude") return t.owner === "claude" || t.owner === "both";
       if (queueMode === "ben")    return t.owner === "ben"    || t.owner === "both";
       if (queueMode === "evyatar") return (t.owner === "evyatar" || t.owner === "both") && (t.category === "one_tm" || t.category === "brand");
       return true;
     });
-  }, [tasks, queueMode]);
+  }, [tasks, queueMode, filterDomain, filterPriority, filterCategory, filterOwner, filterProjectId, filterImpact, filterSize, filterDueDateFrom, filterDueDateTo]);
 
   function getCurrentSlot(): 'morning' | 'afternoon' | 'evening' | null {
     const hour = new Date().getHours();
@@ -536,14 +585,39 @@ function TasksPageContent() {
     return null;
   }
 
+  // ── Sort helper ────────────────────────────────────────────────────────────
+  function applySort(arr: Task[], sortKey: SortBy): Task[] {
+    const IMPACT_RANK: Record<string, number> = { needle_mover: 0, important: 1, nice: 2 };
+    return [...arr].sort((a, b) => {
+      if (sortKey === "impact") {
+        return (IMPACT_RANK[a.impact ?? "nice"] ?? 2) - (IMPACT_RANK[b.impact ?? "nice"] ?? 2);
+      }
+      if (sortKey === "due_date") {
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return a.due_date.localeCompare(b.due_date);
+      }
+      if (sortKey === "position") {
+        return (a.position ?? 0) - (b.position ?? 0);
+      }
+      if (sortKey === "estimated_minutes") {
+        return (a.estimated_minutes ?? 9999) - (b.estimated_minutes ?? 9999);
+      }
+      if (sortKey === "created_at") {
+        return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+      }
+      // default: priority_score
+      return (b.priority_score ?? 0) - (a.priority_score ?? 0);
+    });
+  }
+
   // FOCUS (Today): slot-aware, max FOCUS_LIMIT
   const todayTasks = useMemo(() => {
     const currentSlot = getCurrentSlot();
     const today = new Date().toISOString().split('T')[0];
     const active = queueFiltered.filter(t => {
       if (t.status === "done" || !!t.archived_at) return false;
-      if (filterCategory !== "all" && t.category !== filterCategory) return false;
-      if (filterPriority !== "all" && t.priority !== filterPriority) return false;
       const isBase = t.status === "in_progress" || t.status === "waiting" || (t.status === "open" && t.priority === "p1");
       if (!isBase) return false;
       const isOverdue = t.due_date && t.due_date < today;
@@ -554,19 +628,23 @@ function TasksPageContent() {
     });
     const statusOrder: Record<string, number> = { open: 0, in_progress: 1, waiting: 2, done: 3 };
     const priorityOrder: Record<string, number> = { p0: -1, p1: 0, p2: 1, p3: 2 };
+    if (sortBy !== "priority_score") {
+      return applySort(active, sortBy).slice(0, FOCUS_LIMIT);
+    }
     active.sort((a, b) => {
       const aScore = (a.due_date && a.due_date < today ? 1000 : 0) + (a.priority_score ?? 0);
       const bScore = (b.due_date && b.due_date < today ? 1000 : 0) + (b.priority_score ?? 0);
       return statusOrder[a.status] - statusOrder[b.status] || bScore - aScore || priorityOrder[a.priority] - priorityOrder[b.priority];
     });
     return active.slice(0, FOCUS_LIMIT);
-  }, [queueFiltered, filterCategory, filterPriority]);
+  }, [queueFiltered, sortBy]);
   todayTasksRef.current = todayTasks;
 
   // PILLARS/LIST: all non-done, non-backlog tasks
   const pillarTasks = useMemo(() => {
-    return queueFiltered.filter(t => t.status !== "done" && !t.archived_at);
-  }, [queueFiltered]);
+    const filtered = queueFiltered.filter(t => t.status !== "done" && !t.archived_at);
+    return applySort(filtered, sortBy);
+  }, [queueFiltered, sortBy]);
 
   // BOARD: tasks grouped by status column
   const boardColumns = useMemo(() => {
@@ -618,12 +696,24 @@ function TasksPageContent() {
   // BACKLOG grouped by category
   const backlogFiltered = useMemo(() => {
     return backlogTasks.filter(t => {
+      if (filterDomain !== "all" && t.domain !== filterDomain) return false;
+      if (filterPriority !== "all" && t.priority !== filterPriority) return false;
+      if (filterCategory !== "all" && t.category !== filterCategory) return false;
+      if (filterOwner !== "all" && t.owner !== filterOwner) return false;
+      if (filterProjectId !== "all") {
+        if (filterProjectId === "none" && t.project_id) return false;
+        if (filterProjectId !== "none" && t.project_id !== filterProjectId) return false;
+      }
+      if (filterImpact !== "all" && t.impact !== filterImpact) return false;
+      if (filterSize !== "all" && t.size !== filterSize) return false;
+      if (filterDueDateFrom && t.due_date && t.due_date < filterDueDateFrom) return false;
+      if (filterDueDateTo && t.due_date && t.due_date > filterDueDateTo) return false;
       if (queueMode === "claude") return t.owner === "claude" || t.owner === "both";
       if (queueMode === "ben")    return t.owner === "ben"    || t.owner === "both";
       if (queueMode === "evyatar") return (t.owner === "evyatar" || t.owner === "both") && (t.category === "one_tm" || t.category === "brand");
       return true;
     });
-  }, [backlogTasks, queueMode]);
+  }, [backlogTasks, queueMode, filterDomain, filterPriority, filterCategory, filterOwner, filterProjectId, filterImpact, filterSize, filterDueDateFrom, filterDueDateTo]);
 
   const backlogByCategory = useMemo(() => {
     const groups = {} as Record<TaskCategory, Task[]>;
@@ -631,9 +721,15 @@ function TasksPageContent() {
     cats.forEach(c => { groups[c] = []; });
     backlogFiltered.forEach(t => { if (groups[t.category]) groups[t.category].push(t); });
     const priorityOrder: Record<string, number> = { p0: -1, p1: 0, p2: 1, p3: 2 };
-    (Object.keys(groups) as TaskCategory[]).forEach(c => groups[c].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]));
+    (Object.keys(groups) as TaskCategory[]).forEach(c => {
+      if (sortBy !== "priority_score") {
+        groups[c] = applySort(groups[c], sortBy);
+      } else {
+        groups[c].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+      }
+    });
     return groups;
-  }, [backlogFiltered]);
+  }, [backlogFiltered, sortBy]);
 
   const wipCount = useMemo(() => queueFiltered.filter(t => t.status === "in_progress").length, [queueFiltered]);
 
@@ -1106,7 +1202,31 @@ function TasksPageContent() {
 
       {/* Secondary Filters (Focus + Backlog only) */}
       {(viewMode === "focus" || viewMode === "backlog" || viewMode === "completed" || viewMode === "archived") && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Domain toggle: all / business / personal */}
+          <div className="flex items-center gap-1 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg" dir="rtl">
+            {([
+              { id: "all", label: "הכל" },
+              { id: "business", label: "עסק" },
+              { id: "personal", label: "אישי" },
+            ] as const).map(d => (
+              <button
+                key={d.id}
+                onClick={() => setFilterDomain(d.id)}
+                className={`text-xs px-2.5 py-1 rounded-md transition-colors ${
+                  filterDomain === d.id
+                    ? d.id === "personal"
+                      ? "bg-emerald-600 text-white"
+                      : d.id === "business"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
           <TaskFilters
             priority={filterPriority}
             owner={queueMode === "all" ? filterOwner : "all"}
@@ -1117,6 +1237,16 @@ function TasksPageContent() {
             onCategoryChange={setFilterCategory}
             onProjectChange={setFilterProjectId}
             hideOwner={queueMode !== "all"}
+            filterImpact={filterImpact}
+            setFilterImpact={setFilterImpact}
+            filterSize={filterSize}
+            setFilterSize={setFilterSize}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            filterDueDateFrom={filterDueDateFrom}
+            setFilterDueDateFrom={setFilterDueDateFrom}
+            filterDueDateTo={filterDueDateTo}
+            setFilterDueDateTo={setFilterDueDateTo}
           />
         </div>
       )}
@@ -1125,6 +1255,13 @@ function TasksPageContent() {
       {viewMode === "focus" && (
         <div className="space-y-3">
           <Big3Today />
+
+          {getCurrentSlot() === 'evening' && !eodDismissed && (
+            <EODPanel
+              onDismiss={() => setEodDismissed(true)}
+              onSubmitted={() => { mutateTasks(); setEodDismissed(true); }}
+            />
+          )}
 
           {wipCount >= WIP_LIMIT && (
             <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl text-sm text-amber-700 dark:text-amber-300">

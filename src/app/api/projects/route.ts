@@ -8,8 +8,8 @@ import { requireAuth } from "@/lib/api-auth";
 
 const VALID_STATUSES = ["active", "paused", "done", "archived"] as const;
 const VALID_PRIORITIES = ["p1", "p2", "p3"] as const;
-const VALID_PORTFOLIOS = ["one", "solo", "harness", "exploratory"] as const;
-const VALID_OWNERS = ["ben", "claude", "both", "avitar"] as const;
+const VALID_PORTFOLIOS = ["one", "solo", "harness", "exploratory", "clients", "benlevi-master"] as const;
+const VALID_OWNERS = ["ben", "claude", "both", "evyatar"] as const;
 
 type ProjectStatus = typeof VALID_STATUSES[number];
 type ProjectPriority = typeof VALID_PRIORITIES[number];
@@ -46,7 +46,9 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient();
   const { searchParams } = new URL(request.url);
 
-  let query = supabase.from("projects").select("*");
+  const includeProgress = searchParams.get("include_progress") === "1";
+  const selectClause = includeProgress ? "*, tasks(id, status)" : "*";
+  let query = supabase.from("projects").select(selectClause);
 
   const status = searchParams.get("status");
   const portfolio = searchParams.get("portfolio");
@@ -68,7 +70,21 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await query.order("position").order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  if (!includeProgress) return NextResponse.json(data);
+
+  // Enrich with task progress counts
+  const enriched = ((data || []) as unknown as Record<string, unknown>[]).map((p) => {
+    const rawTasks = Array.isArray(p.tasks) ? p.tasks as { status: string }[] : [];
+    const { tasks: _tasks, ...rest } = p;
+    void _tasks;
+    return {
+      ...rest,
+      tasks_total: rawTasks.length,
+      tasks_done: rawTasks.filter(t => t.status === "done").length,
+    };
+  });
+  return NextResponse.json(enriched);
 }
 
 // ── POST /api/projects ──

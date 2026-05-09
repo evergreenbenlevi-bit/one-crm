@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { clsx } from "clsx";
 import type { TaskPriority, TaskOwner, TaskCategory, TaskStatus, EstimatedMinutes, TaskImpact, TaskSize } from "@/lib/types/tasks";
 import { priorityLabels, ownerLabels, categoryLabels, statusLabels, TASK_STATUSES, CRM_CATEGORIES, DURATION_OPTIONS, durationLabels, impactLabels, IMPACT_OPTIONS, sizeLabels, SIZE_OPTIONS } from "@/lib/types/tasks";
+import { checkTitleQuality } from "@/lib/task-title-quality";
 
 interface ProjectOption {
   id: string;
@@ -39,15 +40,13 @@ interface TaskAddModalProps {
     impact: TaskImpact;
     size: TaskSize;
     tags: string[];
-    is_recurring: boolean;
-    recur_pattern: string | null;
     project_id?: string | null;
   }) => void;
   initialStatus?: TaskStatus;
   initialProjectId?: string | null;
 }
 
-export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo", initialProjectId }: TaskAddModalProps) {
+export function TaskAddModal({ open, onClose, onSave, initialStatus = "open", initialProjectId }: TaskAddModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("p2");
@@ -60,9 +59,8 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo", in
   const [impact, setImpact] = useState<TaskImpact>("important");
   const [size, setSize] = useState<TaskSize>("medium");
   const [timeSlot, setTimeSlot] = useState<TimeSlot>("any");
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurPattern, setRecurPattern] = useState("weekly:0");
   const [errors, setErrors] = useState<{ due_date?: string; estimated_minutes?: string }>({});
+  const titleQuality = title.trim() ? checkTitleQuality(title.trim()) : null;
   const [projectId, setProjectId] = useState<string>(initialProjectId || "");
   const [projects, setProjects] = useState<ProjectOption[]>([]);
 
@@ -86,11 +84,11 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo", in
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
     setErrors({});
     const finalSlot = timeSlot === 'any' ? autoAssignSlot(impact, size, dueDate) : timeSlot;
-    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, estimated_minutes: estimatedMinutes || null, time_slot: finalSlot, impact, size, tags, is_recurring: isRecurring, recur_pattern: isRecurring ? recurPattern : null, project_id: projectId || null });
+    onSave({ title: title.trim(), description: description.trim(), priority, status, owner, category, due_date: dueDate || null, estimated_minutes: estimatedMinutes || null, time_slot: finalSlot, impact, size, tags, project_id: projectId || null });
     setTitle(""); setDescription(""); setPriority("p2"); setStatus(initialStatus);
     setOwner("claude"); setCategory("one_tm"); setDueDate(""); setEstimatedMinutes(""); setTags([]);
     setImpact("important"); setSize("medium"); setTimeSlot("any");
-    setIsRecurring(false); setRecurPattern("weekly:0"); setErrors({});
+    setErrors({});
     setProjectId(initialProjectId || "");
     onClose();
   }
@@ -129,6 +127,16 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo", in
               className={clsx(fieldClass, "font-medium")}
               required
             />
+            {titleQuality && !titleQuality.isGood && (
+              <ul className="mt-1 space-y-0.5">
+                {titleQuality.issues.map((issue) => (
+                  <li key={issue} className="text-[11px] text-amber-500 flex items-center gap-1">
+                    <span>⚠</span>
+                    <span>{issue}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Description */}
@@ -214,7 +222,7 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo", in
             </div>
             <div>
               <label className={labelClass}>גודל</label>
-              <select value={size} onChange={(e) => setSize(e.target.value as TaskSize)} className={fieldClass}>
+              <select value={size} onChange={(e) => { const s = e.target.value as TaskSize; setSize(s); const sizePresets: Record<TaskSize, EstimatedMinutes> = { quick: 15, medium: 60, big: 180 }; setEstimatedMinutes(sizePresets[s]); setErrors(prev => ({ ...prev, estimated_minutes: undefined })); }} className={fieldClass}>
                 {SIZE_OPTIONS.map(s => <option key={s} value={s}>{sizeLabels[s]}</option>)}
               </select>
             </div>
@@ -252,33 +260,6 @@ export function TaskAddModal({ open, onClose, onSave, initialStatus = "todo", in
             <TagInput tags={tags} onChange={setTags} />
           </div>
 
-          {/* Recurring */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-                className="rounded border-gray-300 text-brand-600 focus:ring-brand-400"
-              />
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">משימה חוזרת 🔁</span>
-            </label>
-            {isRecurring && (
-              <select value={recurPattern} onChange={(e) => setRecurPattern(e.target.value)} className={fieldClass}>
-                <option value="daily">כל יום</option>
-                <option value="weekly:0">כל שבוע — ראשון</option>
-                <option value="weekly:1">כל שבוע — שני</option>
-                <option value="weekly:2">כל שבוע — שלישי</option>
-                <option value="weekly:3">כל שבוע — רביעי</option>
-                <option value="weekly:4">כל שבוע — חמישי</option>
-                <option value="weekly:5">כל שבוע — שישי</option>
-                <option value="weekly:6">כל שבוע — שבת</option>
-                <option value="monthly:1">כל חודש — תאריך 1</option>
-                <option value="monthly:15">כל חודש — תאריך 15</option>
-                <option value="monthly:28">כל חודש — תאריך 28</option>
-              </select>
-            )}
-          </div>
 
           {/* Submit */}
           <button
