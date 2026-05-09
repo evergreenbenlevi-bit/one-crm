@@ -39,7 +39,8 @@ export function ProjectTimeline({ tasks }: { tasks: Task[] }) {
   const todayPct = ((toDay(new Date().toISOString().split("T")[0]) - minDay) / totalSpan) * 100;
 
   return (
-    <div className="space-y-1 relative pt-8 pb-4">
+    <div className="overflow-x-auto -mx-1 px-1">
+    <div className="space-y-1 relative pt-8 pb-4 min-w-[560px]">
       {/* Header: week labels */}
       <div className="relative h-6 mb-2 border-b border-gray-700/50">
         {Array.from({ length: Math.ceil(totalSpan / 7) + 1 }, (_, i) => {
@@ -119,6 +120,7 @@ export function ProjectTimeline({ tasks }: { tasks: Task[] }) {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
