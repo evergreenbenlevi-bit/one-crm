@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, type FormEvent } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { createClient } from "@/lib/supabase/client";
 import type { Task, TaskCategory, TaskPriority, TaskOwner, TaskStatus, TaskImpact, TaskSize, EstimatedMinutes } from "@/lib/types/tasks";
 import {
   categoryLabels, categoryColors, priorityLabels, priorityColors,
@@ -23,7 +24,7 @@ import { AnimatePresence, motion, useMotionValue, useTransform, PanInfo } from "
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 type QuickAction = "claude" | "ben" | "done" | "delete" | "skip" | "confirm";
-type FilterMode = "all" | "untriaged" | "overdue" | "no_owner" | "ben" | "claude";
+type FilterMode = "all" | "untriaged" | "overdue" | "no_owner" | "ben" | "claude" | "business" | "personal";
 
 const FILTER_OPTIONS: { id: FilterMode; label: string; count?: (tasks: Task[]) => number }[] = [
   { id: "all", label: "הכל" },
@@ -32,6 +33,8 @@ const FILTER_OPTIONS: { id: FilterMode; label: string; count?: (tasks: Task[]) =
   { id: "no_owner", label: "ללא אחראי" },
   { id: "ben", label: "בן" },
   { id: "claude", label: "Claude" },
+  { id: "business", label: "עסק" },
+  { id: "personal", label: "אישי" },
 ];
 
 // ─── Swipe threshold ────────────────────────────────────────────────────────
@@ -1163,6 +1166,23 @@ function CompletionScreen({ stats, onReset, onResetAll }: {
 // ─── Main Page ──────────────────────────────────────────────────────────────
 export default function TriagePage() {
   const { data: tasks = [], mutate } = useSWR<Task[]>("/api/tasks?limit=500", fetcher);
+  const [isLive, setIsLive] = useState(false);
+
+  // ─── Realtime subscription ───────────────────────────────────────────────
+  const supabase = createClient();
+  useEffect(() => {
+    const channel = supabase
+      .channel("triage-tasks-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, () => {
+        mutate();
+      })
+      .subscribe((status) => {
+        setIsLive(status === "SUBSCRIBED");
+      });
+
+    return () => { supabase.removeChannel(channel); };
+  }, [mutate]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FilterMode>("all");
   const [categoryFilter, setCategoryFilter] = useState<TaskCategory | "all">("all");
@@ -1173,7 +1193,7 @@ export default function TriagePage() {
   const [historyStack, setHistoryStack] = useState<string[]>([]);
 
   // Filter tasks
-  const openTasks = tasks.filter(t => t.status !== "done" && t.status !== "archived" && t.status !== "someday");
+  const openTasks = tasks.filter(t => t.status !== "done" && !t.archived_at);
   const now = new Date();
 
   const filtered = openTasks.filter(t => {
@@ -1182,6 +1202,8 @@ export default function TriagePage() {
     if (filter === "no_owner" && t.owner) return false;
     if (filter === "ben" && t.owner !== "ben") return false;
     if (filter === "claude" && t.owner !== "claude") return false;
+    if (filter === "business" && t.domain !== "business") return false;
+    if (filter === "personal" && t.domain !== "personal") return false;
     if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
     return true;
   });
@@ -1264,7 +1286,7 @@ export default function TriagePage() {
       await fetch("/api/tasks", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: taskId, owner: "claude", status: "up_next" }),
+        body: JSON.stringify({ id: taskId, owner: "claude", status: "open" }),
       });
       setStats(s => ({ ...s, done: s.done + 1 }));
       setDirection(1);
@@ -1278,7 +1300,7 @@ export default function TriagePage() {
       await fetch("/api/tasks", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: taskId, status: "up_next" }),
+        body: JSON.stringify({ id: taskId, status: "open" }),
       });
       setStats(s => ({ ...s, done: s.done + 1 }));
       setDirection(1);
@@ -1290,7 +1312,7 @@ export default function TriagePage() {
     const benPayload: Record<string, unknown> = {
       id: taskId,
       owner: "ben",
-      status: "up_next",
+      status: "open",
     };
     if (extra?.due_date) benPayload.due_date = extra.due_date;
 
@@ -1415,7 +1437,15 @@ export default function TriagePage() {
           <div className="flex items-center gap-3">
             <ProgressRing current={processedIds.size} total={totalForSession} />
             <div>
-              <h1 className="text-lg font-bold text-white tracking-tight">טריאז׳</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-white tracking-tight">טריאז׳</h1>
+                {isLive && (
+                  <span className="flex items-center gap-1 text-xs text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-white/30 mt-0.5 tabular-nums">
                 {sorted.length} משימות
                 {processedIds.size > 0 && <span className="text-white/20"> · {unprocessed.length} נותרו</span>}

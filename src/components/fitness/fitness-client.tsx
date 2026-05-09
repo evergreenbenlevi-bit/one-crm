@@ -34,7 +34,7 @@ type UserData = {
 };
 
 interface FitnessClientProps {
-  data: { ben: UserData; avitar: UserData };
+  data: { ben: UserData; evyatar: UserData };
 }
 
 function StatCard({
@@ -161,7 +161,7 @@ export function FitnessClient({ data }: FitnessClientProps) {
     <div className="space-y-10">
       <UserSection name="בן" data={data.ben} color="#6366f1" />
       <hr className="border-border" />
-      <UserSection name="אביתר" data={data.avitar} color="#10b981" />
+      <UserSection name="אביתר" data={data.evyatar} color="#10b981" />
     </div>
   );
 }

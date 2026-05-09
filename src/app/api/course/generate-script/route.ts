@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
-const SYSTEM_PROMPT = `You are the ONE™ Course Copywriter. You write course scripts for Ben Levi and Avitar's coaching program.
+const SYSTEM_PROMPT = `You are the EDEN™ Course Copywriter. You write course scripts for Ben Levi and Avitar's coaching program.
 
 RULES:
 - Write in native Hebrew (think in Hebrew, don't translate from English)
@@ -37,14 +37,14 @@ export async function POST(req: NextRequest) {
     if (clientBenefit) userPrompt += `\nClient benefit: ${clientBenefit}`;
 
     if (tomTranscript && (source === "tom" || source === "tom_modified")) {
-      userPrompt += `\n\n--- TOM'S ORIGINAL TRANSCRIPT (use as source material, rewrite in ONE™ voice) ---\n${tomTranscript}`;
+      userPrompt += `\n\n--- TOM'S ORIGINAL TRANSCRIPT (use as source material, rewrite in EDEN™ voice) ---\n${tomTranscript}`;
     }
 
     userPrompt += `\n\n--- INSTRUCTIONS ---
-Write the ONE™ version of this script. Keep the core teaching. Remove Tom's personal stories. Write in Ben's voice (Hebrew, direct, confident). Output ONLY the script text, no meta-commentary.`;
+Write the EDEN™ version of this script. Keep the core teaching. Remove Tom's personal stories. Write in Ben's voice (Hebrew, direct, confident). Output ONLY the script text, no meta-commentary.`;
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

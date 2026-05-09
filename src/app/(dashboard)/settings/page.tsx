@@ -1,12 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, Shield, Database, Info } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, Shield, Database, Info, Mail } from "lucide-react";
+import { EmailTemplatesManager } from "@/components/email/email-templates-manager";
 
 const version = "1.0.0";
 
 export default function SettingsPage() {
   const [webhookCopied, setWebhookCopied] = useState(false);
+  const [emailTemplates, setEmailTemplates] = useState<
+    { id: string; name: string; subject: string; body: string; category: "general" | "follow_up" | "onboarding" | "offer" | "check_in"; created_at: string; updated_at: string }[]
+  >([]);
+
+  useEffect(() => {
+    fetch("/api/email-templates")
+      .then((r) => r.json())
+      .then((data) => { if (Array.isArray(data)) setEmailTemplates(data); })
+      .catch(() => {});
+  }, []);
 
   async function copyWebhook() {
     const url = `${window.location.origin}/api/webhook/fillout`;
@@ -19,7 +30,7 @@ export default function SettingsPage() {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold dark:text-gray-100">הגדרות</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ניהול מערכת ONE™ CRM</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">ניהול מערכת EDEN™ CRM</p>
       </div>
 
       {/* Integrations */}
@@ -114,6 +125,15 @@ export default function SettingsPage() {
         <p className="text-sm text-gray-400 dark:text-gray-500">
           התראות על לידים חדשים, פגישות קרובות, ולקוחות לטיפול
         </p>
+      </div>
+
+      {/* Email Templates */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
+        <div className="flex items-center gap-2 mb-5">
+          <Mail size={18} className="text-brand-600 dark:text-brand-400" />
+          <h2 className="font-semibold dark:text-gray-100">תבניות אימייל</h2>
+        </div>
+        <EmailTemplatesManager initialTemplates={emailTemplates} />
       </div>
 
       {/* About */}

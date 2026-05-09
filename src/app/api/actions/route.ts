@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest) {
       .from("tasks")
       .insert({
         title: taskTitle,
-        status: "inbox",
+        status: "open",
         impact: "needle_mover",
         size: "medium",
         notes: `Source: ${scan.post_url}\nHook: ${scan.hook_text || ""}\nViews: ${scan.views || 0} | Likes: ${scan.likes || 0}`,

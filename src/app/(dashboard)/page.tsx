@@ -3,6 +3,7 @@ import { GoalProgress } from "@/components/dashboard/goal-progress";
 import { RevenueSection } from "@/components/dashboard/revenue-section";
 import { LeadsSection } from "@/components/dashboard/leads-section";
 import { ActionItems } from "@/components/dashboard/action-items";
+import { TasksDomainSplit } from "@/components/dashboard/tasks-domain-split";
 import { TeamDashboard } from "@/components/dashboard/team-dashboard";
 import { KpiStrip } from "@/components/dashboard/kpi-strip";
 import {
@@ -45,9 +46,9 @@ export default async function DashboardPage() {
   // Generate achievement sentence
   let achievement = "";
   if (data.revenue.oneVipCount > 0) {
-    achievement = `החודש סגרת ${data.revenue.oneVipCount} לקוחות חדשים ל-ONE™ VIP`;
+    achievement = `החודש סגרת ${data.revenue.oneVipCount} לקוחות חדשים ל-EDEN™ VIP`;
   } else if (data.revenue.oneCoreCount > 0) {
-    achievement = `החודש ${data.revenue.oneCoreCount} אנשים רכשו ONE™ Core`;
+    achievement = `החודש ${data.revenue.oneCoreCount} אנשים רכשו EDEN™ Core`;
   }
 
   return (
@@ -73,6 +74,8 @@ export default async function DashboardPage() {
         roi={data.leads.roi}
         topAds={topAds}
       />
+
+      <TasksDomainSplit />
 
       <ActionItems
         hotLeads={hotLeads}

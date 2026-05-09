@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
     feeds.map(async (feed) => {
       const res = await fetch(feed.url, {
         next: { revalidate: 3600 },
-        headers: { "User-Agent": "ONE-CRM/1.0 (+https://one-crm.vercel.app)" },
+        headers: { "User-Agent": "EDEN-CRM/1.0 (+https://one-crm.vercel.app)" },
         signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

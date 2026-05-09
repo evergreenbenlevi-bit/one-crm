@@ -11,7 +11,7 @@ export type GoalType = "revenue" | "customers" | "custom";
 export type FunnelEventType = "registered" | "consumed_content" | "engaged" | "applied" | "qualified" | "purchased" | "viewed_content" | "engaged_dm" | "visited_offer_doc" | "started_onboarding" | "completed_program" | "onboarding" | "active_client" | "completed" | "lost";
 export type ExpenseCategory = "meta_ads" | "ai_tools" | "editing_design" | "software" | "content_creation" | "coaching_tools" | "education" | "skool" | "other" | "haircut" | "fuel" | "car_wash" | "groceries" | "personal_other";
 export type ExpenseType = "business" | "personal";
-export type Partner = "ben" | "avitar" | "shared";
+export type Partner = "ben" | "evyatar" | "shared";
 export type SettlementStatus = "pending" | "settled" | "disputed";
 
 export interface Lead {

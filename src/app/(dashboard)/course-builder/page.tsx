@@ -29,7 +29,7 @@ interface CourseModule {
   name: string;
   description: string | null;
   script: string | null;
-  teacher: "ben" | "avitar" | "both";
+  teacher: "ben" | "evyatar" | "both";
   source: "tom" | "tom_modified" | "original" | "removed";
   source_refs: string | null;
   format: string | null;
@@ -73,7 +73,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   removed: { label: "הורד", color: "bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200" },
 };
 
-const TEACHER_LABELS: Record<string, string> = { ben: "בן", avitar: "אביתר", both: "שניהם" };
+const TEACHER_LABELS: Record<string, string> = { ben: "בן", evyatar: "אביתר", both: "שניהם" };
 
 // ─── Main Component ───
 export default function CourseBuilderPage() {
@@ -180,7 +180,7 @@ export default function CourseBuilderPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ONE™ Course Builder</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">EDEN™ Course Builder</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {totalModules} מודולים · {withTom} עם תמלול טום · {withScript} עם סקריפט · {scriptReady} מוכנים · {readyToFilm} לצילום · {filmedCount} צולמו · {liveCount} באוויר
           </p>
@@ -520,7 +520,7 @@ function ModuleRow({
           className="text-xs px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shrink-0"
         >
           <option value="ben">בן</option>
-          <option value="avitar">אביתר</option>
+          <option value="evyatar">אביתר</option>
           <option value="both">שניהם</option>
         </select>
 

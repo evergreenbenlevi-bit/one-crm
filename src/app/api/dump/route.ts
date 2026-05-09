@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   const today = new Date().toISOString().split("T")[0];
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 2048,
     messages: [
       {
@@ -102,7 +102,7 @@ ${text}`,
       title: item.title,
       description: item.text,
       priority: "p2",
-      status: "todo",
+      status: "open",
       owner: "ben",
       category: "self",
       due_date: item.due_date || null,
@@ -165,7 +165,7 @@ ${text}`,
         title: item.title,
         description: item.text,
         priority: "p3",
-        status: "backlog",
+        status: "open",
         owner: "ben",
         category: "personal",
         due_date: item.due_date || null,
