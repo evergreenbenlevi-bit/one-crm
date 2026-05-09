@@ -1,0 +1,13 @@
+services:
+  docuseal:
+    image: docuseal/docuseal:latest
+    ports:
+      - "3003:3000"
+    volumes:
+      - docuseal_data:/data
+    environment:
+      - SECRET_KEY_BASE=3fe5999766688673c015d5caa809d0c419d32ffc37c484ab8a948a4a842b0cb5af9cc48e4a42fda05c1122b059d70ba2dd8953e80912041b34d03be7da9dc83a
+    restart: unless-stopped
+
+volumes:
+  docuseal_data:
