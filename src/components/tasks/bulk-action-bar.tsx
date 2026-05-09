@@ -56,7 +56,7 @@ export function BulkActionBar({ selectedCount, onChangePriority, onChangeStatus,
         {/* Status buttons */}
         <div className="flex items-center gap-1">
           <button
-            onClick={() => onChangeStatus("todo")}
+            onClick={() => onChangeStatus("open")}
             title="העבר ל-Todo"
             className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-500/20 text-blue-300 dark:bg-blue-100 dark:text-blue-700 hover:bg-blue-500/40 dark:hover:bg-blue-200 transition-colors"
           >
@@ -77,7 +77,7 @@ export function BulkActionBar({ selectedCount, onChangePriority, onChangeStatus,
             <CheckCircle2 size={14} />
           </button>
           <button
-            onClick={() => onChangeStatus("backlog")}
+            onClick={() => onChangeStatus("open")}
             title="החזר ל-Backlog"
             className="p-1.5 rounded-lg bg-gray-500/20 text-gray-400 dark:bg-gray-200 dark:text-gray-500 hover:bg-gray-500/40 dark:hover:bg-gray-300 transition-colors"
           >

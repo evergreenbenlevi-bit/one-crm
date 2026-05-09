@@ -87,7 +87,7 @@ function KanbanColumn({
         "flex items-center justify-between mb-3 px-1 pb-2.5 border-b-[3px]",
         col.underline
       )}>
-        <h3 className="text-xl font-bold text-white" dir="rtl" style={{ fontSize: '22px' }}>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white" dir="rtl" style={{ fontSize: '22px' }}>
           {col.label}
         </h3>
 

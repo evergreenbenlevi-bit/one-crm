@@ -212,6 +212,21 @@ export function TaskCard({
             {priorityConf.label}
           </button>
 
+          {/* Domain pill — business/personal */}
+          {task.domain && (
+            <span
+              className={clsx(
+                "text-xs px-2 py-0.5 rounded-full shrink-0 font-medium",
+                task.domain === "personal"
+                  ? "bg-emerald-900/40 text-emerald-300 border border-emerald-700/40"
+                  : "bg-blue-900/40 text-blue-300 border border-blue-700/40"
+              )}
+              title={task.domain === "personal" ? "אישי" : "עסק"}
+            >
+              {task.domain === "personal" ? "אישי" : "עסק"}
+            </span>
+          )}
+
           {/* Project pill */}
           {projectName && (
             <span

@@ -19,9 +19,8 @@ interface FitnessData {
 
 const STATUS_MAP: Record<string, string> = {
   done: "done",
-  carry: "up_next",
-  park: "someday",
-  kill: "archived",
+  carry: "open",
+  park: "open",
 };
 
 async function sendTelegram(token: string, chatId: string, text: string) {
@@ -58,13 +57,14 @@ export async function POST(request: NextRequest) {
       patch.actual_minutes = log.actual_minutes;
     }
     if (log.action) {
-      patch.status = STATUS_MAP[log.action] ?? "up_next";
-      if (log.action === "done") {
-        patch.completed_at = new Date().toISOString();
-      }
       if (log.action === "kill") {
         patch.archived_at = new Date().toISOString();
         patch.archive_reason = "killed at EOD";
+      } else {
+        patch.status = STATUS_MAP[log.action] ?? "open";
+        if (log.action === "done") {
+          patch.completed_at = new Date().toISOString();
+        }
       }
     }
 

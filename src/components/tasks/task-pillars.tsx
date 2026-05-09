@@ -14,7 +14,7 @@ interface TaskPillarsProps {
 
 const PILLARS: { id: TaskCategory; label: string; emoji: string; color: string }[] = [
   { id: "brand",   label: "פרופיל עסקי",    emoji: "🟣", color: "border-pink-200 dark:border-pink-800" },
-  { id: "one_tm",  label: "ONE™",           emoji: "🟠", color: "border-orange-200 dark:border-orange-800" },
+  { id: "one_tm",  label: "EDEN™",           emoji: "🟠", color: "border-orange-200 dark:border-orange-800" },
 ];
 
 const PILLAR_HEADER: Record<string, string> = {
@@ -23,17 +23,10 @@ const PILLAR_HEADER: Record<string, string> = {
 };
 
 const NEXT_STATUS: Record<Task["status"], Task["status"] | null> = {
-  backlog:     "todo",
-  todo:        "in_progress",
-  in_progress: "done",
-  waiting_ben: "in_progress",
+  open:        "in_progress",
+  in_progress: "waiting",
+  waiting:     "done",
   done:        null,
-  inbox:       "up_next",
-  up_next:     "in_progress",
-  scheduled:   "in_progress",
-  waiting:     "in_progress",
-  someday:     null,
-  archived:    null,
 };
 
 export function TaskPillars({ tasks, onEdit, onStatusChange }: TaskPillarsProps) {

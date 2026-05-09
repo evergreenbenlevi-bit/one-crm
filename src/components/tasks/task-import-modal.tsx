@@ -25,7 +25,7 @@ interface TaskImportModalProps {
 
 // Map Obsidian KANBAN sections to CRM categories (3-pillar system)
 const SECTION_TO_CATEGORY: Record<string, TaskCategory> = {
-  "ONE™": "one_tm",
+  "EDEN™": "one_tm",
   "ONE": "one_tm",
   "דחוף": "one_tm",
   "מציאת העצמי": "self",
@@ -46,7 +46,7 @@ function detectOwner(line: string): TaskOwner {
   if (line.includes("🤖")) return "claude";
   if (line.includes("🙋")) return "ben";
   if (line.includes("🤝")) return "both";
-  if (line.includes("👤")) return "avitar";
+  if (line.includes("👤")) return "evyatar";
   return "claude";
 }
 
@@ -101,7 +101,7 @@ function parseObsidianKanban(text: string): ParsedTask[] {
       title,
       description,
       priority: detectPriority(line, currentSection),
-      status: currentSection.includes("דחוף") ? "todo" : "backlog",
+      status: currentSection.includes("דחוף") ? "open" : "open",
       owner: detectOwner(line),
       category: detectCategory(currentSection),
       source: "obsidian-kanban",
@@ -204,7 +204,7 @@ export function TaskImportModal({ open, onClose, onImport }: TaskImportModalProp
             <textarea
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
-              placeholder={`## 🔴 דחוף — צ'אט הבא\n- [ ] 🤖 **CRM Tasks UI** — השלמת /tasks page\n- [ ] 🙋 **shadcn/ui RTL** — התקנה\n\n## 🟠 ONE™\n- [ ] 🤖 **AI Brand Bible** — מסמך זהות מותג`}
+              placeholder={`## 🔴 דחוף — צ'אט הבא\n- [ ] 🤖 **CRM Tasks UI** — השלמת /tasks page\n- [ ] 🙋 **shadcn/ui RTL** — התקנה\n\n## 🟠 EDEN™\n- [ ] 🤖 **AI Brand Bible** — מסמך זהות מותג`}
               rows={12}
               className="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-brand-400 focus:border-transparent font-mono resize-none"
               dir="rtl"

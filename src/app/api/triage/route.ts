@@ -8,7 +8,7 @@ export const preferredRegion = ["fra1", "arn1", "cdg1"];
 const VALID_LAYERS: TaskLayer[] = ["needle_mover", "project", "quick_win", "wishlist", "nice_to_have"];
 const VALID_IMPACTS: TaskImpact[] = ["needle_mover", "important", "nice"];
 const VALID_SIZES: TaskSize[] = ["quick", "medium", "big"];
-const VALID_STATUSES: TaskStatus[] = ["inbox", "up_next", "scheduled", "in_progress", "waiting", "waiting_ben", "done", "someday", "archived", "backlog", "todo"];
+const VALID_STATUSES: TaskStatus[] = ["open", "in_progress", "waiting", "done"];
 const VALID_ESTIMATED_MINUTES: EstimatedMinutes[] = [5, 15, 30, 45, 60, 90, 120];
 
 // PATCH /api/triage — bulk update triage fields (layer, impact, size, status)

@@ -8,7 +8,7 @@ export const preferredRegion = ["fra1", "arn1", "cdg1"];
 
 // Known contacts for invite resolution
 const KNOWN_CONTACTS: Record<string, string> = {
-  avitar: "avitar@one-method.com", // Avitar — ONE co-founder
+  evyatar: "evyatar@one-method.com", // Avitar — ONE co-founder
 };
 
 interface CalendarCreateRequest {
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
   // Update task status to scheduled
   await supabase.from("tasks").update({
-    status: "scheduled",
+    status: "in_progress",
     due_date: date,
     estimated_minutes: mins,
   }).eq("id", task_id);

@@ -5,8 +5,8 @@ import { requireAuth } from "@/lib/api-auth";
 import type { TaskPriority, TaskStatus, TaskOwner, TaskCategory } from "@/lib/types/tasks";
 
 const VALID_PRIORITIES: TaskPriority[] = ["p1", "p2", "p3"];
-const VALID_STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "waiting_ben", "done"];
-const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "avitar"];
+const VALID_STATUSES: TaskStatus[] = ["open", "in_progress", "waiting", "done"];
+const VALID_OWNERS: TaskOwner[] = ["claude", "ben", "both", "evyatar"];
 const VALID_CATEGORIES: TaskCategory[] = ["one_tm", "self", "brand", "temp", "research", "infrastructure", "personal", "errands"];
 
 interface RawTask {
@@ -28,7 +28,7 @@ function sanitizeTask(raw: RawTask) {
     title: raw.title.trim().slice(0, 500),
     description: typeof raw.description === "string" ? raw.description.trim() : null,
     priority: VALID_PRIORITIES.includes(raw.priority as TaskPriority) ? raw.priority : "p2",
-    status: VALID_STATUSES.includes(raw.status as TaskStatus) ? raw.status : "backlog",
+    status: VALID_STATUSES.includes(raw.status as TaskStatus) ? raw.status : "open",
     owner: VALID_OWNERS.includes(raw.owner as TaskOwner) ? raw.owner : "claude",
     category: VALID_CATEGORIES.includes(raw.category as TaskCategory) ? raw.category : "one_tm",
     due_date: typeof raw.due_date === "string" && /^\d{4}-\d{2}-\d{2}/.test(raw.due_date) ? raw.due_date : null,

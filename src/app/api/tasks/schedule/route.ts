@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   // Update task: set scheduled status + due_date + estimated_minutes
   await supabase.from("tasks").update({
-    status: "scheduled",
+    status: "in_progress",
     due_date: date,
     estimated_minutes: mins,
   }).eq("id", task_id);

@@ -12,7 +12,7 @@ interface NLPResult {
   due_date?: string | null;
   due_time?: string | null;
   estimated_minutes?: 5 | 15 | 30 | 45 | 60 | 90 | 120 | null;
-  owner?: "claude" | "ben" | "both" | "avitar" | null;
+  owner?: "claude" | "ben" | "both" | "evyatar" | null;
   impact?: "needle_mover" | "important" | "nice" | null;
   size?: "quick" | "medium" | "big" | null;
   category?: string | null;
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   const manualFields = body.manual_fields as string[] | undefined;
 
   const isBrainDump = text.length > BRAIN_DUMP_THRESHOLD;
-  const model = isBrainDump ? "claude-sonnet-4-20250514" : "claude-haiku-4-5-20251001";
+  const model = isBrainDump ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
 
   const brainDumpInstruction = isBrainDump
     ? `\n\nBRAIN DUMP MODE: The input is a long free-form note. Do your best to extract any scheduling fields you can find. Additionally, return a "clean_description" field: rewrite the input as an organized, clear Hebrew description (up to 200 words). Structure it with bullet points if multiple items are mentioned. This is NOT the summary — summary stays short (max 15 words). clean_description is the full organized version of what the user wrote.`
@@ -96,10 +96,10 @@ Fields to look for:
   "שעתיים" = 120
   Round to nearest valid value.
 
-- owner: "ben"/"claude"/"avitar"/"both". Parse:
+- owner: "ben"/"claude"/"evyatar"/"both". Parse:
   "אני"/"שלי"/"בן" = ben
   "Claude"/"קלוד"/"AI" = claude
-  "אביתר" = avitar
+  "אביתר" = evyatar
   "ביחד"/"שנינו" = both
 
 - impact: "needle_mover"/"important"/"nice". Parse:
@@ -119,7 +119,7 @@ ${isBrainDump ? '\n- clean_description: Organized Hebrew rewrite of the full inp
 - calendar_event: true if this task should be a calendar event (has specific time/date with a meeting, appointment, or time-blocked work). false/null for simple tasks.
 
 - invite_person: Name of person to invite to the calendar event. Parse:
-  "תזמין את אביתר"/"עם אביתר" = "avitar"
+  "תזמין את אביתר"/"עם אביתר" = "evyatar"
   "פגישה עם X" = the person's name
   null if no invitee mentioned.
 
@@ -191,7 +191,7 @@ Omit fields you can't determine (set to null). Always include summary.${isBrainD
     }
 
     // Validate owner
-    const validOwners = ["claude", "ben", "both", "avitar"];
+    const validOwners = ["claude", "ben", "both", "evyatar"];
     if (parsed.owner && !validOwners.includes(parsed.owner)) {
       parsed.owner = null;
     }

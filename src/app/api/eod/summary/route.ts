@@ -18,20 +18,21 @@ export async function GET(request: NextRequest) {
 
   // Parallel queries
   const [openRes, overdueRes, completedRes] = await Promise.all([
-    // Open tasks with deadline today or earlier (not done/archived)
+    // Open tasks with deadline today or earlier (not done, not archived)
+    // archived tasks excluded via archived_at IS NULL — "archived" is not a valid status value
     supabase
       .from("tasks")
       .select("id,title,status,priority,impact,size,due_date,estimated_minutes,actual_minutes,priority_score,project_id,time_slot")
-      .not("status", "in", '("done","archived")')
+      .not("status", "eq", "done")
       .lte("due_date", today)
       .is("archived_at", null)
       .order("priority_score", { ascending: false }),
 
-    // Overdue: past deadline, not done
+    // Overdue: past deadline, not done, not archived
     supabase
       .from("tasks")
       .select("id,title,status,priority,impact,due_date,estimated_minutes,priority_score")
-      .not("status", "in", '("done","archived")')
+      .not("status", "eq", "done")
       .lt("due_date", today)
       .is("archived_at", null)
       .order("priority_score", { ascending: false }),

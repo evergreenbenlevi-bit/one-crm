@@ -15,6 +15,7 @@ import { TaskEditModal } from "@/components/tasks/task-edit-modal";
 import { TaskImportModal } from "@/components/tasks/task-import-modal";
 import { Big3Today } from "@/components/tasks/big3-today";
 import { EODPanel } from "@/components/tasks/eod-panel";
+import { EmptyState } from "@/components/tasks/empty-state";
 import { BulkActionBar } from "@/components/tasks/bulk-action-bar";
 import { WeeklyCapacityView } from "@/components/tasks/weekly-capacity-view";
 import { loadSessionContext, saveSessionContext, sessionAgeLabel } from "@/lib/session-context";
@@ -315,11 +316,7 @@ function InlineListRow({ task, onEdit, onStatusChange, onSave, onDueDateChange, 
 
 function InlineListView({ tasks, onEdit, onStatusChange, onSave, onDueDateChange, readOnly }: InlineListViewProps) {
   if (tasks.length === 0) {
-    return (
-      <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-        <p className="text-sm">אין משימות</p>
-      </div>
-    );
+    return <EmptyState icon={Layers} title="אין משימות" />;
   }
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -1200,8 +1197,8 @@ function TasksPageContent() {
         ))}
       </div>
 
-      {/* Secondary Filters (Focus + Backlog only) */}
-      {(viewMode === "focus" || viewMode === "backlog" || viewMode === "completed" || viewMode === "archived") && (
+      {/* Secondary Filters */}
+      {(viewMode === "focus" || viewMode === "backlog" || viewMode === "completed" || viewMode === "archived" || viewMode === "board" || viewMode === "list") && (
         <div className="flex items-center gap-2 flex-wrap">
           {/* Domain toggle: all / business / personal */}
           <div className="flex items-center gap-1 p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg" dir="rtl">
@@ -1271,11 +1268,7 @@ function TasksPageContent() {
           )}
 
           {todayTasks.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-              <Sun size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">אין משימות פעילות</p>
-              <p className="text-xs mt-1 opacity-70">העבר משימות מ-Backlog כדי להתחיל</p>
-            </div>
+            <EmptyState icon={Sun} title="אין משימות פעילות" description="העבר משימות מ-Backlog כדי להתחיל" action={{ label: "פתח Backlog", onClick: () => handleViewChange('backlog') }} />
           ) : (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
               {todayTasks.map((task, i) => {
@@ -1358,6 +1351,9 @@ function TasksPageContent() {
 
       {/* ── BOARD VIEW ── */}
       {viewMode === "board" && (
+        pillarTasks.length === 0 ? (
+          <EmptyState icon={LayoutGrid} title="הלוח ריק" description="הוסף משימה ראשונה כדי להתחיל" action={{ label: "+ הוסף משימה", onClick: () => setShowAddModal(true) }} />
+        ) : (
         <div className="overflow-x-auto -mx-4 px-4">
           <TaskKanban
             columns={boardColumns}
@@ -1370,6 +1366,7 @@ function TasksPageContent() {
             visibleStatuses={KANBAN_STATUSES}
           />
         </div>
+        )
       )}
 
       {/* ── LIST VIEW ── */}
@@ -1393,10 +1390,7 @@ function TasksPageContent() {
               טוען backlog...
             </div>
           ) : backlogFiltered.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-              <Archive size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">הBacklog ריק</p>
-            </div>
+            <EmptyState icon={Archive} title="הBacklog ריק" />
           ) : (
             (["one_tm", "self", "brand", "temp", "research"] as TaskCategory[])
               .filter(cat => backlogByCategory[cat]?.length > 0)
@@ -1524,18 +1518,12 @@ function TasksPageContent() {
               טוען הושלמו...
             </div>
           ) : completedTasks.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-              <CheckCircle2 size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">אין משימות שהושלמו</p>
-            </div>
+            <EmptyState icon={CheckCircle2} title="אין משימות שהושלמו" />
           ) : (() => {
             const filtersActive = filterPriority !== "all" || filterCategory !== "all" || filterOwner !== "all";
             if (completedFiltered.length === 0) {
               return (
-                <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-                  <CheckCircle2 size={32} className="mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">אין תוצאות לפילטרים הנוכחיים</p>
-                </div>
+                <EmptyState icon={CheckCircle2} title="אין תוצאות לפילטרים הנוכחיים" compact />
               );
             }
             // Group completed tasks by week
@@ -1617,11 +1605,7 @@ function TasksPageContent() {
               טוען ארכיון...
             </div>
           ) : archivedTasks.length === 0 ? (
-            <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-              <Archive size={32} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">הארכיון ריק</p>
-              <p className="text-xs mt-1 opacity-70">משימות שנמחקו עם סיבה יופיעו כאן</p>
-            </div>
+            <EmptyState icon={Archive} title="הארכיון ריק" description="משימות שנמחקו עם סיבה יופיעו כאן" />
           ) : (
             <>
               {(filterPriority !== "all" || filterCategory !== "all" || filterOwner !== "all") && (
@@ -1630,10 +1614,7 @@ function TasksPageContent() {
                 </div>
               )}
               {archivedFiltered.length === 0 ? (
-                <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-                  <Archive size={32} className="mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">אין תוצאות לפילטרים הנוכחיים</p>
-                </div>
+                <EmptyState icon={Archive} title="אין תוצאות לפילטרים הנוכחיים" compact />
               ) : (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
               {archivedFiltered

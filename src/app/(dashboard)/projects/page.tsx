@@ -7,11 +7,12 @@ import { Plus, FolderKanban, X } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 import { fetcher } from "@/lib/fetcher";
+import { EmptyState } from "@/components/tasks/empty-state";
 import type { Task } from "@/lib/types/tasks";
 
 type ProjectStatus = "active" | "paused" | "done" | "archived";
 type ProjectPriority = "p1" | "p2" | "p3";
-type Portfolio = "one" | "solo" | "harness" | "exploratory";
+type Portfolio = "one" | "solo" | "harness" | "exploratory" | "clients";
 
 interface Project {
   id: string;
@@ -49,17 +50,19 @@ const PRIORITY_COLORS: Record<ProjectPriority, string> = {
 };
 
 const PORTFOLIO_COLORS: Record<Portfolio, string> = {
-  one: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300",
-  solo: "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
-  harness: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  exploratory: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
+  one: "bg-white/10 text-gray-300 border border-white/20",
+  solo: "bg-white/10 text-gray-300 border border-white/20",
+  harness: "bg-white/10 text-gray-300 border border-white/20",
+  exploratory: "bg-white/10 text-gray-300 border border-white/20",
+  clients: "bg-emerald-900/30 text-emerald-300 border border-emerald-700/40",
 };
 
 const PORTFOLIO_LABELS: Record<Portfolio, string> = {
-  one: "ONE™",
+  one: "EDEN™",
   solo: "Solo",
   harness: "Harness",
   exploratory: "Exploratory",
+  clients: "לקוחות",
 };
 
 type FilterStatus = "all" | ProjectStatus;
@@ -75,10 +78,11 @@ const STATUS_FILTERS: { id: FilterStatus; label: string }[] = [
 
 const PORTFOLIO_FILTERS: { id: FilterPortfolio; label: string }[] = [
   { id: "all", label: "כל ה-Portfolios" },
-  { id: "one", label: "ONE™" },
+  { id: "one", label: "EDEN™" },
   { id: "solo", label: "Solo" },
   { id: "harness", label: "Harness" },
   { id: "exploratory", label: "Exploratory" },
+  { id: "clients", label: "לקוחות" },
 ];
 
 const FIELD_CLASS = "w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-brand-400 focus:border-transparent outline-none";
@@ -182,10 +186,11 @@ function NewProjectModal({ onClose, onCreated }: { onClose: () => void; onCreate
               <label className={LABEL_CLASS}>Portfolio</label>
               <select value={portfolio} onChange={(e) => setPortfolio(e.target.value as Portfolio | "")} className={FIELD_CLASS}>
                 <option value="">— ללא —</option>
-                <option value="one">ONE™</option>
+                <option value="one">EDEN™</option>
                 <option value="solo">Solo</option>
                 <option value="harness">Harness</option>
                 <option value="exploratory">Exploratory</option>
+                <option value="clients">לקוחות</option>
               </select>
             </div>
             <div>
@@ -271,7 +276,7 @@ function ProjectsPageContent() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1 bg-gray-100 dark:bg-gray-700/60 p-1 rounded-xl">
+        <div className="flex gap-1 bg-gray-800 p-1 rounded-xl">
           {STATUS_FILTERS.map(f => (
             <button
               key={f.id}
@@ -279,8 +284,8 @@ function ProjectsPageContent() {
               className={clsx(
                 "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
                 filterStatus === f.id
-                  ? "bg-white dark:bg-gray-800 shadow-sm text-gray-900 dark:text-gray-100"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  ? "bg-gray-700 text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-300"
               )}
             >
               {f.label}
@@ -298,11 +303,7 @@ function ProjectsPageContent() {
 
       {/* Grid */}
       {projects.length === 0 ? (
-        <div className="text-center py-20 text-gray-400 dark:text-gray-500">
-          <FolderKanban size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">אין פרויקטים</p>
-          <p className="text-xs mt-1 opacity-70">לחץ "פרויקט חדש" כדי להתחיל</p>
-        </div>
+        <EmptyState icon={FolderKanban} title="אין פרויקטים" description='לחץ "פרויקט חדש" כדי להתחיל' action={{ label: "+ פרויקט חדש", onClick: () => setShowAddModal(true) }} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {projects.map((project) => {

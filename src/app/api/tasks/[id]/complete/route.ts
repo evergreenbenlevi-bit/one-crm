@@ -61,7 +61,7 @@ export async function PATCH(
   const { data: updated, error: updateErr } = await supabase
     .from("tasks")
     .update({
-      status: completed ? "done" : "todo",
+      status: completed ? "done" : "open",
       completed_at: completed ? new Date().toISOString() : null,
     })
     .eq("id", id)
@@ -79,7 +79,7 @@ export async function PATCH(
       title: task.title,
       description: task.description,
       priority: task.priority,
-      status: "todo",
+      status: "open",
       owner: task.owner,
       category: task.category,
       due_date: nextDueDate,

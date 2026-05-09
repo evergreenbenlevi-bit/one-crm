@@ -1,21 +1,23 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback, Suspense } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, Suspense } from "react";
 import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import { Plus, ArrowRight, LayoutGrid, List, AlertCircle } from "lucide-react";
+import { Plus, ArrowRight, LayoutGrid, List, AlertCircle, FileText, Layers, BarChart2 } from "lucide-react";
 import { clsx } from "clsx";
 import { fetcher } from "@/lib/fetcher";
 import type { Task, TaskStatus, TaskPriority, TaskOwner, TaskCategory, EstimatedMinutes, TaskImpact, TaskSize } from "@/lib/types/tasks";
-import { TASK_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors, statusColors } from "@/lib/types/tasks";
+import { TASK_STATUSES, KANBAN_STATUSES, statusLabels, priorityColors, ownerIcons, categoryLabels, categoryColors, statusColors } from "@/lib/types/tasks";
 import { TaskKanban } from "@/components/tasks/task-kanban";
+import { EmptyState } from "@/components/tasks/empty-state";
+import { ProjectTimeline } from "@/components/projects/project-timeline";
 import { TaskAddModal } from "@/components/tasks/task-add-modal";
 import { TaskEditModal } from "@/components/tasks/task-edit-modal";
 import Link from "next/link";
 
 type ProjectStatus = "active" | "paused" | "done" | "archived";
 type ProjectPriority = "p1" | "p2" | "p3";
-type Portfolio = "one" | "solo" | "harness" | "exploratory";
+type Portfolio = "one" | "solo" | "harness" | "exploratory" | "clients";
 
 interface Project {
   id: string;
@@ -120,6 +122,15 @@ function InlineListRow({
           )}
         />
       </td>
+      <td className="px-3 py-2.5 w-[110px]">
+        <select value={task.time_slot || "any"} onChange={(e) => onSave({ ...task, time_slot: e.target.value as 'morning' | 'afternoon' | 'evening' | 'any' })}
+          className="text-[11px] px-2 py-1 rounded-lg border border-white/10 bg-gray-800 text-gray-300 outline-none w-full">
+          <option value="morning">בוקר</option>
+          <option value="afternoon">צהריים</option>
+          <option value="evening">ערב</option>
+          <option value="any">כלשהו</option>
+        </select>
+      </td>
       <td className="px-3 py-2.5 w-16">
         <span className={clsx("text-[10px] font-bold px-1.5 py-0.5 rounded-md", priorityColors[task.priority])}>
           {task.priority.toUpperCase()}
@@ -148,12 +159,7 @@ function ProjectInlineList({
   onDueDateChange: (taskId: string, date: string | null) => void;
 }) {
   if (tasks.length === 0) {
-    return (
-      <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-        <p className="text-sm">אין משימות בפרויקט</p>
-        <p className="text-xs mt-1 opacity-70">לחץ "הוסף משימה" כדי להתחיל</p>
-      </div>
-    );
+    return <EmptyState icon={Layers} title="אין משימות בפרויקט" description='לחץ "הוסף משימה" כדי להתחיל' />;
   }
 
   const sorted = [...tasks].sort((a, b) => {
@@ -170,6 +176,7 @@ function ProjectInlineList({
               <th className="px-4 py-2.5 text-right">משימה</th>
               <th className="px-3 py-2.5 text-right w-[130px]">סטטוס</th>
               <th className="px-3 py-2.5 text-right w-[140px]">דדליין</th>
+              <th className="px-3 py-2.5 text-right w-[110px]">זמן</th>
               <th className="px-3 py-2.5 text-right w-16">עדיפות</th>
               <th className="px-3 py-2.5 text-right w-[100px]">קטגוריה</th>
             </tr>
@@ -200,11 +207,54 @@ function ProjectDetailContent() {
   const searchParams = useSearchParams();
   const projectId = params.id as string;
 
-  const viewMode = (searchParams.get("tab") as "board" | "list") || "board";
+  const viewMode = (searchParams.get("tab") as "board" | "list" | "notes" | "timeline") || "board";
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pendingOps = useRef(new Set<string>());
+
+  // ── Notes state ──────────────────────────────────────────────────────────────
+  const [notesContent, setNotesContent] = useState<string>("");
+  const [notesFetched, setNotesFetched] = useState(false);
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
+  const notesDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notesSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch notes when tab becomes active
+  useEffect(() => {
+    if (viewMode !== "notes" || notesFetched) return;
+    fetch(`/api/projects/${projectId}/notes`)
+      .then(r => r.json())
+      .then(d => {
+        setNotesContent(d.content ?? "");
+        setNotesFetched(true);
+      })
+      .catch(() => setNotesFetched(true));
+  }, [viewMode, notesFetched, projectId]);
+
+  function handleNotesChange(value: string) {
+    setNotesContent(value);
+    setNotesSaved(false);
+    if (notesDebounceRef.current) clearTimeout(notesDebounceRef.current);
+    notesDebounceRef.current = setTimeout(async () => {
+      setNotesSaving(true);
+      try {
+        await fetch(`/api/projects/${projectId}/notes`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: value }),
+        });
+        setNotesSaved(true);
+        if (notesSavedTimerRef.current) clearTimeout(notesSavedTimerRef.current);
+        notesSavedTimerRef.current = setTimeout(() => setNotesSaved(false), 2500);
+      } catch {
+        // silent fail — user can retry
+      } finally {
+        setNotesSaving(false);
+      }
+    }, 800);
+  }
 
   const { data: projectData, mutate } = useSWR<Project>(
     `/api/projects/${projectId}`,
@@ -218,7 +268,7 @@ function ProjectDetailContent() {
   // Build board columns
   const boardColumns = useMemo(() => {
     const cols = {} as Record<TaskStatus, Task[]>;
-    (["inbox", "up_next", "scheduled", "in_progress", "waiting", "waiting_ben", "todo", "done", "backlog", "someday", "archived"] as TaskStatus[]).forEach(s => { cols[s] = []; });
+    ([...TASK_STATUSES] as TaskStatus[]).forEach(s => { cols[s] = []; });
     const today = new Date().toISOString().split("T")[0];
     projectTasks.forEach(t => {
       if (!cols[t.status]) return;
@@ -238,7 +288,7 @@ function ProjectDetailContent() {
     return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
   }, [projectTasks]);
 
-  function handleViewChange(mode: "board" | "list") {
+  function handleViewChange(mode: "board" | "list" | "notes" | "timeline") {
     const p = new URLSearchParams(searchParams.toString());
     p.set("tab", mode);
     router.push(`${pathname}?${p.toString()}`, { scroll: false } as Parameters<typeof router.push>[1]);
@@ -480,8 +530,10 @@ function ProjectDetailContent() {
       {/* View Tabs */}
       <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
         {([
-          { id: "board" as const, icon: LayoutGrid, label: "Board", count: projectTasks.filter(t => t.status !== "done" && t.status !== "archived").length },
+          { id: "board" as const, icon: LayoutGrid, label: "Board", count: projectTasks.filter(t => t.status !== "done" && !t.archived_at).length },
           { id: "list" as const, icon: List, label: "רשימה", count: projectTasks.length },
+          { id: "notes" as const, icon: FileText, label: "הערות", count: null },
+          { id: "timeline" as const, icon: BarChart2, label: "ציר זמן", count: null },
         ]).map(({ id, icon: Icon, label, count }) => (
           <button
             key={id}
@@ -495,14 +547,16 @@ function ProjectDetailContent() {
           >
             <Icon size={14} />
             {label}
-            <span className={clsx(
-              "text-xs px-1.5 py-0.5 rounded-full",
-              viewMode === id
-                ? "bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-            )}>
-              {count}
-            </span>
+            {count !== null && (
+              <span className={clsx(
+                "text-xs px-1.5 py-0.5 rounded-full",
+                viewMode === id
+                  ? "bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+              )}>
+                {count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -518,7 +572,7 @@ function ProjectDetailContent() {
             onDelete={handleDeleteTask}
             onDueDateChange={handleDueDateChange}
             onPositionChange={handlePositionChange}
-            visibleStatuses={["in_progress", "waiting_ben", "up_next", "todo", "inbox", "waiting", "scheduled"]}
+            visibleStatuses={KANBAN_STATUSES}
           />
         </div>
       )}
@@ -532,6 +586,35 @@ function ProjectDetailContent() {
           onSave={handleEditTask}
           onDueDateChange={handleDueDateChange}
         />
+      )}
+
+      {/* Notes View */}
+      {viewMode === "notes" && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400 dark:text-gray-500">הערות פרויקט — שמירה אוטומטית</span>
+            <span
+              className={clsx(
+                "text-xs text-gray-400 dark:text-gray-500 transition-opacity duration-500",
+                notesSaving || notesSaved ? "opacity-100" : "opacity-0"
+              )}
+            >
+              {notesSaving ? "שומר..." : "שמור אוטומטית ✓"}
+            </span>
+          </div>
+          <textarea
+            className="w-full min-h-[420px] px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-200 font-mono resize-y outline-none focus:ring-2 focus:ring-brand-400 dark:focus:ring-brand-500 placeholder-gray-300 dark:placeholder-gray-600 transition-colors"
+            placeholder="הוסף הערות, רעיונות, לינקים..."
+            value={notesContent}
+            onChange={(e) => handleNotesChange(e.target.value)}
+            dir="auto"
+          />
+        </div>
+      )}
+
+      {/* Timeline View */}
+      {viewMode === "timeline" && (
+        <ProjectTimeline tasks={projectTasks} />
       )}
 
       <TaskAddModal

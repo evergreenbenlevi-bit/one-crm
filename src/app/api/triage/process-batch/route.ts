@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     .select("*")
     .not("triage_action", "is", null)
     .not("status", "eq", "done")
-    .not("status", "eq", "archived")
+    .is("archived_at", null) // exclude archived tasks (archived_at column, not status)
     .order("triaged_at", { ascending: true });
 
   if (error) {
@@ -44,12 +44,12 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case "claude":
         updates.owner = "claude";
-        updates.status = "todo";
+        updates.status = "open";
         break;
 
       case "ben":
         updates.owner = "ben";
-        updates.status = "todo";
+        updates.status = "open";
         break;
 
       case "confirm":
@@ -58,11 +58,11 @@ export async function POST(request: NextRequest) {
 
       case "skip":
         // Move to end of queue, keep in inbox
-        updates.status = "inbox";
+        updates.status = "open";
         break;
 
       case "delete":
-        updates.status = "archived";
+        // archived_at tracks archival — tasks table no longer uses status="archived"
         updates.archived_at = new Date().toISOString();
         updates.archive_reason = "deleted_via_triage";
         break;
