@@ -89,10 +89,10 @@ export function TeamDashboard() {
   const activeTasks = useMemo(() => {
     return tasks
       .filter(t => t.status !== "done" && !tasks.some(p => p.id === t.parent_id && tasks.some(c => c.parent_id === p.id)))
-      .filter(t => t.status === "in_progress" || t.status === "todo" || t.status === "waiting_ben")
+      .filter(t => t.status === "in_progress" || t.status === "open" || t.status === "waiting")
       .sort((a, b) => {
         const pOrder: Record<string, number> = { p1: 0, p2: 1, p3: 2 };
-        const statusOrder: Record<string, number> = { in_progress: 0, waiting_ben: 1, todo: 2 };
+        const statusOrder: Record<string, number> = { in_progress: 0, waiting: 1, open: 2 };
         return (statusOrder[a.status] || 3) - (statusOrder[b.status] || 3) || (pOrder[a.priority] || 1) - (pOrder[b.priority] || 1);
       })
       .slice(0, 10);
@@ -245,9 +245,9 @@ function StatCard({ icon: Icon, label, value, color, bg }: { icon: React.Element
 function StatusDot({ status }: { status: string }) {
   const colors: Record<string, string> = {
     in_progress: "bg-amber-500",
-    todo: "bg-blue-500",
-    waiting_ben: "bg-purple-500",
-    backlog: "bg-gray-400",
+    open: "bg-blue-500",
+    waiting: "bg-purple-500",
+    done: "bg-green-500",
   };
   return <div className={clsx("w-2 h-2 rounded-full flex-shrink-0", colors[status] || "bg-gray-400")} />;
 }

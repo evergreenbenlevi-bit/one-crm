@@ -49,7 +49,7 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
         </Link>
         <Link href="/financial" className="block hover:scale-[1.02] transition-transform">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 h-full">
-            <span className="text-sm text-gray-500 dark:text-gray-400">ONE™ Core</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">EDEN™ Core</span>
             <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.oneCore.toLocaleString("he-IL")}</div>
             <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
               <ShoppingBag size={12} />
@@ -59,7 +59,7 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
         </Link>
         <Link href="/financial" className="block hover:scale-[1.02] transition-transform">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 h-full">
-            <span className="text-sm text-gray-500 dark:text-gray-400">ONE™ VIP</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">EDEN™ VIP</span>
             <div className="text-xl font-bold mt-1 dark:text-gray-100">₪{revenue.oneVip.toLocaleString("he-IL")}</div>
             <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 dark:text-gray-500">
               <ShoppingBag size={12} />
@@ -87,8 +87,8 @@ export function RevenueSection({ revenue, chartData }: RevenueSectionProps) {
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip formatter={(value) => `₪${Number(value).toLocaleString("he-IL")}`} />
-              <Area type="monotone" dataKey="oneCore" stroke="#0c99e9" fill="url(#oneCoreGrad)" name="ONE™ Core" />
-              <Area type="monotone" dataKey="oneVip" stroke="#10b981" fill="url(#oneVipGrad)" name="ONE™ VIP" />
+              <Area type="monotone" dataKey="oneCore" stroke="#0c99e9" fill="url(#oneCoreGrad)" name="EDEN™ Core" />
+              <Area type="monotone" dataKey="oneVip" stroke="#10b981" fill="url(#oneVipGrad)" name="EDEN™ VIP" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

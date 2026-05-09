@@ -17,8 +17,8 @@ interface RevenueBreakdownProps {
 
 export function RevenueBreakdown({ oneCore, oneVip }: RevenueBreakdownProps) {
   const data = [
-    { name: "ONE™ Core", value: oneCore },
-    { name: "ONE™ VIP", value: oneVip },
+    { name: "EDEN™ Core", value: oneCore },
+    { name: "EDEN™ VIP", value: oneVip },
   ];
 
   const colors = ["#0c99e9", "#7ccbfc"];

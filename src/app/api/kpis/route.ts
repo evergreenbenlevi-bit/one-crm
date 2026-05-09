@@ -2,7 +2,8 @@
  * /api/kpis — Business KPI computation engine
  * Phase A1: CRM Redesign V2
  *
- * Returns: ROAS, CAC, LTV, retention, churn, net_profit, CPL, CTR, CPC, conversion_funnel, avg_deal_size
+ * Returns: ROAS, CAC, LTV, retention, churn, net_profit, CPL, CTR, CPC,
+ *          conversion_funnel, stage_conversion_rates, leads_by_source, cac_by_source, avg_deal_size
  */
 export const runtime = "edge";
 
@@ -27,6 +28,19 @@ function round(n: number, decimals = 2): number {
 const VAT_RATE = 0.18;
 const INCOME_TAX_RATE = 0.23;
 
+// DB-canonical lead source enum values
+const FUNNEL_STAGES = [
+  "new",
+  "consumed_content",
+  "engaged",
+  "applied",
+  "qualified",
+  "onboarding",
+  "active_client",
+] as const;
+
+type FunnelStage = (typeof FUNNEL_STAGES)[number];
+
 export async function GET(req: NextRequest) {
   const user = await requireAuth(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -46,36 +60,44 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient();
 
   // Parallel data fetch
-  const [transactionsRes, expensesRes, campaignsRes, leadsRes, customersRes] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("amount, date, program, status")
-      .gte("date", startDate)
-      .lte("date", endDate)
-      .eq("status", "completed"),
-    supabase
-      .from("expenses")
-      .select("amount, category, date")
-      .gte("date", startDateOnly)
-      .lte("date", endDateOnly),
-    supabase
-      .from("campaigns")
-      .select("daily_spend, impressions, clicks, leads_count, date")
-      .gte("date", startDateOnly)
-      .lte("date", endDateOnly),
-    supabase
-      .from("leads")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", startDate)
-      .lte("created_at", endDate),
-    supabase.from("customers").select("total_paid, status"),
-  ]);
+  const [transactionsRes, expensesRes, campaignsRes, leadsRes, customersRes, leadsDetailRes] =
+    await Promise.all([
+      supabase
+        .from("transactions")
+        .select("amount, date, program, status")
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .eq("status", "completed"),
+      supabase
+        .from("expenses")
+        .select("amount, category, date")
+        .gte("date", startDateOnly)
+        .lte("date", endDateOnly),
+      supabase
+        .from("campaigns")
+        .select("daily_spend, impressions, clicks, leads_count, date")
+        .gte("date", startDateOnly)
+        .lte("date", endDateOnly),
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", startDate)
+        .lte("created_at", endDate),
+      supabase.from("customers").select("total_paid, status"),
+      // Per-lead source + status for funnel/source breakdown
+      supabase
+        .from("leads")
+        .select("source, current_status")
+        .gte("created_at", startDate)
+        .lte("created_at", endDate),
+    ]);
 
   const transactions = transactionsRes.data || [];
   const expenses = expensesRes.data || [];
   const campaigns = campaignsRes.data || [];
   const leadsCount = leadsRes.count || 0;
   const customers = customersRes.data || [];
+  const leadsDetail = leadsDetailRes.data || [];
 
   // Revenue (incl. VAT)
   const grossRevenue = transactions.reduce((s, t) => s + Number(t.amount), 0);
@@ -98,8 +120,7 @@ export async function GET(req: NextRequest) {
 
   // New customers this period
   const newCustomers = transactions.filter(
-    (t, i, arr) =>
-      arr.findIndex((x) => x.program === t.program) === i
+    (t, i, arr) => arr.findIndex((x) => x.program === t.program) === i
   ).length; // rough proxy: unique program purchases
   const purchasesCount = transactions.length;
 
@@ -134,9 +155,46 @@ export async function GET(req: NextRequest) {
   const netProfit = round(profitBeforeTax - incomeTax);
 
   // VAT breakdown
-  const vatCollected = round(grossRevenue * VAT_RATE / (1 + VAT_RATE));
-  const vatInput = round(totalExpenses * VAT_RATE / (1 + VAT_RATE));
+  const vatCollected = round((grossRevenue * VAT_RATE) / (1 + VAT_RATE));
+  const vatInput = round((totalExpenses * VAT_RATE) / (1 + VAT_RATE));
   const vatNet = round(vatCollected - vatInput);
+
+  // --- Leads by source (DB-canonical enum values) ---
+  const leadsBySource: Record<string, number> = {};
+  for (const lead of leadsDetail) {
+    const src = (lead.source as string) || "other";
+    leadsBySource[src] = (leadsBySource[src] || 0) + 1;
+  }
+
+  // --- CAC by source (CPL approximation: paid spend / leads per source) ---
+  // Only 'campaign' (Meta paid) has attributable ad spend; others show 0 cac
+  const PAID_SOURCES = ["campaign"];
+  const cacBySource = Object.entries(leadsBySource).map(([source, count]) => ({
+    source,
+    leads: count,
+    cac:
+      PAID_SOURCES.includes(source) && count > 0 ? round(totalAdSpend / count) : 0,
+  }));
+
+  // --- Conversion funnel: real counts from lead.current_status ---
+  const funnelCounts = FUNNEL_STAGES.reduce(
+    (acc, stage) => {
+      acc[stage] = leadsDetail.filter((l) => l.current_status === stage).length;
+      return acc;
+    },
+    {} as Record<FunnelStage, number>
+  );
+
+  // Stage-to-stage conversion rates (next / current * 100)
+  const stageConversionRates = FUNNEL_STAGES.slice(0, -1).map((stage, i) => {
+    const current = funnelCounts[stage];
+    const next = funnelCounts[FUNNEL_STAGES[i + 1]];
+    return {
+      from: stage,
+      to: FUNNEL_STAGES[i + 1],
+      rate: current > 0 ? round((next / current) * 100) : 0,
+    };
+  });
 
   return NextResponse.json({
     period: rawPeriod,
@@ -162,15 +220,15 @@ export async function GET(req: NextRequest) {
     vat_collected: vatCollected,
     vat_input: vatInput,
     vat_net: vatNet,
-    // Funnel
-    conversion_funnel: {
-      leads: leadsCount + campaignLeads,
-      webinar_registered: 0,
-      webinar_attended: 0,
-      sales: purchasesCount,
-    },
+    // Funnel — real stage counts (not hardcoded)
+    conversion_funnel: funnelCounts,
+    stage_conversion_rates: stageConversionRates,
+    // Source analytics
+    leads_by_source: leadsBySource,
+    cac_by_source: cacBySource,
     // Meta
-    note_roas: totalAdSpend === 0 ? "אין נתוני קמפיינים — הזן הוצאות פרסום לחישוב ROAS" : null,
+    note_roas:
+      totalAdSpend === 0 ? "אין נתוני קמפיינים — הזן הוצאות פרסום לחישוב ROAS" : null,
     note_ltv: customers.length === 0 ? "אין לקוחות בDB — הזן לקוחות לחישוב LTV" : null,
   });
 }

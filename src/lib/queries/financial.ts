@@ -31,19 +31,19 @@ export const getFinancialData = unstable_cache(
 
     const expensesByCategory: Record<string, number> = { meta_ads: metaSpend };
     let benPaid = 0;
-    let avitarPaid = 0;
+    let evyatarPaid = 0;
     expenses.forEach(e => {
       expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + Number(e.amount);
       const amount = Number(e.amount);
       if (e.paid_by === "ben") benPaid += amount;
-      else if (e.paid_by === "avitar") avitarPaid += amount;
-      else { benPaid += amount * 0.5; avitarPaid += amount * 0.5; }
+      else if (e.paid_by === "evyatar") evyatarPaid += amount;
+      else { benPaid += amount * 0.5; evyatarPaid += amount * 0.5; }
     });
 
     return {
       revenue: { total: totalRevenue, oneCore: oneCoreRevenue, oneVip: oneVipRevenue },
       costs: { total: totalCost, byCategory: expensesByCategory },
-      partners: { benPaid: Math.round(benPaid * 100) / 100, avitarPaid: Math.round(avitarPaid * 100) / 100 },
+      partners: { benPaid: Math.round(benPaid * 100) / 100, evyatarPaid: Math.round(evyatarPaid * 100) / 100 },
       profit: totalRevenue - totalCost,
       roi: totalCost > 0 ? Math.round(((totalRevenue - totalCost) / totalCost) * 100) : 0,
       marketing: {
@@ -64,6 +64,91 @@ export const getFinancialData = unstable_cache(
   },
   ["financial-data"],
   { revalidate: 300, tags: ["transactions", "expenses"] }
+);
+
+// DB-canonical funnel stages in order
+export const FUNNEL_STAGES = [
+  "new",
+  "consumed_content",
+  "engaged",
+  "applied",
+  "qualified",
+  "onboarding",
+  "active_client",
+] as const;
+
+export type FunnelStage = (typeof FUNNEL_STAGES)[number];
+
+/** Source label map — DB enum values → display labels */
+export const SOURCE_LABELS: Record<string, string> = {
+  campaign: "Meta Ads",
+  organic: "Organic",
+  youtube: "YouTube",
+  referral: "Referral",
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  content: "Content",
+  webinar: "Webinar",
+  skool: "Skool",
+  other: "Other",
+};
+
+/** Funnel stage label map */
+export const STAGE_LABELS: Record<string, string> = {
+  new: "New",
+  consumed_content: "Content",
+  engaged: "Engaged",
+  applied: "Applied",
+  qualified: "Qualified",
+  onboarding: "Onboarding",
+  active_client: "Client",
+};
+
+export const getLeadAnalytics = unstable_cache(
+  async (startDate: string, endDate: string) => {
+    const supabase = createAdminClient();
+
+    const { data: leads } = await supabase
+      .from("leads")
+      .select("source, current_status")
+      .gte("created_at", startDate)
+      .lte("created_at", endDate);
+
+    const rows = leads || [];
+
+    // Leads by source
+    const leadsBySource: Record<string, number> = {};
+    for (const l of rows) {
+      const src = (l.source as string) || "other";
+      leadsBySource[src] = (leadsBySource[src] || 0) + 1;
+    }
+
+    // Funnel counts by stage
+    const funnelCounts = FUNNEL_STAGES.reduce(
+      (acc, stage) => {
+        acc[stage] = rows.filter((l) => l.current_status === stage).length;
+        return acc;
+      },
+      {} as Record<FunnelStage, number>
+    );
+
+    // Stage-to-stage conversion rates
+    const stageConversionRates = FUNNEL_STAGES.slice(0, -1).map((stage, i) => {
+      const current = funnelCounts[stage];
+      const next = funnelCounts[FUNNEL_STAGES[i + 1]];
+      return {
+        from: stage,
+        to: FUNNEL_STAGES[i + 1],
+        fromLabel: STAGE_LABELS[stage] || stage,
+        toLabel: STAGE_LABELS[FUNNEL_STAGES[i + 1]] || FUNNEL_STAGES[i + 1],
+        rate: current > 0 ? Math.round((next / current) * 100) : 0,
+      };
+    });
+
+    return { leadsBySource, funnelCounts, stageConversionRates, total: rows.length };
+  },
+  ["lead-analytics"],
+  { revalidate: 300, tags: ["leads"] }
 );
 
 export const getRevenueTrends = unstable_cache(

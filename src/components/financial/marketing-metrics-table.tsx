@@ -16,8 +16,8 @@ function formatCurrency(value: number): string {
 
 export function MarketingMetricsTable({ oneCore, oneVip }: MarketingMetricsTableProps) {
   const rows = [
-    { label: "ONE™ Core", ...oneCore },
-    { label: "ONE™ VIP", ...oneVip },
+    { label: "EDEN™ Core", ...oneCore },
+    { label: "EDEN™ VIP", ...oneVip },
   ];
 
   // Weighted average for total row (simple average since both share the same lead pool)

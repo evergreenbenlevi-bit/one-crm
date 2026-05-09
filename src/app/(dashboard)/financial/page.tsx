@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { Banknote } from "lucide-react";
-import { getFinancialData, getRevenueTrends } from "@/lib/queries/financial";
+import { getFinancialData, getRevenueTrends, getLeadAnalytics } from "@/lib/queries/financial";
 import { calculateSettlement } from "@/lib/queries/settlement";
 import { KpiRow } from "@/components/financial/kpi-row";
 import { RevenueBreakdown } from "@/components/financial/revenue-breakdown";
@@ -13,6 +13,7 @@ import { ExpenseForm } from "@/components/financial/expense-form";
 import { FinancialTabs } from "@/components/financial/financial-tabs";
 import { ApiCostsWidget } from "@/components/financial/api-costs-widget";
 import { TaxBreakdown } from "@/components/financial/tax-breakdown";
+import { LeadsAnalyticsSection } from "@/components/financial/leads-analytics-section";
 
 function getDateRange(period: string): { startDate: string; endDate: string } {
   const now = new Date();
@@ -43,10 +44,11 @@ export default async function FinancialPage({ searchParams }: PageProps) {
   const periodStartDate = startDate.split("T")[0];
   const periodEndDate = endDate.split("T")[0];
 
-  const [financialData, trends, settlement] = await Promise.all([
+  const [financialData, trends, settlement, leadAnalytics] = await Promise.all([
     getFinancialData(startDate, endDate),
     getRevenueTrends(period === "year" ? 12 : period === "quarter" ? 3 : 6),
     calculateSettlement(periodStartDate, periodEndDate),
+    getLeadAnalytics(startDate, endDate),
   ]);
 
   const overviewContent = (
@@ -62,7 +64,7 @@ export default async function FinancialPage({ searchParams }: PageProps) {
       {/* Partner Settlement */}
       <PartnerSettlement
         benPaid={settlement.benPaid}
-        avitarPaid={settlement.avitarPaid}
+        evyatarPaid={settlement.evyatarPaid}
         settlementAmount={settlement.settlementAmount}
         periodStart={periodStartDate}
         periodEnd={periodEndDate}
@@ -90,6 +92,14 @@ export default async function FinancialPage({ searchParams }: PageProps) {
       <MarketingMetricsTable
         oneCore={financialData.marketing.oneCore}
         oneVip={financialData.marketing.oneVip}
+      />
+
+      {/* Leads Analytics — source breakdown + funnel conversion */}
+      <LeadsAnalyticsSection
+        leadsBySource={leadAnalytics.leadsBySource}
+        funnelCounts={leadAnalytics.funnelCounts}
+        stageConversionRates={leadAnalytics.stageConversionRates}
+        total={leadAnalytics.total}
       />
 
       {/* Trends Chart */}

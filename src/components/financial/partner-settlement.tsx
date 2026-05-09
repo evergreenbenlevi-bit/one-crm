@@ -7,7 +7,7 @@ const VAT_RATE = 1.18;
 
 interface PartnerSettlementProps {
   benPaid: number;
-  avitarPaid: number;
+  evyatarPaid: number;
   settlementAmount: number;
   periodStart: string;
   periodEnd: string;
@@ -23,7 +23,7 @@ function fmtExVat(n: number) {
 
 export function PartnerSettlement({
   benPaid,
-  avitarPaid,
+  evyatarPaid,
   settlementAmount,
   periodStart,
   periodEnd,
@@ -49,7 +49,7 @@ export function PartnerSettlement({
     }
   }
 
-  if (benPaid === 0 && avitarPaid === 0) return null;
+  if (benPaid === 0 && evyatarPaid === 0) return null;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700">
@@ -99,11 +99,11 @@ export function PartnerSettlement({
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-gray-400 dark:text-gray-500">כולל מע"מ</span>
-              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{fmt(avitarPaid)}</span>
+              <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{fmt(evyatarPaid)}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-gray-400 dark:text-gray-500">נטו (ללא מע"מ)</span>
-              <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{fmtExVat(avitarPaid)}</span>
+              <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{fmtExVat(evyatarPaid)}</span>
             </div>
           </div>
         </div>

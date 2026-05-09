@@ -8,7 +8,7 @@ export const getFitnessData = unstable_cache(
     since.setDate(since.getDate() - days);
     const sinceStr = since.toISOString().split("T")[0];
 
-    const [benHealthRes, avitarHealthRes, benWorkoutsRes, avitarWorkoutsRes] = await Promise.all([
+    const [benHealthRes, evyatarHealthRes, benWorkoutsRes, evyatarWorkoutsRes] = await Promise.all([
       supabase
         .from("health_daily_logs")
         .select("date, weight_kg, steps, water_liters, sleep_hours")
@@ -18,7 +18,7 @@ export const getFitnessData = unstable_cache(
       supabase
         .from("health_daily_logs")
         .select("date, weight_kg, steps, water_liters, sleep_hours")
-        .eq("user_id", "avitar")
+        .eq("user_id", "evyatar")
         .gte("date", sinceStr)
         .order("date", { ascending: true }),
       supabase
@@ -34,9 +34,9 @@ export const getFitnessData = unstable_cache(
     ]);
 
     const benHealth = benHealthRes.data || [];
-    const avitarHealth = avitarHealthRes.data || [];
+    const evyatarHealth = evyatarHealthRes.data || [];
     const benWorkouts = benWorkoutsRes.data || [];
-    const avitarWorkouts = avitarWorkoutsRes.data || [];
+    const evyatarWorkouts = evyatarWorkoutsRes.data || [];
 
     // Weekly workout counts
     const countByWeek = (logs: { date: string }[]) => {
@@ -55,7 +55,7 @@ export const getFitnessData = unstable_cache(
 
     // Latest stats
     const latestBen = benHealth[benHealth.length - 1];
-    const latestAvitar = avitarHealth[avitarHealth.length - 1];
+    const latestAvitar = evyatarHealth[evyatarHealth.length - 1];
 
     return {
       ben: {
@@ -68,14 +68,14 @@ export const getFitnessData = unstable_cache(
           ? Math.round(benHealth.reduce((s, d) => s + (d.steps || 0), 0) / benHealth.length)
           : 0,
       },
-      avitar: {
-        health: avitarHealth,
-        workouts: avitarWorkouts,
-        weeklyWorkouts: countByWeek(avitarWorkouts),
+      evyatar: {
+        health: evyatarHealth,
+        workouts: evyatarWorkouts,
+        weeklyWorkouts: countByWeek(evyatarWorkouts),
         latest: latestAvitar || null,
-        totalWorkouts: avitarWorkouts.length,
-        avgSteps: avitarHealth.length
-          ? Math.round(avitarHealth.reduce((s, d) => s + (d.steps || 0), 0) / avitarHealth.length)
+        totalWorkouts: evyatarWorkouts.length,
+        avgSteps: evyatarHealth.length
+          ? Math.round(evyatarHealth.reduce((s, d) => s + (d.steps || 0), 0) / evyatarHealth.length)
           : 0,
       },
     };

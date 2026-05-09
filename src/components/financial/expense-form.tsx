@@ -31,7 +31,7 @@ const ALL_CATEGORIES = [
 
 const PARTNERS = [
   { value: "ben", label: "בן" },
-  { value: "avitar", label: "אביתר" },
+  { value: "evyatar", label: "אביתר" },
   { value: "shared", label: "משותף" },
 ];
 

@@ -4,9 +4,9 @@ import type { Partner } from "@/lib/types/database";
 
 export interface SettlementData {
   benPaid: number;
-  avitarPaid: number;
+  evyatarPaid: number;
   benShare: number;
-  avitarShare: number;
+  evyatarShare: number;
   /** Positive = Avitar owes Ben. Negative = Ben owes Avitar. */
   settlementAmount: number;
   expenseCount: number;
@@ -23,13 +23,13 @@ export const calculateSettlement = unstable_cache(
       .lte("date", endDate);
 
     if (!expenses || expenses.length === 0) {
-      return { benPaid: 0, avitarPaid: 0, benShare: 0, avitarShare: 0, settlementAmount: 0, expenseCount: 0 };
+      return { benPaid: 0, evyatarPaid: 0, benShare: 0, evyatarShare: 0, settlementAmount: 0, expenseCount: 0 };
     }
 
     let benPaid = 0;
-    let avitarPaid = 0;
+    let evyatarPaid = 0;
     let benShare = 0;
-    let avitarShare = 0;
+    let evyatarShare = 0;
 
     for (const e of expenses) {
       const amount = Number(e.amount);
@@ -38,16 +38,16 @@ export const calculateSettlement = unstable_cache(
 
       // Track who actually paid
       if (paidBy === "ben") benPaid += amount;
-      else if (paidBy === "avitar") avitarPaid += amount;
+      else if (paidBy === "evyatar") evyatarPaid += amount;
       else {
         // shared = split evenly for tracking (both contributed)
         benPaid += amount * ratio;
-        avitarPaid += amount * (1 - ratio);
+        evyatarPaid += amount * (1 - ratio);
       }
 
       // Calculate what each should pay based on split
       benShare += amount * ratio;
-      avitarShare += amount * (1 - ratio);
+      evyatarShare += amount * (1 - ratio);
     }
 
     // Positive = Avitar owes Ben (Ben overpaid), Negative = Ben owes Avitar
@@ -55,9 +55,9 @@ export const calculateSettlement = unstable_cache(
 
     return {
       benPaid: Math.round(benPaid * 100) / 100,
-      avitarPaid: Math.round(avitarPaid * 100) / 100,
+      evyatarPaid: Math.round(evyatarPaid * 100) / 100,
       benShare: Math.round(benShare * 100) / 100,
-      avitarShare: Math.round(avitarShare * 100) / 100,
+      evyatarShare: Math.round(evyatarShare * 100) / 100,
       settlementAmount: Math.round(settlementAmount * 100) / 100,
       expenseCount: expenses.length,
     };
@@ -89,9 +89,9 @@ export async function createSettlement(
       period_start: periodStart,
       period_end: periodEnd,
       ben_total: settlement.benPaid,
-      avitar_total: settlement.avitarPaid,
+      avitar_total: settlement.evyatarPaid,
       ben_share: settlement.benShare,
-      avitar_share: settlement.avitarShare,
+      avitar_share: settlement.evyatarShare,
       settlement_amount: settlement.settlementAmount,
       status: "pending",
       notes,
