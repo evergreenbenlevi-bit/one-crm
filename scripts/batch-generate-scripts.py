@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Batch generate ONE™ course scripts using Claude Sonnet."""
+"""Batch generate EDEN™ course scripts using Claude Sonnet."""
 import json
 import os
 import sys
@@ -29,7 +29,7 @@ HEADERS_SB = {
     "Prefer": "return=minimal",
 }
 
-SYSTEM_PROMPT = """You are the ONE™ Course Copywriter. You write course scripts for Ben Levi and Avitar's coaching program.
+SYSTEM_PROMPT = """You are the EDEN™ Course Copywriter. You write course scripts for Ben Levi and Avitar's coaching program.
 
 RULES:
 - Write in native Hebrew (think in Hebrew, don't translate from English)
@@ -50,12 +50,12 @@ STRUCTURE:
 3. Practical application — what to do with this
 4. CTA — specific next action
 
-CONTEXT ABOUT ONE™:
-- ONE™ is a coaching program for experts building a marketing + sales system
+CONTEXT ABOUT EDEN™:
+- EDEN™ is a coaching program for experts building a marketing + sales system
 - 10 Levels: L0 (Onboarding), L1 (Mindset), L2 (Strategy), L3 (Offer), L4 (Email+Magnets), L5 (Content), L6 (Sales), L7 (Long Form), L8 (Scale), SPRINT (Cash Sprints)
 - Ben teaches marketing/sales/AI. Avitar teaches coaching/delivery
 - Philosophy: "80% ready = ship it", "your business your rules", "life before business"
-- Uses ONE Flywheel™, ONE Matrix™, Maturity Stairs™ as proprietary frameworks
+- Uses EDEN Flywheel™, EDEN Matrix™, Maturity Stairs™ as proprietary frameworks
 - Target: Hebrew-speaking coaches, consultants, therapists, experts who want online business without burnout"""
 
 
@@ -84,10 +84,10 @@ def generate_script(mod):
         prompt += f'\nClient benefit: {mod["client_benefit"]}'
 
     if has_tom:
-        prompt += f'\n\n--- TOM\'S ORIGINAL TRANSCRIPT (use as source, rewrite in ONE™ voice) ---\n{mod["tom_transcript"]}'
+        prompt += f'\n\n--- TOM\'S ORIGINAL TRANSCRIPT (use as source, rewrite in EDEN™ voice) ---\n{mod["tom_transcript"]}'
         prompt += '\n\n--- INSTRUCTIONS ---\nKeep core teaching. Remove Tom\'s stories. Write in Ben\'s voice. Hebrew. Direct. Output ONLY the script.'
     else:
-        prompt += '\n\n--- INSTRUCTIONS ---\nThis is an original ONE™ module (no Tom source). Write a complete script based on the topic. Hebrew. Direct. Ben\'s voice. Output ONLY the script.'
+        prompt += '\n\n--- INSTRUCTIONS ---\nThis is an original EDEN™ module (no Tom source). Write a complete script based on the topic. Hebrew. Direct. Ben\'s voice. Output ONLY the script.'
 
     resp = requests.post(
         "https://api.anthropic.com/v1/messages",
@@ -97,7 +97,7 @@ def generate_script(mod):
             "content-type": "application/json",
         },
         json={
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-sonnet-4-6",
             "max_tokens": 4096,
             "system": SYSTEM_PROMPT,
             "messages": [{"role": "user", "content": prompt}],
@@ -124,7 +124,7 @@ def main():
     modules = get_modules_needing_scripts()
     total = len(modules)
     print(f"\n{'='*60}")
-    print(f"ONE™ Script Generator — {total} modules to process")
+    print(f"EDEN™ Script Generator — {total} modules to process")
     print(f"{'='*60}\n")
 
     success = 0

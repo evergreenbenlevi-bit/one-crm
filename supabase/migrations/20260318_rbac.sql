@@ -1,4 +1,4 @@
--- RBAC: Role-Based Access Control for ONE™ CRM
+-- RBAC: Role-Based Access Control for EDEN™ CRM
 -- Added: 2026-03-18
 
 -- ENUM (idempotent)

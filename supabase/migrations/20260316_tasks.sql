@@ -1,4 +1,4 @@
--- Task Manager Module for ONE™ CRM
+-- Task Manager Module for EDEN™ CRM
 -- Added: 2026-03-18
 
 -- ENUMS (idempotent)

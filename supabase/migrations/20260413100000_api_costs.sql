@@ -19,7 +19,13 @@ CREATE INDEX IF NOT EXISTS idx_api_costs_period ON api_costs(period DESC);
 CREATE INDEX IF NOT EXISTS idx_api_costs_service ON api_costs(service);
 
 ALTER TABLE api_costs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow all" ON api_costs FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'api_costs' AND policyname = 'allow all'
+  ) THEN
+    CREATE POLICY "allow all" ON api_costs FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Seed current known costs (April 2026 estimates)
 INSERT INTO api_costs (service, period, units, cost_usd, notes, source) VALUES

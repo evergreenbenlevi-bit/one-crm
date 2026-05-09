@@ -109,7 +109,7 @@ def main():
     total = len(todo)
 
     print(f"\n{'='*60}")
-    print(f"ONE™ Banner Generator — {total} banners to create")
+    print(f"EDEN™ Banner Generator — {total} banners to create")
     print(f"Output: {OUTPUT_DIR}")
     print(f"{'='*60}\n")
 

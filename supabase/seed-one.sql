@@ -1,6 +1,6 @@
 -- =============================================================
--- SEED DATA — ONE™ CRM
--- Q1 2026 realistic Hebrew data — adapted for ONE™ brand
+-- SEED DATA — EDEN™ CRM
+-- Q1 2026 realistic Hebrew data — adapted for EDEN™ brand
 -- =============================================================
 
 -- Clear existing data (in reverse dependency order)
@@ -45,26 +45,26 @@ begin
 
 -- ---- LEADS (20) ----
 insert into leads (id, name, email, phone, occupation, source, ad_name, interest_program, current_status, created_at) values
-  (l01, 'שירה כהן',    'shira.cohen@gmail.com',    '052-3456789', 'מאמנת כושר',       'campaign', 'Offer Doc VSL - ONE™ Core',     'one_core', 'active_client',    '2026-01-05 10:00:00+02'),
-  (l02, 'יוסי לוי',     'yossi.levi@gmail.com',     '054-7891234', 'יועץ עסקי',        'campaign', 'Content Funnel - ONE™ VIP',     'one_vip',  'active_client',    '2026-01-07 14:30:00+02'),
-  (l03, 'מיכל אברהם',   'michal.a@walla.co.il',     '050-1112233', 'מעצבת גרפית',      'campaign', 'Offer Doc VSL - ONE™ Core',     'one_core', 'active_client',    '2026-01-10 09:15:00+02'),
+  (l01, 'שירה כהן',    'shira.cohen@gmail.com',    '052-3456789', 'מאמנת כושר',       'campaign', 'Offer Doc VSL - EDEN™ Core',     'one_core', 'active_client',    '2026-01-05 10:00:00+02'),
+  (l02, 'יוסי לוי',     'yossi.levi@gmail.com',     '054-7891234', 'יועץ עסקי',        'campaign', 'Content Funnel - EDEN™ VIP',     'one_vip',  'active_client',    '2026-01-07 14:30:00+02'),
+  (l03, 'מיכל אברהם',   'michal.a@walla.co.il',     '050-1112233', 'מעצבת גרפית',      'campaign', 'Offer Doc VSL - EDEN™ Core',     'one_core', 'active_client',    '2026-01-10 09:15:00+02'),
   (l04, 'דני פרץ',      'dani.peretz@gmail.com',    '053-4445566', 'צלם',              'organic',  null,                             'one_vip',  'active_client',    '2026-01-12 16:00:00+02'),
-  (l05, 'רונית גולד',   'ronit.gold@hotmail.com',   '058-7778899', 'קוסמטיקאית',       'campaign', 'Content Funnel - ONE™ VIP',     'one_vip',  'active_client',    '2026-01-15 11:20:00+02'),
+  (l05, 'רונית גולד',   'ronit.gold@hotmail.com',   '058-7778899', 'קוסמטיקאית',       'campaign', 'Content Funnel - EDEN™ VIP',     'one_vip',  'active_client',    '2026-01-15 11:20:00+02'),
   (l06, 'אמיר שמש',     'amir.shemesh@gmail.com',   '052-9990011', 'מורה לפילאטיס',    'youtube',  null,                             'one_core', 'active_client',    '2026-01-18 08:45:00+02'),
-  (l07, 'נועה ברק',     'noa.barak@gmail.com',      '054-2223344', 'מטפלת שיאצו',      'campaign', 'Offer Doc VSL - ONE™ Core',     'one_core', 'applied',          '2026-01-22 13:00:00+02'),
-  (l08, 'עידן מזרחי',   'idan.m@gmail.com',         '050-5556677', 'מאלף כלבים',       'campaign', 'Content Funnel - ONE™ VIP',     'one_vip',  'active_client',    '2026-01-25 10:30:00+02'),
+  (l07, 'נועה ברק',     'noa.barak@gmail.com',      '054-2223344', 'מטפלת שיאצו',      'campaign', 'Offer Doc VSL - EDEN™ Core',     'one_core', 'applied',          '2026-01-22 13:00:00+02'),
+  (l08, 'עידן מזרחי',   'idan.m@gmail.com',         '050-5556677', 'מאלף כלבים',       'campaign', 'Content Funnel - EDEN™ VIP',     'one_vip',  'active_client',    '2026-01-25 10:30:00+02'),
   (l09, 'הדר רוזן',     'hadar.rosen@gmail.com',    '053-8889900', 'נטורופתית',         'referral', null,                             'one_core', 'qualified',        '2026-02-01 09:00:00+02'),
-  (l10, 'אורלי דיין',   'orli.dayan@gmail.com',     '058-1112244', 'מורה ליוגה',        'campaign', 'Offer Doc VSL - ONE™ Core',     'one_core', 'consumed_content', '2026-02-03 15:45:00+02'),
-  (l11, 'תומר אלון',    'tomer.alon@gmail.com',     '052-6667788', 'מעצב פנים',        'campaign', 'Content Funnel - ONE™ VIP',     'one_vip',  'active_client',    '2026-02-05 12:00:00+02'),
-  (l12, 'ליאת שלום',    'liat.shalom@gmail.com',    '054-3334455', 'מנהלת סושיאל',     'campaign', 'Content Funnel - ONE™ VIP',     'one_vip',  'engaged',          '2026-02-08 11:15:00+02'),
+  (l10, 'אורלי דיין',   'orli.dayan@gmail.com',     '058-1112244', 'מורה ליוגה',        'campaign', 'Offer Doc VSL - EDEN™ Core',     'one_core', 'consumed_content', '2026-02-03 15:45:00+02'),
+  (l11, 'תומר אלון',    'tomer.alon@gmail.com',     '052-6667788', 'מעצב פנים',        'campaign', 'Content Funnel - EDEN™ VIP',     'one_vip',  'active_client',    '2026-02-05 12:00:00+02'),
+  (l12, 'ליאת שלום',    'liat.shalom@gmail.com',    '054-3334455', 'מנהלת סושיאל',     'campaign', 'Content Funnel - EDEN™ VIP',     'one_vip',  'engaged',          '2026-02-08 11:15:00+02'),
   (l13, 'גיל אשכנזי',  'gil.ashkenazi@gmail.com',  '050-7778811', 'יועץ משכנתאות',     'organic',  null,                             'one_vip',  'new',              '2026-02-10 17:30:00+02'),
-  (l14, 'סיון טל',      'sivan.tal@gmail.com',      '053-2224466', 'דיאטנית קלינית',   'campaign', 'Offer Doc VSL - ONE™ Core',     'one_core', 'applied',          '2026-02-14 14:00:00+02'),
+  (l14, 'סיון טל',      'sivan.tal@gmail.com',      '053-2224466', 'דיאטנית קלינית',   'campaign', 'Offer Doc VSL - EDEN™ Core',     'one_core', 'applied',          '2026-02-14 14:00:00+02'),
   (l15, 'רועי כרמל',    'roei.carmel@gmail.com',    '058-9991122', 'מאמן אישי',        'youtube',  null,                             'one_vip',  'consumed_content', '2026-02-18 10:00:00+02'),
-  (l16, 'יעל מנדל',     'yael.mandel@gmail.com',    '052-4445577', 'סטייליסטית',        'campaign', 'Content Funnel - ONE™ VIP',     'one_vip',  'lost',             '2026-02-20 16:30:00+02'),
-  (l17, 'אלי נחמיאס',  'eli.nachmias@gmail.com',   '054-6667799', 'שמאי מקרקעין',     'campaign', 'Offer Doc VSL - ONE™ Core',     'one_core', 'engaged',          '2026-02-25 09:45:00+02'),
+  (l16, 'יעל מנדל',     'yael.mandel@gmail.com',    '052-4445577', 'סטייליסטית',        'campaign', 'Content Funnel - EDEN™ VIP',     'one_vip',  'lost',             '2026-02-20 16:30:00+02'),
+  (l17, 'אלי נחמיאס',  'eli.nachmias@gmail.com',   '054-6667799', 'שמאי מקרקעין',     'campaign', 'Offer Doc VSL - EDEN™ Core',     'one_core', 'engaged',          '2026-02-25 09:45:00+02'),
   (l18, 'דפנה ויס',     'dafna.weiss@gmail.com',    '050-8881133', 'עורכת דין',         'referral', null,                             'one_vip',  'new',              '2026-03-01 13:00:00+02'),
-  (l19, 'מתן שפירא',   'matan.shapira@gmail.com',  '053-1113355', 'מורה לגיטרה',       'campaign', 'Content Funnel - ONE™ VIP',     'one_vip',  'qualified',        '2026-03-05 11:00:00+02'),
-  (l20, 'קרן אור',     'keren.or@gmail.com',       '058-3335577', 'רפלקסולוגית',       'campaign', 'Offer Doc VSL - ONE™ Core',     'one_core', 'new',              '2026-03-10 08:30:00+02');
+  (l19, 'מתן שפירא',   'matan.shapira@gmail.com',  '053-1113355', 'מורה לגיטרה',       'campaign', 'Content Funnel - EDEN™ VIP',     'one_vip',  'qualified',        '2026-03-05 11:00:00+02'),
+  (l20, 'קרן אור',     'keren.or@gmail.com',       '058-3335577', 'רפלקסולוגית',       'campaign', 'Offer Doc VSL - EDEN™ Core',     'one_core', 'new',              '2026-03-10 08:30:00+02');
 
 -- ---- CUSTOMERS (8) ----
 insert into customers (id, lead_id, name, email, phone, occupation, program, total_paid, payment_status, program_start_date, program_end_date, current_month, status, created_at) values
@@ -78,49 +78,49 @@ insert into customers (id, lead_id, name, email, phone, occupation, program, tot
   (c08, l11, 'תומר אלון',   'tomer.alon@gmail.com',    '052-6667788', 'מעצב פנים',      'one_vip',  3000.00, 'pending',   '2026-02-06', '2026-08-06', 1, 'active',    '2026-02-06 12:00:00+02');
 
 -- ---- TRANSACTIONS (17) ----
--- ONE™ Core — שירה כהן (3 monthly of 2000)
+-- EDEN™ Core — שירה כהן (3 monthly of 2000)
 insert into transactions (customer_id, lead_id, program, amount, date, payment_method, installments_total, installments_paid, status) values
   (c01, l01, 'one_core', 2000.00, '2026-01-10 10:05:00+02', 'cardcom', 6, 1, 'completed'),
   (c01, l01, 'one_core', 2000.00, '2026-02-10 10:00:00+02', 'cardcom', 6, 2, 'completed'),
   (c01, l01, 'one_core', 2000.00, '2026-03-10 10:00:00+02', 'cardcom', 6, 3, 'completed');
 
--- ONE™ VIP — יוסי לוי (3 monthly of 3000)
+-- EDEN™ VIP — יוסי לוי (3 monthly of 3000)
 insert into transactions (customer_id, lead_id, program, amount, date, payment_method, installments_total, installments_paid, status) values
   (c02, l02, 'one_vip', 3000.00, '2026-01-08 14:35:00+02', 'cardcom', 6, 1, 'completed'),
   (c02, l02, 'one_vip', 3000.00, '2026-02-08 14:00:00+02', 'cardcom', 6, 2, 'completed'),
   (c02, l02, 'one_vip', 3000.00, '2026-03-08 14:00:00+02', 'cardcom', 6, 3, 'completed');
 
--- ONE™ Core — מיכל אברהם (2 monthly)
+-- EDEN™ Core — מיכל אברהם (2 monthly)
 insert into transactions (customer_id, lead_id, program, amount, date, payment_method, installments_total, installments_paid, status) values
   (c03, l03, 'one_core', 2000.00, '2026-01-15 09:20:00+02', 'cardcom', 6, 1, 'completed'),
   (c03, l03, 'one_core', 2000.00, '2026-02-15 09:00:00+02', 'cardcom', 6, 2, 'completed');
 
--- ONE™ VIP — דני פרץ (3 monthly)
+-- EDEN™ VIP — דני פרץ (3 monthly)
 insert into transactions (customer_id, lead_id, program, amount, date, payment_method, installments_total, installments_paid, status) values
   (c04, l04, 'one_vip', 3000.00, '2026-01-13 16:05:00+02', 'cardcom', 6, 1, 'completed'),
   (c04, l04, 'one_vip', 3000.00, '2026-02-13 16:00:00+02', 'cardcom', 6, 2, 'completed'),
   (c04, l04, 'one_vip', 3000.00, '2026-03-13 16:00:00+02', 'cardcom', 6, 3, 'completed');
 
--- ONE™ VIP — רונית גולד (2 monthly)
+-- EDEN™ VIP — רונית גולד (2 monthly)
 insert into transactions (customer_id, lead_id, program, amount, date, payment_method, installments_total, installments_paid, status) values
   (c05, l05, 'one_vip', 3000.00, '2026-01-16 11:25:00+02', 'upay', 6, 1, 'completed'),
   (c05, l05, 'one_vip', 3000.00, '2026-02-16 11:00:00+02', 'upay', 6, 2, 'completed');
 
--- ONE™ Core — אמיר שמש (1 monthly)
+-- EDEN™ Core — אמיר שמש (1 monthly)
 insert into transactions (customer_id, lead_id, program, amount, date, payment_method, installments_total, installments_paid, status) values
   (c06, l06, 'one_core', 2000.00, '2026-02-01 09:00:00+02', 'cardcom', 6, 1, 'completed');
 
--- ONE™ VIP — עידן מזרחי (2 monthly, one pending)
+-- EDEN™ VIP — עידן מזרחי (2 monthly, one pending)
 insert into transactions (customer_id, lead_id, program, amount, date, payment_method, installments_total, installments_paid, status) values
   (c07, l08, 'one_vip', 3000.00, '2026-01-26 10:35:00+02', 'cardcom', 6, 1, 'completed');
 
--- ONE™ VIP — תומר אלון (1 paid, 1 pending)
+-- EDEN™ VIP — תומר אלון (1 paid, 1 pending)
 insert into transactions (customer_id, lead_id, program, amount, date, payment_method, installments_total, installments_paid, status) values
   (c08, l11, 'one_vip', 3000.00, '2026-02-06 12:05:00+02', 'upay', 6, 1, 'completed'),
   (c08, l11, 'one_vip', 3000.00, '2026-03-06 12:00:00+02', 'upay', 6, 2, 'pending');
 
 -- ---- FUNNEL EVENTS ----
--- שירה כהן — full funnel to purchase (ONE™ Core)
+-- שירה כהן — full funnel to purchase (EDEN™ Core)
 insert into funnel_events (lead_id, event_type, timestamp, metadata) values
   (l01, 'viewed_content',      '2026-01-05 10:00:00+02', '{"source":"meta_ad","content":"offer_doc_vsl"}'),
   (l01, 'engaged_dm',          '2026-01-06 08:15:00+02', '{"channel":"instagram"}'),
@@ -130,14 +130,14 @@ insert into funnel_events (lead_id, event_type, timestamp, metadata) values
   (l01, 'started_onboarding',  '2026-01-10 10:00:00+02', '{}'),
   (l01, 'purchased',           '2026-01-10 10:05:00+02', '{"program":"one_core","amount":2000}');
 
--- יוסי לוי — full funnel (ONE™ VIP)
+-- יוסי לוי — full funnel (EDEN™ VIP)
 insert into funnel_events (lead_id, event_type, timestamp, metadata) values
   (l02, 'viewed_content',      '2026-01-07 14:30:00+02', '{"source":"meta_ad"}'),
   (l02, 'visited_offer_doc',   '2026-01-07 14:55:00+02', '{"time_on_page":480}'),
   (l02, 'applied',             '2026-01-08 10:00:00+02', '{}'),
   (l02, 'purchased',           '2026-01-08 14:35:00+02', '{"program":"one_vip","amount":3000}');
 
--- מיכל אברהם — full funnel (ONE™ Core)
+-- מיכל אברהם — full funnel (EDEN™ Core)
 insert into funnel_events (lead_id, event_type, timestamp, metadata) values
   (l03, 'viewed_content',      '2026-01-10 09:15:00+02', '{"source":"meta_ad"}'),
   (l03, 'engaged_dm',          '2026-01-11 07:30:00+02', '{"channel":"whatsapp"}'),
@@ -146,7 +146,7 @@ insert into funnel_events (lead_id, event_type, timestamp, metadata) values
   (l03, 'qualified',           '2026-01-14 16:00:00+02', '{}'),
   (l03, 'purchased',           '2026-01-15 09:20:00+02', '{"program":"one_core","amount":2000}');
 
--- דני פרץ — organic, short funnel (ONE™ VIP)
+-- דני פרץ — organic, short funnel (EDEN™ VIP)
 insert into funnel_events (lead_id, event_type, timestamp, metadata) values
   (l04, 'viewed_content',      '2026-01-12 16:00:00+02', '{"source":"organic","content":"youtube"}'),
   (l04, 'visited_offer_doc',   '2026-01-12 16:20:00+02', '{"time_on_page":600}'),
@@ -178,10 +178,10 @@ insert into funnel_events (lead_id, event_type, timestamp, metadata) values
 
 -- ---- CAMPAIGNS (5) ----
 insert into campaigns (name, program, daily_spend, impressions, clicks, leads_count, purchases, date) values
-  ('Offer Doc VSL - ONE™ Core',        'one_core', 180.00, 12500, 420, 18, 3, '2026-01-15'),
-  ('Content Funnel - ONE™ VIP',        'one_vip',   95.00,  8200, 310, 25, 5, '2026-01-15'),
-  ('Content Funnel - ONE™ VIP v2',     'one_vip',   65.00,  4100, 185, 12, 3, '2026-02-01'),
-  ('Offer Doc VSL - ONE™ Core v2',     'one_core', 200.00, 14000, 480, 22, 2, '2026-02-15'),
+  ('Offer Doc VSL - EDEN™ Core',        'one_core', 180.00, 12500, 420, 18, 3, '2026-01-15'),
+  ('Content Funnel - EDEN™ VIP',        'one_vip',   95.00,  8200, 310, 25, 5, '2026-01-15'),
+  ('Content Funnel - EDEN™ VIP v2',     'one_vip',   65.00,  4100, 185, 12, 3, '2026-02-01'),
+  ('Offer Doc VSL - EDEN™ Core v2',     'one_core', 200.00, 14000, 480, 22, 2, '2026-02-15'),
   ('Retargeting - All Programs',        null,        45.00,  6800, 250,  8, 2, '2026-03-01');
 
 -- ---- MEETINGS (6) ----

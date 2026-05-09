@@ -1,4 +1,4 @@
--- Course Builder: levels + modules for ONE™ course production
+-- Course Builder: levels + modules for EDEN™ course production
 -- Used by /course-builder page for Ben & Avitar to plan, edit, track course content
 
 CREATE TABLE IF NOT EXISTS course_levels (

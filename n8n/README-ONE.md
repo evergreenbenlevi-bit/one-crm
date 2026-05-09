@@ -1,11 +1,11 @@
-# N8N Workflows — ONE™ CRM
+# N8N Workflows — EDEN™ CRM
 > Ready to import into N8N once installed.
 
 ## Workflows
 
 ### 1. sync-one-leads.json
 **Trigger:** Every 15 minutes
-**Source:** Google Sheets (ONE™ lead tracking sheet)
+**Source:** Google Sheets (EDEN™ lead tracking sheet)
 **Flow:**
 1. Read leads from Google Sheets
 2. Check for duplicates (email + phone)

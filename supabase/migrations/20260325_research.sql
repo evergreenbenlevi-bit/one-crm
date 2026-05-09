@@ -89,5 +89,5 @@ INSERT INTO research_items (title, research_date, category, status, file_path, a
   ('Agentic Workflows Deep Research', '2026-03-19', 'ai_agents', 'pending', '04_KNOWLEDGE/Research_Results/2026-03-19_agentic-workflows-deep-research.md', NULL),
   ('CRM Scale Architecture', '2026-03-19', 'systems_automation', 'pending', '04_KNOWLEDGE/Research_Results/2026-03-19_crm-scale-architecture.md', NULL),
   ('Relevance AI — Evaluation for Stack', '2026-03-25', 'tech_tools', 'pending', '04_KNOWLEDGE/Research_Results/2026-03-25_relevance-ai-evaluation.md', 'המלצה: לא לסטאק כרגע'),
-  ('AGI/ASI Future Playbook', '2026-03-25', 'ai_agents', 'pending', '04_KNOWLEDGE/Research_Results/2026-03-25_AGI-ASI-future-playbook.md', 'ONE™ implication: הוסף module AI Agent building')
+  ('AGI/ASI Future Playbook', '2026-03-25', 'ai_agents', 'pending', '04_KNOWLEDGE/Research_Results/2026-03-25_AGI-ASI-future-playbook.md', 'EDEN™ implication: הוסף module AI Agent building')
 ;

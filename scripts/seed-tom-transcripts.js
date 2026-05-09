@@ -1,5 +1,5 @@
 // Seed Tom's transcripts into course_modules
-// Maps each ONE™ module's source_refs (e.g. "T01+T04") to actual transcript files
+// Maps each EDEN™ module's source_refs (e.g. "T01+T04") to actual transcript files
 const { createClient } = require("@supabase/supabase-js");
 const fs = require("fs");
 const path = require("path");
@@ -11,7 +11,7 @@ const supabase = createClient(
 
 const VAULT_BASE = "/Users/benlevi/Library/Mobile Documents/iCloud~md~obsidian/Documents/NEW OBSIDIAN/04_KNOWLEDGE/Courses/Scale-20";
 
-// Map ONE™ level_id → Tom's folder name
+// Map EDEN™ level_id → Tom's folder name
 const LEVEL_TO_TOM_FOLDER = {
   L0: "L01-START HERE - 0️⃣",
   L1: "L02-LEVEL 1️⃣ - VISION 🔴",

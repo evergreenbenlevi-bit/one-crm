@@ -1,6 +1,6 @@
 /**
  * generate-scripts.js
- * Generates Hebrew teaching scripts for all 77 ONE™ course modules.
+ * Generates Hebrew teaching scripts for all 77 EDEN™ course modules.
  * - Modules WITH tom_transcript → extract key teaching points, write in Ben's voice
  * - Modules WITHOUT (source=original) → create outline with [placeholder] markers
  */
@@ -87,7 +87,7 @@ async function generateScript(module) {
     : buildOutlinePrompt(module);
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 1024,
     messages: [{ role: "user", content: prompt }],
   });

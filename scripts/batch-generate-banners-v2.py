@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate course module banners in ONE™ Design System style (System 4).
+"""Generate course module banners in EDEN™ Design System style (System 4).
 White background, hand-drawn sketch, 4-color semantic, English text."""
 import json
 import os
@@ -157,7 +157,7 @@ def main():
     total = len(modules)
 
     print(f"\n{'='*60}")
-    print(f"ONE™ Banner Generator v2 — System 4 Style")
+    print(f"EDEN™ Banner Generator v2 — System 4 Style")
     print(f"{total} banners to create (white bg, hand-drawn, English)")
     print(f"Output: {OUTPUT_DIR}")
     print(f"{'='*60}\n")

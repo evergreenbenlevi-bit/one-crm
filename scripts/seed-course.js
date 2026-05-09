@@ -1,4 +1,4 @@
-// Seed course_levels + course_modules from ONE™ Program Logic
+// Seed course_levels + course_modules from EDEN™ Program Logic
 const { createClient } = require("@supabase/supabase-js");
 
 const supabase = createClient(
@@ -10,18 +10,18 @@ const levels = [
   { id: "L0", number: 0, name: "START HERE", subtitle: "הגדרת המטרה", color: "gray", hex: "#F5F5F5", phase: "FOUNDATION", weeks: "1-2", posi: "שאלון מלא + KPIs מוגדרים + Roadmap אישי", position: 0 },
   { id: "L1", number: 1, name: "THE ARCHITECT", subtitle: "מי אתה?", color: "red", hex: "#C0392B", phase: "FOUNDATION", weeks: "2-4", posi: "Freedom Number + זהות חדשה כתובה + Peak Week plan", position: 1 },
   { id: "L2", number: 2, name: "THE BLUEPRINT", subtitle: "איך המכונה עובדת?", color: "orange", hex: "#E67E22", phase: "FOUNDATION", weeks: "4-6", posi: "Flywheel Roadmap + Client Journey + Next One Thing מוגדר", position: 2 },
-  { id: "L3", number: 3, name: "THE ONE™", subtitle: "מה אתה מוכר?", color: "gold", hex: "#F1C40F", phase: "BUILD THE OFFER", weeks: "4-8", posi: "ONE Matrix™ + Offer Doc + תמחור מוגדר + 5 Page Playbook", position: 3 },
+  { id: "L3", number: 3, name: "THE EDEN™", subtitle: "מה אתה מוכר?", color: "gold", hex: "#F1C40F", phase: "BUILD THE OFFER", weeks: "4-8", posi: "EDEN Matrix™ + Offer Doc + תמחור מוגדר + 5 Page Playbook", position: 3 },
   { id: "SPRINT", number: 99, name: "QUICK CASH SPRINT", subtitle: "ולידציה", color: "green", hex: "#27AE60", phase: "FIRST MONEY", weeks: "8-10", posi: "לקוח ראשון + case study ראשון", position: 4 },
   { id: "L4", number: 4, name: "THE COMMUNITY", subtitle: "המנוע שגדל לבד", color: "emerald", hex: "#2ECC71", phase: "SCALE THE SYSTEM", weeks: "10-14", posi: "Email list + automation + Main Magnet", position: 5 },
   { id: "L5", number: 5, name: "THE TRIP™", subtitle: "המסע שלקוח עובר", color: "blue", hex: "#3498DB", phase: "SCALE THE SYSTEM", weeks: "14-18", posi: "90 ימי תוכן מתוכנן + Flywheel פעיל", position: 6 },
   { id: "L6", number: 6, name: "THE CLOSER™", subtitle: "סוגרים בלי לדחוף", color: "navy", hex: "#2C3E50", phase: "CLOSE & CONVERT", weeks: "14-20", posi: "Pipeline מנוהל + % המרה עולה", position: 7 },
   { id: "L7", number: 7, name: "THE ANCHOR™", subtitle: "עומק שבונה authority", color: "purple", hex: "#9B59B6", phase: "AUTHORITY & SCALE", weeks: "20-24", posi: "Long-form series + authority content", position: 8 },
-  { id: "L8", number: 8, name: "THE OPERATOR™", subtitle: "מכונה שעובדת בלי שחיקה", color: "black", hex: "#1A1A1A", phase: "AUTHORITY & SCALE", weeks: "24-26", posi: "Systems + ONE AI™ → תוצאות לכמות", position: 9 },
+  { id: "L8", number: 8, name: "THE OPERATOR™", subtitle: "מכונה שעובדת בלי שחיקה", color: "black", hex: "#1A1A1A", phase: "AUTHORITY & SCALE", weeks: "24-26", posi: "Systems + EDEN AI™ → תוצאות לכמות", position: 9 },
 ];
 
 const modules = [
   // Level 0
-  { level_id: "L0", number: "0.1", name: "ברוכים הבאים", teacher: "both", source: "tom_modified", source_refs: "T01+T04", format: "📹 סרטון (בן+אביתר)", client_benefit: "מבין מה ONE™ ומה נדרש ממנו", position: 0 },
+  { level_id: "L0", number: "0.1", name: "ברוכים הבאים", teacher: "both", source: "tom_modified", source_refs: "T01+T04", format: "📹 סרטון (בן+אביתר)", client_benefit: "מבין מה EDEN™ ומה נדרש ממנו", position: 0 },
   { level_id: "L0", number: "0.2", name: "שאלון אונבורדינג", teacher: "ben", source: "tom_modified", source_refs: "T05", format: "📋 Google Form", client_benefit: "אנחנו מכירים אותו, הוא מכיר את עצמו", position: 1 },
   { level_id: "L0", number: "0.3", name: "הרמות — איך התהליך עובד", teacher: "ben", source: "tom_modified", source_refs: "T02+T03+T17", format: "📹 סרטון + 📊 Gamma", client_benefit: "יודע מה מחכה לו בכל שלב + POSI", position: 2 },
   { level_id: "L0", number: "0.4", name: "המדדים שלך — KPIs", teacher: "ben", source: "tom_modified", source_refs: "T16+T18", format: "📹 + 📈 KPI Tracker", client_benefit: "יודע מה למדוד ואיך לדעת שהוא מתקדם", position: 3 },
@@ -35,7 +35,7 @@ const modules = [
 
   // Level 2
   { level_id: "L2", number: "2.1", name: "Infinite Client Loop", teacher: "ben", source: "tom", source_refs: "T03+T06", format: "📹 + גרפיקה (loop diagram)", client_benefit: "רואה איך כל שלב מזין את הבא", position: 0 },
-  { level_id: "L2", number: "2.2", name: "ONE Flywheel™", teacher: "ben", source: "tom_modified", source_refs: "T07+T09", format: "📹 + 📊 Gamma: Flywheel Roadmap", client_benefit: "יודע מה לבנות: mini-series, VSL, case study, LF, SF", position: 1 },
+  { level_id: "L2", number: "2.2", name: "EDEN Flywheel™", teacher: "ben", source: "tom_modified", source_refs: "T07+T09", format: "📹 + 📊 Gamma: Flywheel Roadmap", client_benefit: "יודע מה לבנות: mini-series, VSL, case study, LF, SF", position: 1 },
   { level_id: "L2", number: "2.3", name: "Golden Client Journey", teacher: "ben", source: "tom", source_refs: "T09+T10", format: "📹 + 📊 Gamma: Journey Map", client_benefit: "רואה את כל הנתיב: randomer → case study", position: 2 },
   { level_id: "L2", number: "2.4", name: "The Next One Thing", teacher: "ben", source: "tom_modified", source_refs: "T04+T05+T08", format: "📹 + גרפיקה", client_benefit: "צעד אחד ברור לרבעון — לא 10 דברים", position: 3 },
   { level_id: "L2", number: "2.5", name: "The Leverage Trap", teacher: "ben", source: "tom", source_refs: "T11", format: "📹 + 📊 Gamma: Leverage Checklist", client_benefit: "מבין שלוקח 18 חודש לפני traction, וזה תקין", position: 4 },
@@ -45,7 +45,7 @@ const modules = [
   { level_id: "L3", number: "3.2", name: "The 5 P's", teacher: "ben", source: "tom", source_refs: "T04", format: "📹 + גרפיקה", client_benefit: "Person, Pain, Promise, Path, Platform — messaging חד", position: 1 },
   { level_id: "L3", number: "3.3", name: "Market Research", teacher: "avitar", source: "tom", source_refs: "T05+T06", format: "📹 + 📊 Gamma", client_benefit: "יודע מה מתחרים מציעים + מה חסר", position: 2 },
   { level_id: "L3", number: "3.4", name: "Perfect Future Client", teacher: "avitar", source: "tom", source_refs: "T07", format: "📹 + 📊 Gamma", client_benefit: "הבנה עמוקה של הלקוח האידיאלי", position: 3 },
-  { level_id: "L3", number: "3.5", name: "ONE Matrix™", teacher: "ben", source: "tom_modified", source_refs: "T08", format: "📹 + 📊 Gamma", client_benefit: "מבנה ההצעה: 12 drivers, שמות ייחודיים", position: 4 },
+  { level_id: "L3", number: "3.5", name: "EDEN Matrix™", teacher: "ben", source: "tom_modified", source_refs: "T08", format: "📹 + 📊 Gamma", client_benefit: "מבנה ההצעה: 12 drivers, שמות ייחודיים", position: 4 },
   { level_id: "L3", number: "3.6", name: "Pricing + Payments", teacher: "ben", source: "tom_modified", source_refs: "T11+T12", format: "📹 + 📊 Gamma + Sheet", client_benefit: "יודע כמה לגבות ואיך", position: 5 },
   { level_id: "L3", number: "3.7", name: "The Offer Doc", teacher: "ben", source: "tom", source_refs: "T13+T14+T15", format: "📹 + 📊 Gamma template", client_benefit: "מסמך שמוכר לפני שיחה (24/7)", position: 6 },
   { level_id: "L3", number: "3.8", name: "Proof Collection", teacher: "avitar", source: "tom", source_refs: "T09", format: "📹 + גרפיקה", client_benefit: "case studies, עדויות, screenshots", position: 7 },
