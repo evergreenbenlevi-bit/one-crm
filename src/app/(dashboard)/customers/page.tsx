@@ -20,8 +20,8 @@ const statusColors: Record<string, string> = {
 };
 
 const productLabels: Record<string, string> = {
-  one_core: "ONE™ Core",
-  one_vip: "ONE™ VIP",
+  one_core: "EDEN™ Core",
+  one_vip: "EDEN™ VIP",
 };
 
 interface Customer {

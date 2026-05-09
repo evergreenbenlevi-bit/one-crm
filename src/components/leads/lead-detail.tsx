@@ -24,6 +24,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { LeadEditModal } from "./lead-edit-modal";
+import { SendEmailModal } from "@/components/email/send-email-modal";
 import { CustomFieldsRenderer } from "@/components/shared/custom-fields-renderer";
 import type { Lead, FunnelEvent, Note, Customer, FunnelEventType, ProgramType } from "@/lib/types/database";
 
@@ -32,8 +33,8 @@ import type { Lead, FunnelEvent, Note, Customer, FunnelEventType, ProgramType } 
 // ──────────────────────────────────────────
 
 const productLabels: Record<ProgramType, string> = {
-  one_core: "ONE™ Core",
-  one_vip: "ONE™ VIP",
+  one_core: "EDEN™ Core",
+  one_vip: "EDEN™ VIP",
 };
 
 const statusLabels: Record<string, string> = {
@@ -147,6 +148,7 @@ export function LeadDetail({ lead }: LeadDetailProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [sendEmailOpen, setSendEmailOpen] = useState(false);
 
   const funnelSteps =
     lead.program === "one_vip" ? oneVipFunnel : oneCoreFunnel;
@@ -334,6 +336,14 @@ export function LeadDetail({ lead }: LeadDetailProps) {
                   >
                     <MessageCircle size={16} /> וואטסאפ
                   </a>
+                )}
+                {lead.email && (
+                  <button
+                    onClick={() => setSendEmailOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                  >
+                    <Mail size={16} /> שלח אימייל
+                  </button>
                 )}
               </div>
             </div>
@@ -588,6 +598,15 @@ export function LeadDetail({ lead }: LeadDetailProps) {
       </div>
 
       <LeadEditModal lead={lead} open={editOpen} onClose={() => setEditOpen(false)} />
+      {lead.email && (
+        <SendEmailModal
+          leadId={lead.id}
+          leadName={lead.name}
+          leadEmail={lead.email}
+          open={sendEmailOpen}
+          onClose={() => setSendEmailOpen(false)}
+        />
+      )}
     </div>
   );
 }

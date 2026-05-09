@@ -26,8 +26,8 @@ const sourceOptions: { value: LeadSource; label: string }[] = [
 ];
 
 const programOptions: { value: ProgramType; label: string }[] = [
-  { value: "one_core", label: "ONE™ Core" },
-  { value: "one_vip", label: "ONE™ VIP" },
+  { value: "one_core", label: "EDEN™ Core" },
+  { value: "one_vip", label: "EDEN™ VIP" },
 ];
 
 interface Props {

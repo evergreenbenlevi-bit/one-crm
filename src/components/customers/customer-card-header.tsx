@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, MessageCircle, Pencil, Trash2 } from "lucide-react";
+import { Phone, MessageCircle, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { Customer } from "@/lib/types/database";
 import { CustomerEditModal } from "./customer-edit-modal";
@@ -19,8 +19,8 @@ const statusColors: Record<string, string> = {
 };
 
 const productLabels: Record<string, string> = {
-  one_core: "ONE™ Core",
-  one_vip: "ONE™ VIP",
+  one_core: "EDEN™ Core",
+  one_vip: "EDEN™ VIP",
 };
 
 export function CustomerCardHeader({ customer }: { customer: Customer }) {
@@ -50,6 +50,19 @@ export function CustomerCardHeader({ customer }: { customer: Customer }) {
                 {customer.email && <span>{customer.email}</span>}
                 {customer.phone && <span>{customer.phone}</span>}
                 {customer.occupation && <span>· {customer.occupation}</span>}
+                {customer.skool_username ? (
+                  <a
+                    href={`https://www.skool.com/${customer.skool_username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                  >
+                    <ExternalLink size={12} />
+                    <span>@{customer.skool_username}</span>
+                  </a>
+                ) : (
+                  <span className="text-gray-300 dark:text-gray-600">— Skool</span>
+                )}
               </div>
             </div>
           </div>

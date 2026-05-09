@@ -41,7 +41,7 @@ export function CustomerTabs({ customer }: { customer: CustomerWithRelations }) 
 }
 
 function OverviewTab({ customer }: { customer: CustomerWithRelations }) {
-  const productLabels: Record<string, string> = { one_core: "ONE™ Core", one_vip: "ONE™ VIP" };
+  const productLabels: Record<string, string> = { one_core: "EDEN™ Core", one_vip: "EDEN™ VIP" };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 space-y-4">
@@ -103,7 +103,7 @@ function OverviewTab({ customer }: { customer: CustomerWithRelations }) {
 
 function FinancialTab({ customer }: { customer: CustomerWithRelations }) {
   const methodLabels: Record<string, string> = { cardcom: "Cardcom", upay: "Upay", other: "אחר" };
-  const productLabels: Record<string, string> = { one_core: "ONE™ Core", one_vip: "ONE™ VIP" };
+  const productLabels: Record<string, string> = { one_core: "EDEN™ Core", one_vip: "EDEN™ VIP" };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm dark:shadow-gray-900/20 border border-gray-100 dark:border-gray-700 space-y-4">

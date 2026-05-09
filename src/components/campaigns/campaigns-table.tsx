@@ -12,14 +12,14 @@ interface CampaignsTableProps {
 }
 
 const productLabels: Record<string, string> = {
-  one_core: "ONE™ Core",
-  one_vip: "ONE™ VIP",
+  one_core: "EDEN™ Core",
+  one_vip: "EDEN™ VIP",
 };
 
 const programFilters = [
   { key: "all", label: "הכל" },
-  { key: "one_core", label: "ONE™ Core" },
-  { key: "one_vip", label: "ONE™ VIP" },
+  { key: "one_core", label: "EDEN™ Core" },
+  { key: "one_vip", label: "EDEN™ VIP" },
 ] as const;
 
 const periodFilters = [

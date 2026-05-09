@@ -12,8 +12,8 @@ const statusOptions: { value: CustomerStatus; label: string }[] = [
 ];
 
 const productOptions: { value: ProgramType; label: string }[] = [
-  { value: "one_core", label: "ONE™ Core" },
-  { value: "one_vip", label: "ONE™ VIP" },
+  { value: "one_core", label: "EDEN™ Core" },
+  { value: "one_vip", label: "EDEN™ VIP" },
 ];
 
 interface Props {
@@ -45,6 +45,7 @@ export function CustomerEditModal({ customer, open, onClose }: Props) {
     webinar_attended: customer.webinar_attended ?? false,
     upsell_status: (customer.upsell_status || "none") as UpsellStatus,
     next_installment_date: customer.next_installment_date || "",
+    skool_username: customer.skool_username || "",
   });
 
   if (!open) return null;
@@ -86,6 +87,7 @@ export function CustomerEditModal({ customer, open, onClose }: Props) {
         webinar_attended: form.webinar_attended,
         upsell_status: form.upsell_status,
         next_installment_date: form.next_installment_date || null,
+        skool_username: form.skool_username.trim() || null,
       };
 
       const res = await fetch(`/api/customers/${customer.id}`, {
@@ -169,6 +171,19 @@ export function CustomerEditModal({ customer, open, onClose }: Props) {
               value={form.occupation}
               onChange={e => setForm(prev => ({ ...prev, occupation: e.target.value }))}
               className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+          </div>
+
+          {/* שם משתמש Skool */}
+          <div>
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">שם משתמש Skool</label>
+            <input
+              type="text"
+              value={form.skool_username}
+              onChange={e => setForm(prev => ({ ...prev, skool_username: e.target.value }))}
+              placeholder="username"
+              className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              dir="ltr"
             />
           </div>
 

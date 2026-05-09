@@ -5,8 +5,8 @@ import { X } from "lucide-react";
 import type { ProgramType } from "@/lib/types/database";
 
 const programOptions = [
-  { value: "one_vip", label: "ONE™ VIP" },
-  { value: "one_core", label: "ONE™ Core" },
+  { value: "one_vip", label: "EDEN™ VIP" },
+  { value: "one_core", label: "EDEN™ Core" },
 ];
 
 interface Props {
