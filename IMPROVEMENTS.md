@@ -1,4 +1,4 @@
-# ONE™ CRM — שיפורים נדרשים
+# EDEN™ CRM — שיפורים נדרשים
 > מבוסס על מחקר CRM best practices (2026-03-18)
 > מקור: `04_KNOWLEDGE/Research_Results/2026-03-18_crm-best-practices.md`
 
@@ -18,7 +18,7 @@
 
 ### 2. Application Management
 **מה:** דף ניהול בקשות הצטרפות — review, approve, reject
-**למה:** ONE™ עובד על application model, לא sales calls
+**למה:** EDEN™ עובד על application model, לא sales calls
 **מה צריך:**
 - טבלת `applications` כבר ב-schema ✅
 - דף /applications עם: רשימת בקשות, answers view, score, approve/reject buttons

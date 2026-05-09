@@ -1,7 +1,8 @@
 # Task Manager Redesign — Project Spec (DRAFT)
-> Status: **WAITING FOR CHEN** — needs UI/UX consultation before execution
+> Status: **ACTIVE** — chen-design-system plugin installed 2026-04-21, ready to execute
 > Created: 2026-04-16
 > Owner: Ben + Chen (UI/UX)
+> Design Framework: `~/.claude/plugins/chen-design-system/` — use `interface-designer` skill as entry point
 > Portfolio: ONE
 > Estimated size: L (multi-session build)
 
@@ -198,19 +199,24 @@ No changes needed for Claude access — existing API covers it.
 ## 6. Phased Build Plan (Draft)
 
 ### Phase 1 — Foundation (Sonnet execution)
-- [ ] Create `projects` table + migration
-- [ ] Add `project_id` to tasks table
+- [ ] Create `projects` table + migration — DB PENDING (SQL in spec §4.3, not yet run in Supabase)
+- [x] TypeScript types updated: TaskStatus includes "open", KANBAN_STATUSES exported, all components updated — 2026-04-26
+- [ ] Add `project_id` to tasks table — DB PENDING
 - [ ] Migrate existing parent-tasks to projects table
-- [ ] Wire DnD position persistence (the `position` field already exists)
-- [ ] Connect existing `TaskKanban` component to /tasks Board view
-- [ ] Add position update API endpoint
+- [x] Wire DnD position persistence (the `position` field already exists) — DONE (handlePositionChange already wired)
+- [x] Connect existing `TaskKanban` component to /tasks Board view — DONE (wired in both /tasks and /projects/[id])
+- [x] Add position update API endpoint — DONE (PATCH /api/tasks with position field)
+- [x] Shared Project type — DONE src/lib/types/projects.ts — 2026-04-26
+- [x] project_id field on Task type (optional FK) — DONE in src/lib/types/tasks.ts — 2026-04-26
+- [x] /api/projects GET + POST — DONE 2026-04-26
+- [x] /api/projects/[id] GET + PATCH + DELETE — DONE 2026-04-26
 
 ### Phase 2 — Views & Navigation
-- [ ] Redesign /tasks with tab navigation (Board, List, Focus, Backlog)
-- [ ] Build new /projects page with project cards
-- [ ] Build /projects/[id] detail page
-- [ ] Inline editing for list view
-- [ ] Subtask drag-and-drop reorder
+- [x] Build /projects page with project cards — DONE (page.tsx connected to /api/projects) — 2026-04-26
+- [x] Build /projects/[id] detail page — DONE (page.tsx with TaskKanban board) — 2026-04-26
+- [x] Redesign /tasks with tab navigation (Board, List, Focus, Backlog) — DONE (Focus/Board/List/Backlog/Completed/Archived tabs implemented) — 2026-04-26
+- [x] Inline editing for list view — DONE (InlineListRow: click title to edit, blur saves via PATCH /api/tasks) — 2026-04-26
+- [x] Subtask drag-and-drop reorder — DONE (SortableSubTask + DndContext in SubTasksPanel, persists position via PATCH /api/tasks) — 2026-04-26
 
 ### Phase 3 — Polish & Advanced
 - [ ] Status simplification + migration

@@ -1,8 +1,8 @@
-# ONE™ CRM
+# EDEN™ CRM
 
-Lead & client management system for the ONE™ coaching program.
+Lead & client management system for the EDEN™ coaching program.
 
-ONE™ helps experts build marketing + conversion systems that bring ready clients — no sales calls, no burnout.
+EDEN™ helps experts build marketing + conversion systems that bring ready clients — no sales calls, no burnout.
 
 ## Tech Stack
 

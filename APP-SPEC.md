@@ -1,6 +1,6 @@
 # ONE-CRM — App Specification
 
-> Version: 1.2 | Last updated: 2026-04-04
+> Version: 1.3 | Last updated: 2026-04-29
 > Stack: Next.js 14 App Router · Supabase (Frankfurt) · Vercel · Tailwind CSS · TypeScript
 
 ---
@@ -12,10 +12,11 @@
 | `/` | `(dashboard)/page.tsx` | Main dashboard — overview, BIG3, stats | `Big3Today`, `StatCard` |
 | `/leads` | `(dashboard)/leads/` | Lead pipeline — kanban + table views | `LeadsKanban`, `LeadsTable`, `LeadDetail`, `LeadEditModal` |
 | `/triage` | `(dashboard)/triage/page.tsx` | Task triage — card-by-card decision UI (mobile+desktop). Quick actions: Claude/Ben/Done/Delete/Skip. Inline date picker with quick buttons (היום/מחר/השבוע/ראשון) + energy-based time suggestions. Duration picker (5-120 min) replaces size. Impact labels: קריטי/חשוב/נחמד. Breakdown warning for 120+ min. Calendar queue integration. Filters: untriaged/overdue/owner/category. | `TriageCard`, `StatsStrip`, filters, `AnimatePresence` |
-| `/tasks` | `(dashboard)/tasks/` | Task management — kanban board | `TaskKanban`, `TaskEditModal`, `TaskAddModal` |
+| `/tasks` | `(dashboard)/tasks/` | Task management — Board/List/Focus/Backlog/Completed/Archived tabs. DnD position persistence. | `TaskKanban`, `TaskEditModal`, `TaskAddModal`, `InlineListRow` |
 | `/customers` | `(dashboard)/customers/` | Customer profiles, payments, program tracking | `CustomerTabs`, `CustomerEditModal`, `Timeline` |
 | `/meetings` | `(dashboard)/meetings/` | Meeting scheduler + history | meetings components |
-| `/projects` | `(dashboard)/projects/` | Project tracking (team view) | project components |
+| `/projects` | `(dashboard)/projects/` | Project Hub — Active/Completed tabs. Project cards with DnD reorder. DB-backed `projects` table. | `ProjectCard`, `ProjectAddModal` |
+| `/projects/[id]` | `(dashboard)/projects/[id]/page.tsx` | Project detail — Board (TaskKanban), List, Notes tabs. DnD task reorder within project. | `TaskKanban`, `SubTasksPanel`, `ProjectNotes` |
 | `/content` | `(dashboard)/content/` | Content calendar + ideas | content components |
 | `/campaigns` | `(dashboard)/campaigns/` | Meta/Google ad campaigns | `CampaignsTable` |
 | `/goals` | `(dashboard)/goals/` | Revenue + customer goals tracking | goals components |
@@ -29,7 +30,7 @@
 | `/settings/custom-fields` | `(dashboard)/settings/custom-fields/page.tsx` | Custom fields manager — add/edit/reorder dynamic fields for leads/expenses/tasks. Grouped by entity type, toggle active/inactive, up/down reorder | form, field list, toggle, reorder |
 | `/dashboard-builder` | `(dashboard)/dashboard-builder/page.tsx` | Dashboard builder MVP — add NumberWidget/BarChart/PieChart/TableWidget from data sources (leads, expenses, customers). Save/load dashboard configs. Grid layout | `NumberWidget`, `BarChartWidget`, `PieChartWidget`, `TableWidget` |
 | `/dump` | `(dashboard)/dump/page.tsx` | Brain Dump — free-text thought dump, Claude classifies to task/idea/reminder/note, routes to CRM or Vault | textarea, results list, history |
-| `/course-builder` | `(dashboard)/course-builder/page.tsx` | ONE™ Course Builder — 77 modules across 10 levels. **Side-by-side ScriptEditor**: Tom's transcript (left) + ONE™ script editor (right) with auto-save, word counts, Claude Copywriter generation via `/api/course/generate-script`. Inline edit, checklist per module, source tags (tom/modified/original/removed), status tracking, add/delete/hide modules, filters. Script progress stats in header. | `CourseBuilderPage`, `ModuleRow`, `ScriptEditor` |
+| `/course-builder` | `(dashboard)/course-builder/page.tsx` | EDEN™ Course Builder — 77 modules across 10 levels. **Side-by-side ScriptEditor**: Tom's transcript (left) + EDEN™ script editor (right) with auto-save, word counts, Claude Copywriter generation via `/api/course/generate-script`. Inline edit, checklist per module, source tags (tom/modified/original/removed), status tracking, add/delete/hide modules, filters. Script progress stats in header. | `CourseBuilderPage`, `ModuleRow`, `ScriptEditor` |
 | `/more` | `(dashboard)/more/` | Mobile overflow nav (links to hidden pages) | nav list |
 | `/login` | `app/login/` | Auth page | login form |
 
@@ -43,13 +44,15 @@ id: string
 title: string
 description: string | null
 priority: "p1" | "p2" | "p3"  // deprecated — use impact instead
-status: "inbox" | "up_next" | "scheduled" | "in_progress" | "waiting" | "waiting_ben" | "done" | "someday" | "archived" | "backlog" | "todo"
-owner: "claude" | "ben" | "both" | "avitar"
+status: "open" | "in_progress" | "waiting" | "done"  // simplified from 11→4 (2026-04-29 redesign-v2)
+owner: "claude" | "ben" | "both" | "evyatar"
 category: "one_tm" | "self" | "brand" | "temp" | "research" | "infrastructure" | "personal"
 impact: "needle_mover" | "important" | "nice"  // strategic importance (display: קריטי/חשוב/נחמד)
 size: "quick" | "medium" | "big"  // effort estimate (legacy — use estimated_minutes)
 estimated_minutes: 5 | 15 | 30 | 45 | 60 | 90 | 120 | null  // precise duration for scheduling
-layer: "needle_mover" | "project" | "quick_win" | "wishlist" | "nice_to_have" | "deleted" | null  // deprecated — use impact+size
+domain: "business" | "personal"  // default: "business"
+project_id: string | null        // FK → projects.id
+folder_id: string | null         // FK → folders.id
 due_date: string | null  // YYYY-MM-DD
 tags: string[]
 depends_on: string | null  // task id
@@ -205,6 +208,83 @@ created_at: string
 updated_at: string
 ```
 
+### Project
+```ts
+id: string
+title: string
+description: string | null
+status: "active" | "paused" | "done" | "archived"
+priority: "p1" | "p2" | "p3"
+category: string | null
+portfolio: "one" | "solo" | "harness" | "exploratory" | null
+owner: "ben" | "claude" | "both" | "evyatar"
+position: number
+deadline: string | null          // YYYY-MM-DD
+estimated_minutes: number | null
+actual_minutes: number | null
+tags: string[]
+created_at: string
+updated_at: string
+completed_at: string | null
+archived_at: string | null
+```
+
+### Project Note
+```ts
+id: string
+project_id: string              // FK → projects.id (unique — one per project)
+content: string                 // markdown notes
+updated_at: string
+```
+
+### Area
+```ts
+id: string
+name: string
+slug: string                    // unique (e.g. "one", "self", "brand", "ops")
+icon: string | null             // Lucide icon name
+color: string                   // hex, default "#6366f1"
+position: number
+is_active: boolean
+created_at: string
+```
+
+### Folder
+```ts
+id: string
+area_id: string                 // FK → areas.id
+name: string
+slug: string                    // unique per area
+icon: string | null
+position: number
+href: string | null             // direct nav link (e.g. "/tasks")
+is_active: boolean
+created_at: string
+```
+
+### Content Piece
+```ts
+id: string
+title: string
+hook: string | null
+angle: string | null
+format: "reel" | "carousel" | "post" | "story" | null
+platform: "instagram" | "youtube" | "both"     // default: "instagram"
+pillar: string | null
+status: "idea" | "scripting" | "ready_to_film" | "filmed" | "editing" | "live" | "analyzing"
+film_date: string | null        // YYYY-MM-DD
+publish_date: string | null     // YYYY-MM-DD
+script: string | null
+reference_urls: string[]
+views: number
+saves: number
+shares: number
+comments: number
+viral_score: number
+created_at: string
+updated_at: string
+```
+
 ---
 
 ## API Routes
@@ -295,6 +375,29 @@ updated_at: string
 | POST | `/api/dashboards` | Create dashboard |
 | PATCH | `/api/dashboards?id=` | Update dashboard config |
 | DELETE | `/api/dashboards?id=` | Delete dashboard |
+
+### Projects
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/projects` | List projects — filters: status, portfolio, owner |
+| POST | `/api/projects` | Create project |
+| GET | `/api/projects/[id]` | Get single project |
+| PATCH | `/api/projects/[id]` | Update project |
+| DELETE | `/api/projects/[id]` | Delete project |
+
+### Areas & Folders (Sidebar)
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/areas` | List areas with nested folders (sidebar nav) |
+| POST | `/api/areas` | Create area |
+| GET/PATCH/DELETE | `/api/areas/[id]` | Single area CRUD |
+
+### Content Pieces
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/content-pieces` | List content pieces — filters: status, format, platform |
+| POST | `/api/content-pieces` | Create content piece |
+| GET/PATCH/DELETE | `/api/content-pieces/[id]` | Single piece CRUD |
 
 ### Other
 | Method | Route | Purpose |

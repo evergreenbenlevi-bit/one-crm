@@ -1,6 +1,6 @@
-# ACTION-PLAN: CRM מלא ל-ONE™ — תכנית ביצוע
+# ACTION-PLAN: CRM מלא ל-EDEN™ — תכנית ביצוע
 
-> מבוסס על תשתית נועם (CRM-CC) + מה שכבר נבנה + התאמות ONE™
+> מבוסס על תשתית נועם (CRM-CC) + מה שכבר נבנה + התאמות EDEN™
 > עודכן: 2026-03-18
 
 ---
@@ -49,23 +49,23 @@
 
 ---
 
-### שלב 2: Seed Data — התאמה ל-ONE™ ⏱️ 30 דק
+### שלב 2: Seed Data — התאמה ל-EDEN™ ⏱️ 30 דק
 > **מי:** Claude לבד
 
 **הבעיה:** ה-seed.sql של נועם משתמש בשמות ישנים:
-| seed (נועם) | migration (ONE™) |
+| seed (נועם) | migration (EDEN™) |
 |------------|-----------------|
 | `freedom` / `simply_grow` | `one_core` / `one_vip` |
 | `closed` / `sales_call` / `watched_vsl` | `active_client` / `applied` / `consumed_content` |
 | `product` (column name) | `program` (column name) |
 
 **Claude עושה:**
-1. יוצר `seed-one.sql` — seed חדש מותאם ל-ONE™:
+1. יוצר `seed-one.sql` — seed חדש מותאם ל-EDEN™:
    - 20 לידים עם שמות עבריים ריאליסטיים
-   - 8 לקוחות (ONE™ Core + ONE™ VIP)
+   - 8 לקוחות (EDEN™ Core + EDEN™ VIP)
    - 17 טרנזקציות (תשלומים Cardcom/UPay)
    - 32 funnel events (מתואמים ל-lead_status enum)
-   - 5 קמפיינים (Meta Ads ל-ONE™)
+   - 5 קמפיינים (Meta Ads ל-EDEN™)
    - 6 פגישות
    - 2 יעדים (Q1 2026)
    - 10 הערות
@@ -151,13 +151,13 @@
 ### שלב 7: שדרוגים מעבר לתשתית נועם ⏱️ לפי צורך
 > **מי:** Claude + בן (לפי עדיפות)
 
-שדרוגים שאנחנו כבר בנינו או שנדרשים ל-ONE™:
+שדרוגים שאנחנו כבר בנינו או שנדרשים ל-EDEN™:
 
 | שדרוג | סטטוס | תיאור |
 |-------|-------|-------|
 | **Tasks module מלא** | ✅ בוצע | Kanban + drag-drop + CRUD + import |
-| **Lead Scoring** | ✅ קיים (נועם) | fit + engagement + decay — צריך לכייל ל-ONE™ |
-| **Funnel ללא שיחות מכירה** | 🔧 להתאים | Stages של ONE™: content → engaged → applied → onboarding → active (בלי sales_call) |
+| **Lead Scoring** | ✅ קיים (נועם) | fit + engagement + decay — צריך לכייל ל-EDEN™ |
+| **Funnel ללא שיחות מכירה** | 🔧 להתאים | Stages של EDEN™: content → engaged → applied → onboarding → active (בלי sales_call) |
 | **Offer Doc tracking** | 🆕 להוסיף | funnel event: `visited_offer_doc` — כבר ב-enum |
 | **Skool integration** | 🆕 להוסיף | חיבור Skool username ללקוח — field כבר קיים |
 | **Telegram notifications** | 🆕 להוסיף | התראות על ליד חדש / תשלום |
@@ -210,3 +210,80 @@
 | 5 (Deploy) | ~15 דק |
 | 6 (Webhooks) | ~30 דק |
 | **סה"כ עד CRM עובד ב-production** | **~2 שעות** |
+
+---
+
+## Phase 3 Migration Notes
+- Phase 3 migration written 2026-04-26, pending Supabase run
+- File: `supabase/migrations/20260426020000_phase3_schema_cleanup.sql` (76 lines)
+- Changes: ADD domain TEXT (business/personal), migrate task_status 5→4 (open/in_progress/waiting/done), DROP triage_notes/triage_action/triaged_at/layer, CREATE INDEX idx_tasks_domain
+
+---
+
+## Phase 4 — Sort/Filter + Automations (NEXT — NEEDS PLAN)
+> נוסף: 2026-04-29 | סטטוס: **BACKLOG — דרוש /plan session נפרד**
+> גודל: L (2-3h build) | priority: P1
+
+### 4.1 — Monday-style Sort/Filter
+
+**Tasks (עדיפות ראשונה):**
+- Multi-select filters: owner, category, impact, domain, folder_id, project_id, due_date range
+- Sort by: impact, due_date, position, created_at, estimated_minutes
+- Active filter chips + "נקה הכל" button
+- URL persistence (query params) — state שמור ב-refresh
+
+**Content/Media (עדיפות שנייה):**
+- Filter: format (reel/carousel/post/story), platform, status, pillar, publish_date range
+- Sort by: viral_score, publish_date, views, saves, created_at
+- Active filter chips
+
+**UX Pattern (inspired by Monday.com):**
+- Filter bar under tabs — collapsible
+- Multiple filters stack with AND logic
+- Sort indicator on column header (list view)
+- Reset to default button
+
+---
+
+### 4.2 — Auto-Timestamps + Automations
+
+**בעיה:** שדות כמו `created_at`, `updated_at` לא תמיד מתמלאים אוטומטית — תלוי בפעולה.
+
+**מה צריך:**
+
+| שדה | מה | איפה |
+|-----|-----|------|
+| `created_at` | auto-set ב-INSERT, ללא צורך בהגדרה ידנית | כל הטבלאות |
+| `updated_at` | auto-update ב-EVERY UPDATE via trigger | tasks, projects, content_pieces, leads |
+| `archived_at` | auto-set כשstatus→archived_at קורה | tasks, projects |
+| `completed_at` | auto-set כש-status=done | tasks, projects |
+| `film_date` / `publish_date` | אל יהיה required — ייקבע מאוחר יותר | content_pieces |
+
+**מה קיים כרגע:** `created_at DEFAULT now()` בכל הטבלאות ✅
+**מה חסר:**
+- `updated_at` trigger לא קיים על tasks + projects (רק על content_pieces)
+- `completed_at` לא מתמלא אוטומטית — רק ב-/api/tasks/[id]/complete
+- `archived_at` מוגדר ידנית בקוד — לא trigger
+
+---
+
+### 4.3 — Blindspots (חובה לפתור לפני build)
+
+| # | Blindspot | שאלה לפלאן |
+|---|-----------|------------|
+| B1 | Filter state | URL query params? localStorage? Zustand? |
+| B2 | Filter + DnD | כשfilter פעיל — האם DnD position עדיין עובד? |
+| B3 | Updated_at trigger | האם trigger קיים כבר על tasks? לבדוק לפני migration |
+| B4 | Content_pieces triggers | כבר יש trigger — לא לכפול |
+| B5 | Mobile filter UX | Bottom sheet? Inline? |
+| B6 | Performance | Filter על 500+ tasks — צריך DB index על כל filtered columns? |
+| B7 | Filter persistence | האם filter נשמר בין sessions? |
+
+---
+
+### כיצד לפתוח את הפאזה הזו:
+```
+/plan ONE-CRM Phase 4 — Sort/Filter + Auto-Timestamps
+```
+**לפני build:** Opus מתכנן → Sonnet מבצע
+

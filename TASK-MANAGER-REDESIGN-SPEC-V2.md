@@ -377,3 +377,46 @@ Monday:
 
 ## Reference Systems
 Linear (keyboard-first board), Notion (flexible views), Things 3 (focus view), Todoist (natural language input)
+
+---
+
+## 15. Week-Grid View + Sprint Blocks (ADDED 2026-05-03)
+> Source: Ben request — "תצוגה כמו יומן בלי האירועים, רק משימות, לפי ימים" + "בלוקים של עבודה מסודרים = ספרינטים"
+> Status: BACKLOG — Phase 7 (after Phase 6 Polish). Plan tomorrow.
+
+### 15.1 Week-Grid View (Tasks-Calendar)
+- New tab in `/tasks`: **Week**
+- 7 columns (Sun-Sat), tasks rendered as cards under each day by `scheduled_date` or `due_date`
+- No external calendar events — tasks-only (intentional — separate from Google Calendar)
+- DnD: drag task between days = updates `scheduled_date`
+- Filter row: project, owner, priority
+- Visual: similar to Things 3 / TickTick week view
+
+### 15.2 Sprint Blocks (Time-Block Grouping)
+- New entity `sprint_blocks`: `id, name, day_of_week, start_time, end_time, recurring, owner, color`
+- Tasks assignable to a block: `tasks.sprint_block_id` (nullable FK)
+- UI: in Week-Grid, blocks render as colored containers per day; tasks live inside
+- Examples (from `~/Projects/planning/_reference/this-week.md` Energy Plan):
+  - "Deep Work — MIT" Mon/Wed 11:00-14:00
+  - "BEN-TRAININGS" Sun/Tue 11:00-14:00
+  - "Content Prep" Thu 11:00-15:00
+- Sprint = collection of blocks for the week. Reusable templates.
+
+### 15.3 Why this is Phase 7 (not now)
+- V2 build mid-flight (Phase 3 done, Phases 4-6 pending)
+- Adding now = scope creep + risk to current Phase 4 (Projects UI)
+- §12 (Weekly Capacity View) partially addresses overload prevention — week-grid is the visual layer on top
+
+### 15.4 Open design questions (resolve in tomorrow's session)
+1. Block templates — global (per-user) or per-week (drag from library)?
+2. Auto-assign tasks to blocks based on `category` (e.g. all `brand` → "Content Prep" block)?
+3. Conflict: task with `time_slot=morning` but dragged into evening block — override or warn?
+4. Mobile — week-grid responsive or list-fallback?
+5. Where does `BIG3` MITs surface in week-grid?
+
+### 15.5 Build sketch (sub-phases)
+- 7a: schema (`sprint_blocks` table + FK on tasks) + seed Ben's energy windows
+- 7b: API (CRUD blocks, assign/unassign tasks)
+- 7c: Week-Grid view (read-only, no DnD)
+- 7d: DnD (task→day, task→block)
+- 7e: Block templates + sprint save/restore
