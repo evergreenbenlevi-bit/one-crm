@@ -1,366 +1,501 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import useSWR from "swr";
-import { Lightbulb, Plus, Film, Youtube, Sparkles, X } from "lucide-react";
-import { fetcher } from "@/lib/fetcher";
+import { LayoutGrid, Calendar, Grid3X3, Plus, Lightbulb, Film, Youtube, Sparkles, X, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
+import { fetcher } from "@/lib/fetcher";
+import { ContentBoard } from "@/components/content/content-board";
+import { ContentCalendar } from "@/components/content/content-calendar";
+import { ContentFeed } from "@/components/content/content-feed";
+import { ContentPieceModal } from "@/components/content/content-piece-modal";
+import type { ContentPiece, ContentStatus, ContentFormat, ContentPlatform, SortField } from "@/components/content/types";
+import {
+  CONTENT_STATUSES,
+  STATUS_LABELS,
+  STATUS_DOT,
+  FORMAT_OPTIONS,
+  FORMAT_LABELS,
+  PLATFORM_OPTIONS,
+  PLATFORM_LABELS,
+  SORT_OPTIONS,
+} from "@/components/content/types";
 
-// ─── Types ───────────────────────────────────────────────────
-interface ContentIdea {
-  id: string;
-  title: string;
-  type: "short_form" | "long_form" | "inspiration";
-  status: string;
-  platform: string | null;
-  format: string | null;
-  notes: string | null;
-  reference_url: string | null;
-  tags: string[] | null;
-  sort_order: number;
-}
+// ─── Legacy ideas link ─────────────────────────────────────────────────────────
+import Link from "next/link";
 
-// ─── Constants ───────────────────────────────────────────────
-const TYPE_TABS = [
-  { key: "short_form", label: "Short Form", icon: Film },
-  { key: "long_form", label: "Long Form", icon: Youtube },
-  { key: "inspiration", label: "השראות", icon: Sparkles },
-] as const;
+type HubView = "board" | "calendar" | "feed";
 
-const STATUS_LABELS: Record<string, string> = {
-  idea: "רעיון",
-  working: "בתהליך",
-  scripted: "יש סקריפט",
-  filmed: "צולם",
-  published: "פורסם",
-  parked: "לא עכשיו",
-};
+const VIEW_TABS: { key: HubView; label: string; icon: React.ElementType }[] = [
+  { key: "board", label: "Board", icon: LayoutGrid },
+  { key: "calendar", label: "Calendar", icon: Calendar },
+  { key: "feed", label: "Feed", icon: Grid3X3 },
+];
 
-const STATUS_COLORS: Record<string, string> = {
-  idea: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
-  working: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  scripted: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-  filmed: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-  published: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-  parked: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400",
-};
-
-const STATUS_FILTERS = ["all", "idea", "working", "scripted", "filmed", "published", "parked"];
-
-// ─── Add Modal ───────────────────────────────────────────────
-function AddIdeaModal({
-  type,
-  onClose,
-  onSave,
+// ─── Generic pill filter row ───────────────────────────────────────────────────
+function PillFilters<T extends string>({
+  options,
+  labels,
+  active,
+  onChange,
+  allLabel = "All",
 }: {
-  type: string;
-  onClose: () => void;
-  onSave: (idea: Partial<ContentIdea>) => void;
+  options: T[];
+  labels: Record<string, string>;
+  active: T | "all";
+  onChange: (v: T | "all") => void;
+  allLabel?: string;
 }) {
-  const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
-  const [format, setFormat] = useState("");
-  const [platform, setPlatform] = useState("");
-  const [referenceUrl, setReferenceUrl] = useState("");
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-        dir="rtl"
+    <div className="flex flex-wrap gap-1.5 items-center">
+      <button
+        onClick={() => onChange("all")}
+        className={clsx(
+          "text-xs px-3 py-1 rounded-full border transition-colors",
+          active === "all"
+            ? "bg-gray-100 text-gray-950 border-gray-100"
+            : "border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+        )}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold">רעיון חדש</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
-          </button>
-        </div>
-        <div className="space-y-3">
-          <input
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
-            placeholder="כותרת *"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus
-          />
-          <textarea
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
-            placeholder="הערות"
-            rows={2}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-          {type === "long_form" && (
-            <select
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
-              value={format}
-              onChange={(e) => setFormat(e.target.value)}
-            >
-              <option value="">בחר פורמט</option>
-              <option value="long (15-30)">YouTube 15-30 דקות</option>
-              <option value="long (30-60)">YouTube 30-60 דקות</option>
-              <option value="series">סדרה</option>
-              <option value="documentary">דוקומנטרי</option>
-            </select>
+        {allLabel}
+      </button>
+      {options.map((opt) => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={clsx(
+            "text-xs px-2.5 py-1 rounded-full border transition-colors",
+            active === opt
+              ? "bg-gray-800 text-gray-100 border-gray-600"
+              : "border-gray-800 text-gray-600 hover:border-gray-700 hover:text-gray-400"
           )}
-          {type === "inspiration" && (
-            <>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-              >
-                <option value="">בחר פלטפורמה</option>
-                <option value="youtube">YouTube</option>
-                <option value="instagram">Instagram</option>
-                <option value="linkedin">LinkedIn</option>
-                <option value="tiktok">TikTok</option>
-              </select>
-              <input
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
-                placeholder="לינק השראה"
-                value={referenceUrl}
-                onChange={(e) => setReferenceUrl(e.target.value)}
-              />
-            </>
-          )}
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => {
-              if (!title.trim()) return;
-              onSave({
-                title: title.trim(),
-                type: type as ContentIdea["type"],
-                status: "idea",
-                notes: notes || null,
-                format: format || null,
-                platform: platform || null,
-                reference_url: referenceUrl || null,
-              });
-            }}
-            className="flex-1 bg-brand-600 hover:bg-brand-700 text-white py-2 rounded-lg text-sm font-medium"
-          >
-            הוסף
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-500 hover:text-gray-700 text-sm"
-          >
-            ביטול
-          </button>
-        </div>
-      </div>
+        >
+          {labels[opt] ?? opt}
+        </button>
+      ))}
     </div>
   );
 }
 
-// ─── Main Page ───────────────────────────────────────────────
+// ─── Status filter pills ───────────────────────────────────────────────────────
+function StatusFilters({
+  active,
+  onChange,
+}: {
+  active: ContentStatus | "all";
+  onChange: (s: ContentStatus | "all") => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5 items-center">
+      <button
+        onClick={() => onChange("all")}
+        className={clsx(
+          "text-xs px-3 py-1 rounded-full border transition-colors",
+          active === "all"
+            ? "bg-gray-100 text-gray-950 border-gray-100"
+            : "border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+        )}
+      >
+        All
+      </button>
+      {CONTENT_STATUSES.map((s) => (
+        <button
+          key={s}
+          onClick={() => onChange(s)}
+          className={clsx(
+            "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors",
+            active === s
+              ? "bg-gray-800 text-gray-100 border-gray-600"
+              : "border-gray-800 text-gray-600 hover:border-gray-700 hover:text-gray-400"
+          )}
+        >
+          <span className={clsx("w-1.5 h-1.5 rounded-full", STATUS_DOT[s])} />
+          {STATUS_LABELS[s]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Sort selector ─────────────────────────────────────────────────────────────
+function SortSelector({
+  sortBy,
+  order,
+  onSortChange,
+  onOrderToggle,
+}: {
+  sortBy: SortField;
+  order: "asc" | "desc";
+  onSortChange: (s: SortField) => void;
+  onOrderToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="relative">
+        <select
+          value={sortBy}
+          onChange={(e) => onSortChange(e.target.value as SortField)}
+          className="appearance-none bg-gray-900 border border-gray-800 text-gray-400 text-xs rounded-lg pl-3 pr-7 py-1.5 focus:outline-none focus:border-gray-600 cursor-pointer hover:border-gray-700 hover:text-gray-300 transition-colors"
+        >
+          {SORT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
+      </div>
+      <button
+        onClick={onOrderToggle}
+        className="text-xs px-2 py-1.5 rounded-lg border border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-300 transition-colors"
+        title={order === "desc" ? "Descending" : "Ascending"}
+      >
+        {order === "desc" ? "↓" : "↑"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Active filter chips ───────────────────────────────────────────────────────
+function ActiveFilterChips({
+  platformFilter,
+  formatFilter,
+  onClearPlatform,
+  onClearFormat,
+  onClearAll,
+}: {
+  platformFilter: ContentPlatform | "all";
+  formatFilter: ContentFormat | "all";
+  onClearPlatform: () => void;
+  onClearFormat: () => void;
+  onClearAll: () => void;
+}) {
+  const hasFilters = platformFilter !== "all" || formatFilter !== "all";
+  if (!hasFilters) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="text-xs text-gray-600">Active:</span>
+      {platformFilter !== "all" && (
+        <button
+          onClick={onClearPlatform}
+          className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition-colors"
+        >
+          {PLATFORM_LABELS[platformFilter]}
+          <X size={10} />
+        </button>
+      )}
+      {formatFilter !== "all" && (
+        <button
+          onClick={onClearFormat}
+          className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition-colors"
+        >
+          {FORMAT_LABELS[formatFilter]}
+          <X size={10} />
+        </button>
+      )}
+      <button
+        onClick={onClearAll}
+        className="text-xs text-gray-600 hover:text-gray-400 transition-colors underline underline-offset-2"
+      >
+        Clear all
+      </button>
+    </div>
+  );
+}
+
+// ─── Legacy ideas banner ───────────────────────────────────────────────────────
+function LegacyIdeasBanner() {
+  return (
+    <div className="flex items-center gap-2 text-xs text-gray-600 border border-gray-800 rounded-lg px-3 py-2">
+      <Lightbulb size={12} />
+      <span>Legacy ideas:</span>
+      {[
+        { label: "Short Form", icon: Film },
+        { label: "Long Form", icon: Youtube },
+        { label: "Inspiration", icon: Sparkles },
+      ].map(({ label, icon: Icon }) => (
+        <Link
+          key={label}
+          href="/content/legacy"
+          className="flex items-center gap-1 text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          <Icon size={11} />
+          {label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function ContentPage() {
-  const [activeType, setActiveType] = useState<string>("short_form");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [showAdd, setShowAdd] = useState(false);
+  const [view, setView] = useState<HubView>("board");
+  const [statusFilter, setStatusFilter] = useState<ContentStatus | "all">("all");
+  const [platformFilter, setPlatformFilter] = useState<ContentPlatform | "all">("all");
+  const [formatFilter, setFormatFilter] = useState<ContentFormat | "all">("all");
+  const [sortBy, setSortBy] = useState<SortField>("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [editingPiece, setEditingPiece] = useState<ContentPiece | null>(null);
 
-  const searchParams = new URLSearchParams({ type: activeType });
-  if (statusFilter !== "all") searchParams.set("status", statusFilter);
+  // Build query string from all active filters
+  const buildQuery = () => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (platformFilter !== "all") params.set("platform", platformFilter);
+    if (formatFilter !== "all") params.set("format", formatFilter);
+    if (sortBy !== "created_at" || sortOrder !== "desc") {
+      params.set("sort", sortBy);
+      params.set("order", sortOrder);
+    }
+    const str = params.toString();
+    return str ? `?${str}` : "";
+  };
 
-  const { data, isLoading: loading, mutate } = useSWR(
-    `/api/content-ideas?${searchParams}`,
+  const queryStr = buildQuery();
+  const { data, isLoading, mutate } = useSWR<ContentPiece[]>(
+    `/api/content-pieces${queryStr}`,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 30_000 }
   );
-  const ideas: ContentIdea[] = Array.isArray(data) ? data : [];
+  const pieces: ContentPiece[] = Array.isArray(data) ? data : [];
 
-  const updateStatus = async (id: string, status: string) => {
-    await fetch("/api/content-ideas", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    });
-    mutate();
-  };
-
-  const addIdea = async (idea: Partial<ContentIdea>) => {
-    await fetch("/api/content-ideas", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(idea),
-    });
-    setShowAdd(false);
-    mutate();
-  };
-
-  const deleteIdea = async (id: string) => {
-    await fetch("/api/content-ideas", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    mutate();
-  };
-
-  const counts = Object.fromEntries(
-    ["idea", "working", "scripted", "filmed", "published"].map((s) => [
-      s,
-      ideas.filter((i) => i.status === s).length,
-    ])
+  const handleStatusChange = useCallback(
+    async (id: string, status: ContentStatus) => {
+      await fetch(`/api/content-pieces/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      mutate();
+    },
+    [mutate]
   );
 
+  const handleCreate = useCallback(
+    async (data: Partial<ContentPiece>) => {
+      await fetch("/api/content-pieces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      mutate();
+    },
+    [mutate]
+  );
+
+  const handleUpdate = useCallback(
+    async (data: Partial<ContentPiece>) => {
+      if (!editingPiece) return;
+      await fetch(`/api/content-pieces/${editingPiece.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      mutate();
+    },
+    [editingPiece, mutate]
+  );
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await fetch(`/api/content-pieces/${id}`, { method: "DELETE" });
+      mutate();
+    },
+    [mutate]
+  );
+
+  // Summary counts (always count against full unfiltered list when board view)
+  const counts = Object.fromEntries(
+    CONTENT_STATUSES.map((s) => [s, pieces.filter((p) => p.status === s).length])
+  ) as Record<ContentStatus, number>;
+
+  const hasActiveFilters = platformFilter !== "all" || formatFilter !== "all";
+
   return (
-    <div className="p-6 max-w-7xl mx-auto" dir="rtl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Lightbulb className="h-6 w-6 text-amber-500" />
-          <h1 className="text-2xl font-bold">תוכן</h1>
-          <span className="text-sm text-gray-500 mr-2">admin only</span>
-        </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus size={16} />
-          רעיון חדש
-        </button>
-      </div>
-
-      {/* Type Tabs */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1 w-fit mb-6">
-        {TYPE_TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => { setActiveType(key); setStatusFilter("all"); }}
-            className={clsx(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-              activeType === key
-                ? "bg-white dark:bg-gray-600 shadow-sm text-gray-900 dark:text-gray-100"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            )}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-5 gap-3 mb-6">
-        {[
-          { key: "idea", label: "רעיונות", color: "text-yellow-600" },
-          { key: "working", label: "בתהליך", color: "text-blue-600" },
-          { key: "scripted", label: "סקריפט", color: "text-purple-600" },
-          { key: "filmed", label: "צולם", color: "text-indigo-600" },
-          { key: "published", label: "פורסם", color: "text-green-600" },
-        ].map(({ key, label, color }) => (
-          <div
-            key={key}
-            className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 cursor-pointer hover:border-gray-400 transition-colors"
-            onClick={() => setStatusFilter(statusFilter === key ? "all" : key)}
-          >
-            <div className={clsx("text-2xl font-bold", color)}>{counts[key] ?? 0}</div>
-            <div className="text-sm text-gray-500">{label}</div>
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      <div className="max-w-[1600px] mx-auto p-6">
+        {/* ── Header ── */}
+        <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-50">Content Hub</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {pieces.length} piece{pieces.length !== 1 ? "s" : ""}
+              {statusFilter !== "all" && (
+                <span className="ml-1 text-gray-600">
+                  · filtered by {STATUS_LABELS[statusFilter]}
+                </span>
+              )}
+              {platformFilter !== "all" && (
+                <span className="ml-1 text-gray-600">
+                  · {PLATFORM_LABELS[platformFilter]}
+                </span>
+              )}
+              {formatFilter !== "all" && (
+                <span className="ml-1 text-gray-600">
+                  · {FORMAT_LABELS[formatFilter]}
+                </span>
+              )}
+            </p>
           </div>
-        ))}
-      </div>
 
-      {/* Status filters */}
-      <div className="flex flex-wrap gap-1 mb-6">
-        {STATUS_FILTERS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={clsx(
-              "px-3 py-1 rounded-full text-sm transition-colors",
-              statusFilter === s
-                ? "bg-amber-600 text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200"
-            )}
-          >
-            {s === "all" ? "הכל" : STATUS_LABELS[s]}
-          </button>
-        ))}
-      </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <LegacyIdeasBanner />
+            <button
+              onClick={() => setShowNewModal(true)}
+              className="flex items-center gap-2 bg-gray-100 hover:bg-white text-gray-950 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            >
+              <Plus size={16} />
+              New Piece
+            </button>
+          </div>
+        </div>
 
-      {/* Ideas Table */}
-      {loading ? (
-        <div className="text-center py-12 text-gray-400">טוען...</div>
-      ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <th className="text-right px-4 py-3 font-medium text-gray-500 w-8">#</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">כותרת</th>
-                {activeType === "long_form" && (
-                  <th className="text-right px-4 py-3 font-medium text-gray-500">פורמט</th>
+        {/* ── Pipeline stats ── */}
+        <div className="grid grid-cols-7 gap-2 mb-6">
+          {CONTENT_STATUSES.map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
+              className={clsx(
+                "bg-gray-900 border rounded-lg p-3 text-center transition-all hover:border-gray-600",
+                statusFilter === s ? "border-gray-500 bg-gray-800" : "border-gray-800"
+              )}
+            >
+              <div
+                className="text-xl font-bold text-white font-semibold"
+              >
+                {counts[s] ?? 0}
+              </div>
+              <div className="text-[10px] text-gray-600 font-medium uppercase tracking-wide mt-0.5">
+                {STATUS_LABELS[s]}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* ── View tabs + sort ── */}
+        <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+          {/* View switcher */}
+          <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
+            {VIEW_TABS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setView(key)}
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                  view === key
+                    ? "bg-gray-700 text-gray-100"
+                    : "text-gray-500 hover:text-gray-300"
                 )}
-                {activeType === "inspiration" && (
-                  <th className="text-right px-4 py-3 font-medium text-gray-500">פלטפורמה</th>
-                )}
-                <th className="text-right px-4 py-3 font-medium text-gray-500">סטטוס</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500">הערות</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-500 w-12"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {ideas.map((idea, idx) => (
-                <tr
-                  key={idea.id}
-                  className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750"
-                >
-                  <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                  <td className="px-4 py-3 font-medium">{idea.title}</td>
-                  {activeType === "long_form" && (
-                    <td className="px-4 py-3 text-gray-500 text-xs">{idea.format || "—"}</td>
-                  )}
-                  {activeType === "inspiration" && (
-                    <td className="px-4 py-3 text-gray-500 text-xs capitalize">{idea.platform || "—"}</td>
-                  )}
-                  <td className="px-4 py-3">
-                    <select
-                      value={idea.status}
-                      onChange={(e) => updateStatus(idea.id, e.target.value)}
-                      className={clsx(
-                        "text-xs px-2 py-1 rounded-full border-0 cursor-pointer font-medium",
-                        STATUS_COLORS[idea.status]
-                      )}
-                    >
-                      {Object.entries(STATUS_LABELS).map(([val, label]) => (
-                        <option key={val} value={val}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">
-                    {idea.notes || "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => deleteIdea(idea.id)}
-                      className="text-gray-300 hover:text-red-500 transition-colors"
-                      title="מחק"
-                    >
-                      <X size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {ideas.length === 0 && (
-            <div className="text-center py-12 text-gray-400">אין רעיונות להצגה</div>
+              >
+                <Icon size={15} />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort selector */}
+          <SortSelector
+            sortBy={sortBy}
+            order={sortOrder}
+            onSortChange={setSortBy}
+            onOrderToggle={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
+          />
+        </div>
+
+        {/* ── Filter rows ── */}
+        <div className="flex flex-col gap-2 mb-5">
+          {/* Platform filters */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-gray-600 w-14 shrink-0">Platform</span>
+            <PillFilters<ContentPlatform>
+              options={PLATFORM_OPTIONS}
+              labels={PLATFORM_LABELS}
+              active={platformFilter}
+              onChange={setPlatformFilter}
+            />
+          </div>
+
+          {/* Format filters */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-gray-600 w-14 shrink-0">Format</span>
+            <PillFilters<ContentFormat>
+              options={FORMAT_OPTIONS}
+              labels={FORMAT_LABELS}
+              active={formatFilter}
+              onChange={setFormatFilter}
+            />
+          </div>
+
+          {/* Status filters — hide in board view since board shows all columns */}
+          {view !== "board" && (
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-gray-600 w-14 shrink-0">Status</span>
+              <StatusFilters active={statusFilter} onChange={setStatusFilter} />
+            </div>
+          )}
+
+          {/* Active filter chips */}
+          {hasActiveFilters && (
+            <ActiveFilterChips
+              platformFilter={platformFilter}
+              formatFilter={formatFilter}
+              onClearPlatform={() => setPlatformFilter("all")}
+              onClearFormat={() => setFormatFilter("all")}
+              onClearAll={() => {
+                setPlatformFilter("all");
+                setFormatFilter("all");
+              }}
+            />
           )}
         </div>
+
+        {/* ── View content ── */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-24 text-gray-600 text-sm">
+            Loading...
+          </div>
+        ) : (
+          <>
+            {view === "board" && (
+              <ContentBoard
+                pieces={pieces}
+                onStatusChange={handleStatusChange}
+                onEdit={(p) => setEditingPiece(p)}
+              />
+            )}
+            {view === "calendar" && (
+              <ContentCalendar
+                pieces={pieces}
+                onEdit={(p) => setEditingPiece(p)}
+              />
+            )}
+            {view === "feed" && (
+              <ContentFeed
+                pieces={pieces}
+                onEdit={(p) => setEditingPiece(p)}
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {/* ── Modals ── */}
+      {showNewModal && (
+        <ContentPieceModal
+          onClose={() => setShowNewModal(false)}
+          onSave={handleCreate}
+        />
       )}
 
-      {/* Add Modal */}
-      {showAdd && (
-        <AddIdeaModal
-          type={activeType}
-          onClose={() => setShowAdd(false)}
-          onSave={addIdea}
+      {editingPiece && (
+        <ContentPieceModal
+          piece={editingPiece}
+          onClose={() => setEditingPiece(null)}
+          onSave={handleUpdate}
+          onDelete={handleDelete}
         />
       )}
     </div>
