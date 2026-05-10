@@ -274,7 +274,6 @@ export function TaskCard({
           className="text-base font-semibold text-white leading-snug mb-1.5 line-clamp-2"
           dir="rtl"
           title={!titleIsGood ? "כותרת לא תקנית — ראה TASK-STANDARDS.md" : undefined}
-          style={{ fontSize: '16px' }}
         >
           {task.title}
         </p>
@@ -287,8 +286,7 @@ export function TaskCard({
               expanded ? "line-clamp-none whitespace-pre-wrap" : "line-clamp-1"
             )}
             dir="rtl"
-            style={{ fontSize: '13px' }}
-          >
+            >
             {task.description}
           </p>
         )}
@@ -334,7 +332,7 @@ export function TaskCard({
         <TaskSubtaskPreview taskId={task.id} isOpen={subtasksOpen} />
 
         {/* Action bar — compact, always visible on hover */}
-        <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity" dir="rtl">
+        <div className="flex items-center gap-1 mt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" dir="rtl">
           {nextStatus && onStatusChange && (
             <button
               onClick={handleAdvanceStatus}

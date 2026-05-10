@@ -2,7 +2,7 @@
 
 import { clsx } from "clsx";
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
 import type { TaskPriority, TaskOwner, TaskCategory, TaskImpact, TaskSize } from "@/lib/types/tasks";
 import {
   priorityLabels, ownerLabels, categoryLabels,
@@ -103,6 +103,8 @@ export function TaskFilters({
       .catch(() => {});
   }, []);
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   const hasFilters =
     priority !== "all" || owner !== "all" || category !== "all" || projectId !== "all" ||
     filterImpact !== "all" || filterSize !== "all" ||
@@ -164,8 +166,17 @@ export function TaskFilters({
         </div>
       )}
 
+      {/* Mobile filter toggle */}
+      <button
+        onClick={() => setFiltersOpen(v => !v)}
+        className="sm:hidden flex items-center gap-1 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+      >
+        פילטרים
+        <ChevronDown size={12} className={clsx("transition-transform", filtersOpen && "rotate-180")} />
+      </button>
+
       {/* Filter controls row */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={clsx("flex flex-wrap items-center gap-2", !filtersOpen && "hidden sm:flex")}>
         <FilterSelect label="עדיפות" value={priority} options={priorityLabels} onChange={onPriorityChange} />
         {!hideOwner && <FilterSelect label="אחראי" value={owner} options={ownerLabels} onChange={onOwnerChange} />}
         <FilterSelect label="קטגוריה" value={category} options={categoryLabels} onChange={onCategoryChange} />
