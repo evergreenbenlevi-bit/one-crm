@@ -39,6 +39,7 @@ const statusConfig: Record<MeetingStatus, { label: string; color: string }> = {
   completed: { label: "הושלם", color: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
   cancelled: { label: "בוטל", color: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400" },
   no_show: { label: "לא הגיע", color: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+  completed_no_recording: { label: "הושלם (ללא הקלטה)", color: "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300" },
 };
 
 export function MeetingCard({ meeting }: MeetingCardProps) {
