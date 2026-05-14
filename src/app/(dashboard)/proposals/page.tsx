@@ -40,7 +40,7 @@ interface Proposal {
   expires_at: string | null;
   docuseal_submission_id: string | null;
   leads: { name: string; email: string | null; phone: string | null } | null;
-  customers: { name: string; email: string | null } | null;
+  customers: { name: string; email: string | null; phone: string | null } | null;
 }
 
 export default function ProposalsPage() {
@@ -74,13 +74,27 @@ export default function ProposalsPage() {
     signed: proposals.filter(p => p.status === "signed").length,
   };
 
+  const FIELD_LABELS: Record<string, string> = {
+    client_name: "שם לקוח",
+    client_email: "אימייל",
+    client_phone: "טלפון",
+    amount: "סכום עסקה",
+    program: "תוכנית",
+  };
+
   async function handleSend(proposal: Proposal) {
     setError(null);
     setSending(proposal.id);
     try {
       const res = await fetch(`/api/proposals/${proposal.id}/send-for-signing`, { method: "POST" });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "שגיאה בשליחה");
+      if (!res.ok) {
+        if (json.error === "missing_fields" && Array.isArray(json.fields) && json.fields.length > 0) {
+          const labels = json.fields.map((f: string) => FIELD_LABELS[f] ?? f).join(", ");
+          throw new Error(`לא ניתן לשלוח — חסר: ${labels}`);
+        }
+        throw new Error(json.error || "שגיאה בשליחה");
+      }
       setSigningUrls(prev => ({ ...prev, [proposal.id]: json.signing_url }));
       await mutate();
     } catch (e: unknown) {
@@ -214,7 +228,7 @@ export default function ProposalsPage() {
                     )}
                     {proposal.docuseal_submission_id && proposal.status !== "draft" && (
                       <a
-                        href={`${process.env.NEXT_PUBLIC_DOCUSEAL_URL ?? "http://localhost:3002"}/submissions/${proposal.docuseal_submission_id}`}
+                        href={`${process.env.NEXT_PUBLIC_DOCUSEAL_URL ?? "https://docuseal.projecteden.online"}/submissions/${proposal.docuseal_submission_id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"

@@ -7,7 +7,7 @@ export function ambassadorContractEmail(
   signingUrl: string,
   clientName: string,
 ): { subject: string; html: string } {
-  const subject = "חוזה שגריר EDEN — ממתין לחתימתך";
+  const subject = "הסכם התקשרות לשגרירים — ממתין לחתימתך";
 
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="he">
@@ -113,14 +113,14 @@ export function ambassadorContractEmail(
   <div class="wrapper">
     <div class="header">
       <h1>EDEN™</h1>
-      <p>תוכנית שגרירים</p>
+      <p>תוכנית שגרירים של EDEN</p>
     </div>
 
     <div class="body">
       <p class="greeting">שלום ${clientName},</p>
 
       <p>
-        אנחנו שמחים שאתה מצטרף לתוכנית שגרירים EDEN™.
+        אנחנו שמחים שאתה מצטרף לתוכנית שגרירים של EDEN™.
         הצעד הבא הוא חתימה על הסכם השירות — מסמך שמגדיר את המסגרת, ההתחייבויות, והערבות שלנו לתהליך.
       </p>
 
@@ -136,7 +136,7 @@ export function ambassadorContractEmail(
       <hr class="divider" />
 
       <p>
-        אחרי החתימה, נצור איתך קשר לתאם את פגישת הקליטה (Intake Session) — שם נתחיל לבנות יחד.
+        אחרי החתימה, נצור איתך קשר לתאם את פגישת אינטייק ואסטרטגיה — שם נתחיל לבנות יחד.
       </p>
 
       <p>
@@ -147,9 +147,6 @@ export function ambassadorContractEmail(
     <div class="footer">
       <p class="brand">EDEN™</p>
       <p>בן לוי ואביתר טוויטו</p>
-      <p style="margin-top:8px;">
-        מייל זה נשלח אוטומטית — אין להשיב אליו ישירות.
-      </p>
     </div>
   </div>
 </body>

@@ -1,28 +1,48 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { downloadSignedPDF } from "@/lib/docuseal";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-function verifySignature(body: string, signature: string | null): boolean {
+function verifyRequest(request: NextRequest, body: string): boolean {
   const secret = process.env.DOCUSEAL_WEBHOOK_SECRET;
-  if (!secret || !signature) return false;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(body)
-    .digest("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expected),
-  );
+  if (!secret) return false;
+
+  // DocuSeal CE sends custom headers (not HMAC) — check x-crm-token
+  const crmToken = request.headers.get("x-crm-token");
+  if (crmToken) {
+    try {
+      return crypto.timingSafeEqual(Buffer.from(crmToken), Buffer.from(secret));
+    } catch {
+      return false;
+    }
+  }
+
+  // Fallback: HMAC-SHA256 via x-docuseal-signature (DocuSeal Pro / custom)
+  const signature = request.headers.get("x-docuseal-signature");
+  if (signature) {
+    const expected = crypto
+      .createHmac("sha256", secret)
+      .update(body)
+      .digest("hex");
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expected),
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  const signature = request.headers.get("x-docuseal-signature");
 
-  if (!verifySignature(rawBody, signature)) {
+  if (!verifyRequest(request, rawBody)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -33,13 +53,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const submissionId = String(
-    (event.data?.submission as { id?: number })?.id ?? "",
+  // Use service role key — webhook has no user session, anon key blocked by RLS
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
-  const submitter = event.data?.submitter as Record<string, unknown> | undefined;
+  // DocuSeal payload: data IS the submitter object (for form.completed)
+  // or submission object (for submission.completed).
+  // In both cases: data.submission.id = submission id, data.metadata.proposal_id = our id.
+  const eventData = event.data as Record<string, unknown>;
+  const submissionId = String(
+    (eventData?.submission as { id?: number } | undefined)?.id ??
+    (eventData?.submission_id as number | undefined) ??
+    "",
+  );
   const proposalId = (
-    (submitter?.metadata as Record<string, unknown> | undefined)
+    (eventData?.metadata as Record<string, unknown> | undefined)
       ?.proposal_id as string | undefined
   );
 
@@ -126,6 +155,53 @@ export async function POST(request: NextRequest) {
           signed_pdf_url: signedPdfUrl,
         },
       });
+
+      // Auto-create customer on contract signed
+      try {
+        const { data: proposal } = await supabase
+          .from("proposals")
+          .select("lead_id, customer_id, program, amount")
+          .eq("id", proposalId)
+          .single();
+
+        if (proposal?.lead_id && !proposal.customer_id) {
+          const { data: lead } = await supabase
+            .from("leads")
+            .select("name, email, phone")
+            .eq("id", proposal.lead_id)
+            .single();
+
+          if (lead?.email) {
+            // Check for existing customer by email or lead_id
+            const { data: existing } = await supabase
+              .from("customers")
+              .select("id")
+              .or(`email.eq.${lead.email},lead_id.eq.${proposal.lead_id}`)
+              .maybeSingle();
+
+            if (!existing) {
+              const VALID_PROGRAMS = ["one_core", "one_vip", "workshop", "digital_product"];
+              const program = VALID_PROGRAMS.includes(proposal.program ?? "") ? proposal.program : null;
+              await supabase.from("customers").insert({
+                lead_id: proposal.lead_id,
+                name: lead.name,
+                email: lead.email,
+                phone: lead.phone ?? null,
+                program,
+                status: "active",
+                total_paid: proposal.amount ?? 0,
+                created_at: new Date().toISOString(),
+              });
+              console.log(`[docuseal] Customer created for lead ${proposal.lead_id}`);
+            } else {
+              console.log(`[docuseal] Customer already exists for lead ${proposal.lead_id}`);
+            }
+          }
+        }
+      } catch (customerErr) {
+        // Non-fatal — log but don't fail the webhook
+        console.error("[docuseal] Auto-customer creation failed:", customerErr);
+      }
       break;
     }
 

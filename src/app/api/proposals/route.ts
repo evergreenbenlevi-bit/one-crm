@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("proposals")
-    .select("*, leads(name, email, phone), customers(name, email)")
+    .select("*, leads(name, email, phone), customers(name, email, phone)")
     .order("created_at", { ascending: false });
 
   const status = searchParams.get("status");
