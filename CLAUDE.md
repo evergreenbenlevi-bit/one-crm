@@ -103,7 +103,7 @@ Before claiming "done":
 ---
 
 ## Feature Context Gate (2026-05-05)
-**Rule:** כל feature חדש שיוצר subfolder (תחת `src/`, `docuseal/`, וכד׳) → חייב `CONTEXT.md` בתוך הfolder לפני כל קוד.
+**Rule:** כל feature חדש שיוצר subfolder (תחת `src/` וכד׳) → חייב `CONTEXT.md` בתוך הfolder לפני כל קוד.
 **Format:** purpose, URLs, credentials, env vars, files map.
 **Skip:** bug fix, single-file edit, config tweak.
 

@@ -1,12 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
-import { createSubmission, updateTemplateDocument } from "@/lib/docuseal";
 import { generateContractPdf, ContractData } from "@/lib/contract-pdf";
-import nodemailer from "nodemailer";
-import { ambassadorContractEmail } from "@/lib/email-templates/ambassador-contract";
 
-const SENDER_EMAIL = "ben.evyatar.one@gmail.com";
-const SENDER_NAME = "Ben Levi";
+// CONTRACT SIGNING UNAVAILABLE
+// DocuSeal removed 2026-06-01. PowerDoc integration pending (separate build).
+// This route generates and stores the contract PDF but cannot send for e-signing.
+// TODO: wire PowerDoc when ready (see eden-proposal-powerdoc-contract-build.md).
 
 export async function POST(
   request: NextRequest,
@@ -36,7 +35,7 @@ export async function POST(
 
   const contact = proposal.leads ?? proposal.customers;
 
-  // Validate required fields before creating DocuSeal submission
+  // Validate required fields
   const missingFields: string[] = [];
   if (!contact?.name) missingFields.push("client_name");
   if (!contact?.email) missingFields.push("client_email");
@@ -56,12 +55,8 @@ export async function POST(
       { status: 400 },
     );
 
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0] ?? undefined;
-
   // ── Step 1: Build contract data ──────────────────────────────────────────
 
-  // Format start date
   const startDate = proposal.start_date
     ? new Date(proposal.start_date as string).toLocaleDateString("he-IL", {
         day: "numeric",
@@ -74,11 +69,9 @@ export async function POST(
         year: "numeric",
       });
 
-  // Format price
   const priceNum = Number(proposal.amount ?? 0);
   const priceFormatted = `₪${priceNum.toLocaleString("he-IL")}`;
 
-  // Payment terms — use proposal field or derive from program
   const paymentTerms: string =
     (proposal.payment_terms as string | null) ??
     derivePaymentTerms(proposal.program as string | null, priceNum);
@@ -131,7 +124,6 @@ export async function POST(
 
     if (uploadErr) {
       console.warn("[send-for-signing] Storage upload failed:", uploadErr.message);
-      // Non-fatal — continue without storing URL
     } else {
       const { data: urlData } = supabase.storage
         .from("signed-contracts")
@@ -140,90 +132,18 @@ export async function POST(
     }
   } catch (storageErr) {
     console.warn("[send-for-signing] Storage error:", storageErr);
-    // Non-fatal — continue
   }
 
-  // ── Step 4: Update DocuSeal template with new PDF ────────────────────────
+  // ── Step 4: E-signing unavailable — DocuSeal removed, PowerDoc not yet wired ──
 
-  try {
-    await updateTemplateDocument(pdfBuffer, id);
-  } catch (tmplErr) {
-    console.error("[send-for-signing] DocuSeal template update failed:", tmplErr);
-    return NextResponse.json(
-      { error: "DocuSeal template update failed", details: String(tmplErr) },
-      { status: 500 },
-    );
-  }
-
-  // ── Step 5: Create DocuSeal submission ───────────────────────────────────
-
-  const { submissionId, signingUrl } = await createSubmission(
-    id,
-    contact.email,
-    contact.name ?? "לקוח",
-  );
-
-  // ── Step 6: Persist state ────────────────────────────────────────────────
-
-  await supabase
-    .from("proposals")
-    .update({
-      status: "sent",
-      sent_at: new Date().toISOString(),
-      docuseal_submission_id: submissionId,
-      docuseal_document_url: signingUrl.trim(),
+  return NextResponse.json(
+    {
+      error: "contract_signing_unavailable",
+      message: "E-signing is not available. DocuSeal has been removed. PowerDoc integration pending.",
       contract_pdf_url: contractPdfUrl ?? null,
-    })
-    .eq("id", id);
-
-  await supabase.from("esign_audit_log").insert({
-    proposal_id: id,
-    event_type: "sent",
-    ip_address: ip,
-    metadata: {
-      submission_id: submissionId,
-      signing_url: signingUrl.trim(),
-      contract_pdf_url: contractPdfUrl,
-      dynamic_pdf: true,
     },
-  });
-
-  // ── Step 7: Send email with signing link ─────────────────────────────────
-
-  if (process.env.GMAIL_APP_PASSWORD) {
-    try {
-      const { subject, html } = ambassadorContractEmail(
-        signingUrl,
-        contact.name ?? "לקוח",
-      );
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: SENDER_EMAIL,
-          pass: process.env.GMAIL_APP_PASSWORD,
-        },
-      });
-      await transporter.sendMail({
-        from: `"${SENDER_NAME}" <${SENDER_EMAIL}>`,
-        to: contact.email,
-        subject,
-        html,
-      });
-    } catch (emailErr) {
-      // Non-fatal — log but don't fail the response
-      console.error("[send-for-signing] Email send failed:", emailErr);
-    }
-  } else {
-    console.warn(
-      "[send-for-signing] GMAIL_APP_PASSWORD not set — signing email not sent",
-    );
-  }
-
-  return NextResponse.json({
-    signing_url: signingUrl.trim(),
-    submission_id: submissionId,
-    contract_pdf_url: contractPdfUrl,
-  });
+    { status: 503 },
+  );
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -231,17 +151,13 @@ export async function POST(
 function derivePaymentTerms(program: string | null, total: number): string {
   if (!program) return `סה"כ ₪${total.toLocaleString("he-IL")}`;
 
-  // Standard program naming: standard_6m, standard_3m, premium_6m
   if (program.includes("premium")) {
-    // 4 installments
     const perPayment = Math.round(total / 4).toLocaleString("he-IL");
     return `4 תשלומים × ₪${perPayment}`;
   }
   if (program.includes("3m")) {
-    // Single payment or 3 installments
     return `3 תשלומים × ₪${Math.round(total / 3).toLocaleString("he-IL")}`;
   }
-  // Default: 4 installments
   const perPayment = Math.round(total / 4).toLocaleString("he-IL");
   return `4 תשלומים × ₪${perPayment}`;
 }

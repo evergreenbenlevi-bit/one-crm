@@ -38,7 +38,6 @@ interface Proposal {
   status: string;
   created_at: string;
   expires_at: string | null;
-  docuseal_submission_id: string | null;
   leads: { name: string; email: string | null; phone: string | null } | null;
   customers: { name: string; email: string | null; phone: string | null } | null;
 }
@@ -225,16 +224,6 @@ export default function ProposalsPage() {
                           </>
                         )}
                       </button>
-                    )}
-                    {proposal.docuseal_submission_id && proposal.status !== "draft" && (
-                      <a
-                        href={`${process.env.NEXT_PUBLIC_DOCUSEAL_URL ?? "https://docuseal.projecteden.online"}/submissions/${proposal.docuseal_submission_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                      >
-                        <ExternalLink size={13} /> DocuSeal
-                      </a>
                     )}
                   </div>
                 </div>

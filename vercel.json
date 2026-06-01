@@ -38,10 +38,6 @@
     {
       "path": "/api/crons/overdue-notify",
       "schedule": "0 21 * * *"
-    },
-    {
-      "path": "/api/crons/docuseal-sync",
-      "schedule": "0 3 * * *"
     }
   ]
 }
