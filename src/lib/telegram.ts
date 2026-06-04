@@ -31,3 +31,15 @@ export function notifyNewPayment(name: string, amount: number, product: string):
   const msg = `💰 תשלום חדש: ${name} | ₪${amount.toLocaleString()} | ${product}`;
   sendTelegram(msg);
 }
+
+/**
+ * Fired when a contract send is blocked because PowerDoc has no send-amount
+ * left (error 4097002). The client did NOT get the contract — Ben must refill.
+ */
+export function notifyContractQuotaExhausted(clientName: string, proposalId: string): void {
+  const msg =
+    `🚫 חוזה לא נשלח — אזלו קרדיטים ב-PowerDoc (4097002)\n` +
+    `לקוח: ${clientName} | proposal: ${proposalId}\n` +
+    `חדש מנוי/קרדיטים: app.powerdoc.co ← "רכישת מנוי", ואז שלח שוב.`;
+  sendTelegram(msg);
+}

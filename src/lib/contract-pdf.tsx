@@ -15,6 +15,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import path from "path";
+import { SIGNATURE_FIELD, SIGNATURE_DATE_FIELD } from "./contract-signature-layout";
 
 // ── Font Registration ────────────────────────────────────────────────────────
 
@@ -777,7 +778,7 @@ function ContractDocument({ data }: { data: ContractData }) {
             </>
           ) : null}
 
-          {/* Signature block — DocuSeal will overlay signature field here */}
+          {/* Signature block — PowerDoc overlays the client signature field (see absolute target below) */}
           <View style={styles.signatureBlock}>
             <Text style={styles.signatureTitle}>חתימות</Text>
 
@@ -802,7 +803,7 @@ function ContractDocument({ data }: { data: ContractData }) {
               </View>
             </View>
 
-            {/* Client signature — DocuSeal overlay zone */}
+            {/* Client party — identity line (signature target is absolutely positioned below) */}
             <View style={styles.signatureParty}>
               <Text style={styles.signaturePartyTitle}>מקבל השירות — הלקוח</Text>
 
@@ -812,26 +813,66 @@ function ContractDocument({ data }: { data: ContractData }) {
                 <Text style={styles.signatureLabel}>ת.ז.:</Text>
                 <Text style={[styles.infoValue, { flex: 1 }]}>{data.clientIdNumber}</Text>
               </View>
-
-              {/* Large signature area for DocuSeal */}
-              <View style={{ marginTop: 12, marginBottom: 8 }}>
-                <Text style={[styles.signatureLabel, { marginBottom: 4 }]}>חתימה:</Text>
-                <View
-                  style={{
-                    height: 60,
-                    border: "1pt dashed #aaa",
-                    borderRadius: 3,
-                    backgroundColor: "#fafafa",
-                  }}
-                />
-              </View>
-
-              <View style={styles.signatureLine}>
-                <Text style={styles.signatureLabel}>תאריך:</Text>
-                <View style={styles.signatureLineDash} />
-              </View>
             </View>
           </View>
+
+          {/*
+            ── PowerDoc EOT signature target — ABSOLUTELY positioned, deterministic coords ──
+            SSOT: src/lib/contract-signature-layout.ts. react-pdf v4 absolute = page-edge
+            origin (verified, no padding offset), so these points map 1:1 to PowerDoc %.
+            The interactive signature field is overlaid by PowerDoc at exactly these coords.
+          */}
+          <Text
+            style={{
+              position: "absolute",
+              top: SIGNATURE_FIELD.top - 14,
+              left: SIGNATURE_FIELD.left,
+              width: SIGNATURE_FIELD.width,
+              fontSize: 9.5,
+              fontFamily: "Heebo",
+              color: "#555",
+              textAlign: "right",
+            }}
+          >
+            חתימת הלקוח:
+          </Text>
+          <View
+            style={{
+              position: "absolute",
+              top: SIGNATURE_FIELD.top,
+              left: SIGNATURE_FIELD.left,
+              width: SIGNATURE_FIELD.width,
+              height: SIGNATURE_FIELD.height,
+              border: "1pt dashed #888",
+              borderRadius: 3,
+              backgroundColor: "#fafafa",
+            }}
+          />
+
+          <Text
+            style={{
+              position: "absolute",
+              top: SIGNATURE_DATE_FIELD.top - 13,
+              left: SIGNATURE_DATE_FIELD.left,
+              width: SIGNATURE_DATE_FIELD.width,
+              fontSize: 9.5,
+              fontFamily: "Heebo",
+              color: "#555",
+              textAlign: "right",
+            }}
+          >
+            תאריך חתימה:
+          </Text>
+          <View
+            style={{
+              position: "absolute",
+              top: SIGNATURE_DATE_FIELD.top + SIGNATURE_DATE_FIELD.height,
+              left: SIGNATURE_DATE_FIELD.left,
+              width: SIGNATURE_DATE_FIELD.width,
+              borderBottomWidth: 1,
+              borderBottomColor: "#888",
+            }}
+          />
         </>
       )}
     </Document>

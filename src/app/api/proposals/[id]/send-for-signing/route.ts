@@ -1,11 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
 import { generateContractPdf, ContractData } from "@/lib/contract-pdf";
+import { sendContractForSigning, PowerDocQuotaExhaustedError } from "@/lib/powerdoc";
+import { notifyContractQuotaExhausted } from "@/lib/telegram";
 
-// CONTRACT SIGNING UNAVAILABLE
-// DocuSeal removed 2026-06-01. PowerDoc integration pending (separate build).
-// This route generates and stores the contract PDF but cannot send for e-signing.
-// TODO: wire PowerDoc when ready (see eden-proposal-powerdoc-contract-build.md).
+// CONTRACT SIGNING via PowerDoc EOT (one-time send, no template).
+// Generates the contract PDF, uploads a copy to Storage, then sends it to the
+// client for e-signing through PowerDoc and stores the signing URL.
 
 export async function POST(
   request: NextRequest,
@@ -134,16 +135,77 @@ export async function POST(
     console.warn("[send-for-signing] Storage error:", storageErr);
   }
 
-  // ── Step 4: E-signing unavailable — DocuSeal removed, PowerDoc not yet wired ──
+  // ── Step 4: Send for e-signing via PowerDoc EOT ──────────────────────────
 
-  return NextResponse.json(
-    {
-      error: "contract_signing_unavailable",
-      message: "E-signing is not available. DocuSeal has been removed. PowerDoc integration pending.",
-      contract_pdf_url: contractPdfUrl ?? null,
-    },
-    { status: 503 },
-  );
+  let signingUrl: string;
+  let submissionId: string;
+  try {
+    const result = await sendContractForSigning({
+      pdfBuffer,
+      clientName: contractData.clientName,
+      email: contact.email,
+      phone: contact.phone ?? null,
+      externalId: id,
+      message: `הסכם EDEN שגרירים מוכן לחתימתך — ${contractData.clientName}`,
+    });
+    signingUrl = result.signingUrl;
+    submissionId = result.submissionId;
+  } catch (sendErr) {
+    // Quota exhausted (PowerDoc 4097002): alert Ben loudly — the client got
+    // nothing — and return 402 so the UI can show "refill credits", not a
+    // generic failure. PDF was already uploaded to Storage above.
+    if (sendErr instanceof PowerDocQuotaExhaustedError) {
+      console.error("[send-for-signing] PowerDoc quota exhausted (4097002):", sendErr.message);
+      notifyContractQuotaExhausted(contractData.clientName, id);
+      return NextResponse.json(
+        {
+          error: "powerdoc_quota_exhausted",
+          code: sendErr.code,
+          message:
+            "אזלו קרדיטים לשליחה ב-PowerDoc. חדש מנוי ב-app.powerdoc.co ושלח שוב.",
+          contract_pdf_url: contractPdfUrl ?? null,
+        },
+        { status: 402 },
+      );
+    }
+    console.error("[send-for-signing] PowerDoc EOT send failed:", sendErr);
+    return NextResponse.json(
+      {
+        error: "contract_send_failed",
+        message: String(sendErr),
+        contract_pdf_url: contractPdfUrl ?? null,
+      },
+      { status: 502 },
+    );
+  }
+
+  // ── Step 5: Persist signing URL (reuse docuseal_document_url column) ─────
+
+  const { error: updateErr } = await supabase
+    .from("proposals")
+    .update({ docuseal_document_url: signingUrl })
+    .eq("id", id);
+
+  if (updateErr) {
+    console.error("[send-for-signing] Failed to save signing URL:", updateErr.message);
+    return NextResponse.json(
+      {
+        error: "signing_url_not_saved",
+        message: updateErr.message,
+        signing_url: signingUrl,
+        contract_pdf_url: contractPdfUrl ?? null,
+      },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    signing_url: signingUrl,
+    submission_id: submissionId,
+    contract_pdf_url: contractPdfUrl ?? null,
+    sign_page: `/sign/${id}`,
+  });
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
