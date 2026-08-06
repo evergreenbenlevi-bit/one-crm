@@ -25,7 +25,7 @@
 |-----|-------|-------|
 | `title` | טקסט | פועל + מושא + הקשר (ראה סעיף 1) |
 | `description` | טקסט | ראה תבנית בסעיף 3 |
-| `owner` | `ben` / `claude` / `both` / `evyatar` | מי מבצע — לא "מי אחראי" |
+| `owner` | `ben` / `claude` / `codex` / `both` / `evyatar` | מי מבצע — לא "מי אחראי" |
 | `priority` | `p0` / `p1` / `p2` / `p3` | ראה סעיף 4 |
 | `due_date` | `YYYY-MM-DD` | **תמיד**, גם אם "גמיש" — בחר תאריך ריאלי |
 | `status` | `open` / `in_progress` / `waiting` / `done` | מצב נוכחי |
@@ -104,6 +104,16 @@
 |-------|---------|
 | `ben` | בן עושה ידנית — פגישה, שיחה, החלטה, עבודה פיזית |
 | `claude` | Claude מבצע אוטומטית — קוד, כתיבה, מחקר, אוטומציה |
+| `codex` | ⚠️ **חסום ב-DB — עדיין לא שמיש.** Codex ביצע כ-MCP subagent תחת Claude — רק ריפקטור מכני עם אימות אוטומטי. הפלט עובר design-review + stage-qa לפני merge. ראה `CLAUDE.md` → Agent Role Split |
+
+> **⚠️ `codex` דורש מיגרציה לפני שימוש (2026-08-06).**
+> `owner` נאכף ברמת ה-DB, לא רק כאן:
+> - `tasks` — Postgres ENUM `task_owner` (`20260316_tasks.sql:7`, שמות עודכנו ב-`20260429100000`)
+> - `projects` — `projects_owner_check` (`20260505000000_master_hierarchy.sql:19`)
+> - `meetings` — CHECK נפרד עם ערכים שונים (`ben`/`evyatar`/`shared`)
+>
+> כתיבה עם `owner='codex'` **תיכשל** עד ש-`ALTER TYPE task_owner ADD VALUE 'codex'`
+> וה-CHECK של `projects` יעודכנו. עד אז — השתמש ב-`claude` (Claude אחראי על הפלט בכל מקרה).
 | `both` | שיתוף פעולה — Claude מכין, בן מאשר |
 | `evyatar` | אביתר אחראי |
 

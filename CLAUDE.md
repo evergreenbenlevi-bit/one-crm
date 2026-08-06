@@ -4,6 +4,32 @@
 ## Context
 Read APP-SPEC.md before any ONE-CRM work. Update it after significant changes.
 
+## Provenance Convention — MANDATORY (2026-08-06)
+**Every rule in this file and in ACTION-PLAN-FULL.md carries a provenance tag.**
+
+| Tag | Meaning | Obey it? | Cite it as evidence? |
+|-----|---------|----------|----------------------|
+| `[ben]` | Ben decided this explicitly | **Yes** | **Yes** |
+| _(untagged)_ | Predates this convention — provenance unknown | **Yes — binding but unverified** | **No** |
+| `[proposed]` | An agent wrote it; Ben has not confirmed | **No — a suggestion, not a rule** | **No** |
+
+**Untagged rules are still binding.** Everything written before 2026-08-06 — the KARIMO
+gate, the DB upsert rule, the design gates, the Bulk Action Gate — stays in force exactly as
+before. The tags govern what an agent may *cite as evidence*, not what it may ignore. An
+agent that treats an untagged rule as optional has misread this section.
+
+**Why:** git shows a single author for every commit in this repo, so an agent cannot tell
+which lines are Ben's decisions and which are its own earlier suggestions written to disk.
+Without tags, an agent can quote another agent's opinion back as if it were established fact.
+
+**Rules for agents:**
+- Follow every rule here regardless of tag, unless it is `[proposed]`.
+- Never cite an untagged or `[proposed]` line as evidence for a decision. If a rule is the
+  basis for a recommendation, say it is untagged and ask Ben to confirm — do not present it
+  as established fact.
+- When you add a rule here, tag it `[proposed]` + date. Only Ben promotes it to `[ben]`.
+- Retro-tagging the existing untagged rules below requires Ben — do not guess.
+
 ## ONE-CRM Specifics
 - Production: https://one-crm-nine.vercel.app
 - Local: http://localhost:3000
@@ -40,6 +66,29 @@ When in doubt → KARIMO.
 **DB Writes** — default: upsert (ON CONFLICT DO UPDATE), never blind INSERT on tables that may contain existing records.
 
 **Status Values**: inbox, up_next, scheduled, in_progress, waiting, done, someday, archived
+
+**Agent Role Split (Claude / Codex)** `[ben]` (2026-08-06) — replaces the stale
+"Opus מתכנן → Sonnet מבצע" line in ACTION-PLAN-FULL.md.
+
+| Stage | Owner | Rule |
+|-------|-------|------|
+| Research, plan, PRD | **Claude** | Always. APP-SPEC, KARIMO, design rules and hooks live here. |
+| Execution | Claude by default | Codex allowed **only** as an MCP subagent inside Claude Code — never a manual copy-paste handoff to a separate tool. |
+| Merge gate | **Claude** | All output, whoever produced it, passes `design-review` + `stage-qa` before merge. |
+
+**Codex is allowed to execute only when both hold:**
+1. The spec is short and self-contained (no accumulated project context needed), **and**
+2. Verification is automatic and objective — `tsc`, eslint, tests pass or fail.
+
+Typical yes: mechanical refactors, codemods, renames across many files, test generation.
+
+**Never routed to Codex:** schema/migrations (needs history — see Blindspots B3/B4),
+Hebrew content and workbooks, brand voice, vault and CRM operations, anything where the
+judgement *is* the deliverable and there is no objective check.
+
+**Rationale:** the cost driver is context transfer, not code generation. A manual handoff
+pays that cost in full and arrives ungated; an MCP subagent keeps the transfer automatic
+and the gates intact.
 
 ## Task → Skill Routing
 

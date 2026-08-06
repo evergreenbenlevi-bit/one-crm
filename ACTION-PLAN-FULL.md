@@ -285,5 +285,10 @@
 ```
 /plan ONE-CRM Phase 4 — Sort/Filter + Auto-Timestamps
 ```
-**לפני build:** Opus מתכנן → Sonnet מבצע
+**לפני build:** ראה `CLAUDE.md` → **Agent Role Split (Claude / Codex)** `[ben]` (2026-08-06).
+תכנון ו-merge gate תמיד ב-Claude. ביצוע ב-Claude כברירת מחדל; Codex מותר רק כ-MCP subagent
+ורק כשהמפרט קצר והאימות אוטומטי (tsc/eslint/tests). schema, תוכן, vault ו-CRM — לא עוברים ל-Codex.
+
+<!-- הוסר 2026-08-06: "Opus מתכנן → Sonnet מבצע" (922f3ad7, 2026-05-10) — מיושן.
+     הפיצול הרלוונטי היום הוא plan-mode מול execute-mode + subagents, לא דירוג מודלים. -->
 
