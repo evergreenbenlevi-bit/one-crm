@@ -7,18 +7,26 @@ Read APP-SPEC.md before any ONE-CRM work. Update it after significant changes.
 ## Provenance Convention — MANDATORY (2026-08-06)
 **Every rule in this file and in ACTION-PLAN-FULL.md carries a provenance tag.**
 
-| Tag | Meaning | Binding? |
-|-----|---------|----------|
-| `[ben]` | Ben decided this explicitly | **Yes — binding on all agents** |
-| `[proposed]` | An agent wrote it; Ben has not confirmed | **No — treat as a suggestion, not a rule** |
-| _(untagged)_ | Provenance unknown — predates this convention | **No — ask Ben before relying on it** |
+| Tag | Meaning | Obey it? | Cite it as evidence? |
+|-----|---------|----------|----------------------|
+| `[ben]` | Ben decided this explicitly | **Yes** | **Yes** |
+| _(untagged)_ | Predates this convention — provenance unknown | **Yes — binding but unverified** | **No** |
+| `[proposed]` | An agent wrote it; Ben has not confirmed | **No — a suggestion, not a rule** | **No** |
+
+**Untagged rules are still binding.** Everything written before 2026-08-06 — the KARIMO
+gate, the DB upsert rule, the design gates, the Bulk Action Gate — stays in force exactly as
+before. The tags govern what an agent may *cite as evidence*, not what it may ignore. An
+agent that treats an untagged rule as optional has misread this section.
 
 **Why:** git shows a single author for every commit in this repo, so an agent cannot tell
 which lines are Ben's decisions and which are its own earlier suggestions written to disk.
 Without tags, an agent can quote another agent's opinion back as if it were established fact.
 
 **Rules for agents:**
-- Never cite an untagged or `[proposed]` line as evidence for a decision.
+- Follow every rule here regardless of tag, unless it is `[proposed]`.
+- Never cite an untagged or `[proposed]` line as evidence for a decision. If a rule is the
+  basis for a recommendation, say it is untagged and ask Ben to confirm — do not present it
+  as established fact.
 - When you add a rule here, tag it `[proposed]` + date. Only Ben promotes it to `[ben]`.
 - Retro-tagging the existing untagged rules below requires Ben — do not guess.
 
